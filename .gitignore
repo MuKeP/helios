@@ -1,0 +1,11 @@
+*.exe
+*.bat
+*.out
+*.txt
+*.bak*
+fort.*
+Debug/
+Release/
+bak/
+tmp/
+wait/
