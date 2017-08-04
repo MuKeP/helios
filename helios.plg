@@ -6,20 +6,12 @@
 --------------------Configuration: helios - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP8D8F.tmp" with contents
+Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSPE598.tmp" with contents
 [
 /compile_only /nologo /warn:nofileopt /module:"Release/" /object:"Release/" 
-"E:\Programming\Fortran\original\helios\mod_cc.f90"
-"E:\Programming\Fortran\original\helios\proj-ccsdt-spin-cue-2.f90"
-"E:\Programming\Fortran\original\helios\proj-ccsdt-spin-cue-1.f90"
 "E:\Programming\Fortran\original\helios\proj-ccsd-spin-cue-2-spare.f90"
-"E:\Programming\Fortran\original\helios\proj-ccsd-spin-cue-1-spare.f90"
-"E:\Programming\Fortran\original\helios\proj-ccsd-spat-cue-2.f90"
-"E:\Programming\Fortran\original\helios\proj-ccsd-spat-cue-1.f90"
-"E:\Programming\Fortran\original\helios\prepare-ccsd-sparse.f90"
-"E:\Programming\Fortran\original\helios\main.f90"
 ]
-Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP8D90.tmp" with contents
+Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSPE599.tmp" with contents
 [
 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /incremental:no /pdb:"Release/helios.pdb" /machine:I386 /out:"Release/helios.exe" 
 .\Release\mod_approximate.obj
@@ -58,18 +50,10 @@ kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32
 ".\Release\proj-ccsdt-spin-cue-1.obj"
 ".\Release\proj-ccsdt-spin-cue-2.obj"
 ]
-Creating command line "link.exe @C:\Users\MuKeP\AppData\Local\Temp\RSP8D90.tmp"
+Creating command line "link.exe @C:\Users\MuKeP\AppData\Local\Temp\RSPE599.tmp"
 <h3>Output Window</h3>
 Compiling Fortran...
-E:\Programming\Fortran\original\helios\mod_cc.f90
-E:\Programming\Fortran\original\helios\proj-ccsdt-spin-cue-2.f90
-E:\Programming\Fortran\original\helios\proj-ccsdt-spin-cue-1.f90
 E:\Programming\Fortran\original\helios\proj-ccsd-spin-cue-2-spare.f90
-E:\Programming\Fortran\original\helios\proj-ccsd-spin-cue-1-spare.f90
-E:\Programming\Fortran\original\helios\proj-ccsd-spat-cue-2.f90
-E:\Programming\Fortran\original\helios\proj-ccsd-spat-cue-1.f90
-E:\Programming\Fortran\original\helios\prepare-ccsd-sparse.f90
-E:\Programming\Fortran\original\helios\main.f90
 Linking...
 
 

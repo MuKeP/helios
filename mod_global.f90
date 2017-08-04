@@ -168,7 +168,7 @@
 
 	! simple
 	public :: definePi,convertTime,glSetIOunit,glFinalize
-	public :: timeControl,compareStrings,dayOfWeek,isLeapYear
+	public :: timeControl,compareStrings,dayOfWeek,isLeapYear,timeStamp
 
 	! platform constants
 	public :: os,osSeparator,osMove,osCopy,osCall
@@ -1604,6 +1604,31 @@
 
 		return
 		end function dayOfWeek
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		function timeStamp() result(ret)
+		character (len=19) :: ret
+		integer*4          :: values(8)
+
+
+		values=0; call date_and_time(values=values)
+
+		!VALUE(1): The year
+		!VALUE(2): The month
+		!VALUE(3): The day of the month
+		!VALUE(4): Time difference with UTC in minutes
+		!VALUE(5): The hour of the day
+		!VALUE(6): The minutes of the hour
+		!VALUE(7): The seconds of the minute
+		!VALUE(8): The milliseconds of the second
+
+		write (ret,1) values(1:3),values(5:7)
+
+		1 format (i4,'.',i2.2,'.',i2.2,1X,i2.2,':',i2.2,':',i2.2)
+
+		return
+		end function timeStamp
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

@@ -13,8 +13,8 @@
 
 	external :: parseInput
 
-	integer*4 :: k
-	real*8    :: sta
+	integer*4 :: k,miters
+	real*8    :: sta,gsta,gsto
 
 
 	call onLoad
@@ -37,13 +37,26 @@
 	!call setCCParameters('cue-ccsdt')
 	call initCC
 
-	do k = 1,250
+	miters=20
+
+	gsta=timeControl()
+	do k = 1,miters
 		sta=timeControl()
 		write (*,'(i3\)') k
 		call iterationCC
 		call stepCC
 		write (*,'(1X,F8.4)') timeControl()-sta
 	enddo
+	gsto=timeControl()
+
+	open (50,file='.chrono', access='append')
+	write (50,'(A,1X,F8.5)') timeStamp(),(gsto-gsta)/miters
+	!write (* ,'(  4X,F8.5)') (gsto-gsta)/miters
+	close (50)
+
+	write (*,*)
+
+	void=osCall('tail -n 5 .chrono')
 
 !	call energyCC
 

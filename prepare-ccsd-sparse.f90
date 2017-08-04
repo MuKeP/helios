@@ -9,11 +9,6 @@
 	real   (kind=rglu) :: thCentroid(4),rnt2,rpert2
 
 
-!	mol%cueLevel(1)=150.d0
-!	mol%cueLevel(2)=150.d0
-
-!	write (*,*) cuebd%radius(1); stop
-
 	Ne=0
 	do i = 1,Nel
 	do a = Nel+1,No

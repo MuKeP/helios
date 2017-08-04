@@ -36,7 +36,7 @@
 
 	integer(kind=1)   , allocatable :: V(:,:)
 	real   (kind=rglu), allocatable :: hV(:,:),G(:,:)
-	integer(kind=iglu), allocatable :: cueIndex(:,:),iapairs(:) !,spinpairs(:)
+	integer(kind=iglu), allocatable :: cueIndex(:,:),iapairs(:)
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -96,10 +96,6 @@
 				iapairs(2*k-1)=2*l-1; iapairs(2*k)=2*l
 				iapairs(2*l-1)=2*k-1; iapairs(2*l)=2*k
 			enddo
-
-			!do k = 1,N
-			!	spinpairs(2*k-1)=2*k; spinpairs(2*k)=2*k-1
-			!enddo
 
 			allocate (G(N,N),density(N,N)); G=mol%G; density=0
 
