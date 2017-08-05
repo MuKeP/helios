@@ -249,7 +249,7 @@
 				if (k.EQ.l) cycle
 
 				d=iapairs(l); c=iapairs(k)
-				Bx=Ax*R(k,c,l,d) !*t1(k,c)
+				Bx=Ax*R(k,c,l,d)
 
 				sta2=byExOrbbv(mm,a)
 				sto2=byExOrbbv(mm,a+1)-1
@@ -265,24 +265,6 @@
 					xx2=cIndex(i,b)
 					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 				enddo
-
-				!d=iapairs(k); c=iapairs(l)
-				!Bx=Ax*R(k,c,l,d)*t1(k,c)
-
-				!sta2=byExOrbbv(mm,a)
-				!sto2=byExOrbbv(mm,a+1)-1
-				!do vv2 = sta2,sto2
-				!	i=Indexsbv(numcolbv(vv2),1)
-
-				!	Cx=Bx*t1(i,d)
-
-				!	xx1=cIndex(i,a)
-				!	vv3=ftfm(xx1,mm); pvd(vv3,ct)=pvd(vv3,ct)-Cx
-
-				!	xx1=cIndex(j,a)
-				!	xx2=cIndex(i,b)
-				!	vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
-				!enddo
 			enddo
 		enddo
 	enddo
@@ -659,7 +641,7 @@
 				i=Indexsbv(numcolbv(vv2),1)
 				Cx=Bx*t1(i,c)
 
-				vv3=ftfm(cIndex(i,a),mm2); pvd(vv3,ct)=pvd(vv3,ct)+Cx        !!!!!!!!!!!!!!!!!!!!!!!!!!
+				vv3=ftfm(cIndex(i,a),mm2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 
 				xx1=cIndex(j,a)
 				xx2=cIndex(i,b)
