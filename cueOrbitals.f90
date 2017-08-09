@@ -1,6 +1,6 @@
 	subroutine cueOrbitals
 
-	use hdb, only: iglu,rglu,mol,eu,ou
+	use hdb, only: iglu,rglu,mol,cuebd,eu,ou
 	use hdb, only: cueConstant1
 	use hdb, only: prMatrix
 
@@ -8,14 +8,15 @@
 
 	integer(kind=iglu)  :: N,M,Nel,Nocc,i,j,k,l,v,p
 	real(kind=rglu)     :: coords(3),val
-	!integer(kind=1), allocatable :: VV(:,:)
-
 	integer(kind=iglu), allocatable :: connectivity(:)
 
 
 
 	N=mol%nAtoms; M=mol%nBonds
 	Nel=mol%nEls; Nocc=mol%nEls/2
+
+	!for spare algorithm
+	cuebd%radius(0)=3
 
 	allocate (connectivity(N)); connectivity=0
 
@@ -98,27 +99,6 @@
 			mol%cueDist(j,i)=sqrt(val)
 		enddo
 	enddo
-
-	!allocate (VV(N,0:N)); VV=0
-	!
-	!do k = 1,Nocc
-	!	i=mol%orb(k)%atoms(1)
-	!	j=mol%orb(k)%atoms(2)
-	!	l=mol%orb(k)%ova
-	!
-	!	if (i.EQ.j) then
-	!		VV(i,k)=int(2,kind=1)
-	!		cycle
-	!	endif
-	!
-	!	VV(i,k)=int(1,kind=1); VV(i,l)=int(-1,kind=1)
-	!	VV(j,k)=int(1,kind=1); VV(j,l)=int( 1,kind=1)
-	!
-	!enddo
-	!
-	!call prMatrix(VV(1:,1:),ou,'CUE Basis','^')
-	!write (*,*) maxval(connectivity),minval(connectivity)
-	!stop
 
 	call cueStructureAnalysis
 

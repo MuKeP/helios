@@ -1,11 +1,11 @@
 	subroutine prepareSparseIndexInformation
 
 	use coupledClusterSparse
-	use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,mol,cuebd
+	use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,mol,cuebd,iapairs
 
 	implicit none
 
-	integer(kind=iglu) :: i,j,a,b,c,d,mm,nn,pp,vv,cnt,sta,sto
+	integer(kind=iglu) :: i,j,a,b,c,d,mm,nn,pp,vv,cnt,sta,sto,idelta
 	real   (kind=rglu) :: thCentroid(4),rnt2,rpert2
 
 
@@ -20,8 +20,7 @@
 	allocate ( Indexs(Ne,2), Indexsbv(Ne,2) )
 	Indexs=0; Indexsbv=0
 
-	allocate ( intersectOrbitals(Nel,Nth),intersectExcitations(Ne,Nth) )
-	intersectOrbitals=0; intersectExcitations=0
+	allocate ( intersectOrbitals(Nel,Nth) ); intersectOrbitals=0
 
 !	Indexs contains orbital pairs by excitation.
 !	sorted by occupied.
@@ -65,7 +64,7 @@
 	t1Ne=0
 	do i = 1,Nel
 		do a = Nel+1,No
-			if (cueDistance(i,a).GT.mol%cueLevel(1)) cycle
+			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
 			t1Ne=t1Ne+1
 		enddo
 	enddo
@@ -77,7 +76,7 @@
 	do i = 1,Nel
 		t1erow(i)=mm
 		do a = Nel+1,No
-			if (cueDistance(i,a).GT.mol%cueLevel(1)) cycle
+			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
 			t1numcol(mm)=a
 			t1cIndex(i,a)=mm
 
@@ -91,12 +90,12 @@
 !   ~~~~~~~~~ List of suitable excitations ~~~~~~~~~   !
 	allocate ( t1mrEx(No,0:No) )
 	! t1mrEx = in case l!=maxnei
-	! t1mrEx(i,:) - list of excitations, that fits "i" by mol%cueLevel(1).
+	! t1mrEx(i,:) - list of excitations, that fits "i" by mol%cueLevel(0).
 	t1mrEx=0
 	do i = 1,Nel ! vacant by occupied.
 		cnt=0
 		do a = Nel+1,No
-			if (cueDistance(i,a).GT.mol%cueLevel(1)) cycle
+			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
 			cnt=cnt+1
 			t1mrEx(i,cnt)=a
 		enddo
@@ -108,7 +107,7 @@
 	do a = Nel+1,No ! occupied by vacant
 		cnt=0
 		do i = 1,Nel
-			if (cueDistance(i,a).GT.mol%cueLevel(1)) cycle
+			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
 			cnt=cnt+1
 			t1mrEx(a,cnt)=i
 		enddo
@@ -143,7 +142,7 @@
 			occEx(mm,cnt)=j
 		enddo
 		occEx(mm,0)=cnt
-	enddo			
+	enddo
 
 	allocate ( mrEx(No,0:No) )
 	! mrEx = in case l!=maxnei
@@ -215,14 +214,12 @@
 	! position in vvd&vvt vectors by two excitations.
 	!! the most expensive by memory. !!
 
-!	stop
 	allocate ( ftfm(0:Ne,0:Ne) )
 
 	! in this block we will define byExOrb
 	! when sorted by occupied
 	ftfm=0
-	pp = 1
-	erow(0)=pp
+	pp=1; erow(0)=pp
 	do mm = 1,Ne
 		i=Indexs(mm,1)
 		a=Indexs(mm,2)
@@ -309,15 +306,14 @@
 		sta=erowbv(mm)
 		sto=erowbv(mm+1)-1
 
-		pp=Indexsbv(numcolbv(sta),2)
+		pp=Indexsbv(numcolbv(sta),2) !vacant orbital at the start of excitation
 		byExOrbbv(mm,pp)=sta
 
 		do vv = sta,sto
 			b=Indexsbv(numcolbv(vv),2)
 
-			if (b.NE.pp) then
-				byExOrbbv(mm,b)=vv
-				pp=b
+			if (b.NE.pp) then !vacant orbital has changed
+				byExOrbbv(mm,b)=vv; pp=b !next vacant found
 			endif
 		enddo
 	enddo
@@ -338,8 +334,7 @@
 	enddo
 	byExOrbbv(Ne,No+1)=Nue
 
-	! Fock spare information
-
+	! Fockian sparse information
 	allocate (ferow(No+1),whOVf(No))
 
 	!write (90,*) t1mrEx,t1cIndex,t1Indexs,t1erow,t1numcol

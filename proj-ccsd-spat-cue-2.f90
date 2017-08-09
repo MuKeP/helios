@@ -231,9 +231,9 @@
 						-t2(i,l,b,d)*(t2(j,k,a,c)-t2(k,j,a,c))&
 						+t2(j,l,a,d)*(t2(k,i,b,c)-t2(i,k,b,c))&
 
-						+real(0.5,rglu)*(+t2(k,i,a,c)*t2(l,j,b,d)+t2(k,j,b,c)*t2(l,i,a,d)&
-						                 +t2(j,k,d,a)*t2(l,i,b,c)+t2(i,k,d,b)*t2(l,j,a,c)&
-						                 )&
+						+(+t2(k,i,a,c)*t2(l,j,b,d)+t2(k,j,b,c)*t2(l,i,a,d)&
+						  +t2(j,k,d,a)*t2(l,i,b,c)+t2(i,k,d,b)*t2(l,j,a,c)&
+						  )/2 &
  
 						+t2(k,l,a,b)*(t2(i,j,c,d)+t1(i,c)*t1(j,d))&
 

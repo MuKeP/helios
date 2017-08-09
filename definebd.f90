@@ -15,7 +15,7 @@
 	err=fcBanID(in,true); if (err.LE.0) then; write (eu,*) 'Procedure definebd. Internal i/o error.'; stop; endif
 
 	addr(1)=bdShareVariable(generalbd%methods        ,'method'          ,opt=false,several=true,&
-	expect='list(huckel+hf+cue-ccs+r-ccd+u-ccd+mp2+mp3+cue-ccsd+r-ccsd+u-ccsd+r-ccsd(t)+r-ccsd[t]+cue-ccsdt+u-ccsdt+r-ccsdt+fci)')
+	expect='list(huckel+hf+cue-ccs+r-ccd+u-ccd+mp2+mp3+cue-ccsd+r-ccsd+u-ccsd+r-ccsd(t)+cue-ccsdt+u-ccsdt+r-ccsdt+fci)')
 
 	addr(2)=bdShareVariable(generalbd%task           ,'jobtype'         ,opt=false,several=true,&
 	expect='list(polarizability+density+coulson+hypercharges+energy+wf-analize)')
@@ -92,11 +92,12 @@
 	addr(1)=bdShareVariable(scfbd%maxiters,'max-iterations',opt=true,def=400)
 	addr(2)=bdShareVariable(scfbd%accuracy,'accuracy'      ,opt=true,def=real(12,kind=rglu),expect='range(1,15)')
 	addr(3)=bdShareVariable(scfbd%iterStep,'iter-step'     ,opt=true,def=real(0.05,kind=rglu),expect='range(0,1)')
-	void=bdCollect('scf',addr(1:3),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+	addr(4)=bdShareVariable(scfbd%guess,   'density-guess' ,opt=true,def='huckel',expect='list(huckel,unitmatrix)')
+	void=bdCollect('scf',addr(1:4),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
 	addr(1)=bdShareVariable(pipekbd%maxiters,'max-iterations',opt=true,def=800)
 	addr(2)=bdShareVariable(pipekbd%accuracy,'accuracy'      ,opt=true,def=real(10,kind=rglu),expect='range(1,15)')
-	addr(3)=bdShareVariable(pipekbd%enabled,'enabled'        ,opt=true,def=false)
+	addr(3)=bdShareVariable(pipekbd%enabled ,'enabled'       ,opt=true,def=false)
 	void=bdCollect('local',addr(1:3),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
 	addr(1)=bdShareVariable(ccbd%projType,'projection-type',opt=true,def='2-1',expect='list(1,2-1)')
@@ -105,16 +106,17 @@
 	addr(4)=bdShareVariable(ccbd%iterStep(1),'t1-step'     ,opt=true,def=gluUnity,expect='range(0,1)')
 	addr(5)=bdShareVariable(ccbd%iterStep(2),'t2-step'     ,opt=true,def=gluUnity,expect='range(0,1)')
 	addr(6)=bdShareVariable(ccbd%iterStep(3),'t3-step'     ,opt=true,def=gluUnity,expect='range(0,1)')
-	void=bdCollect('coupled-cluster',addr(1:6),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+	addr(7)=bdShareVariable(ccbd%forceSpin  ,'force-spin'  ,opt=true,def=false)
+	void=bdCollect('coupled-cluster',addr(1:7),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
-	addr(1)=bdShareVariable(lrbd%guess,'guess'            ,opt=true,def='cis',expect='list(cis,rpa)')
+	addr(1)=bdShareVariable(lrbd%guess   ,'guess'         ,opt=true,def='cis',expect='list(cis,rpa)')
 	addr(2)=bdShareVariable(lrbd%maxiters,'max-iterations',opt=true,def=10000)
 	addr(3)=bdShareVariable(lrbd%accuracy,'accuracy'      ,opt=true,def=real(6,kind=rglu),expect='range(1,15)')
 	addr(4)=bdShareVariable(lrbd%iterStep,'iter-step'     ,opt=true,def=real(0.03,kind=rglu),expect='range(0,1)')
 	void=bdCollect('linear-responce',addr(1:4),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
 	addr(1)=bdShareVariable(diisbd%storage,'storage',opt=true,def='ram',expect='list(ram,hdd)')
-	addr(2)=bdShareVariable(diisbd%steps,'steps'    ,opt=true,def=20,expect='range(2,50)')
+	addr(2)=bdShareVariable(diisbd%steps  ,'steps'    ,opt=true,def=20,expect='range(2,50)')
 	addr(3)=bdShareVariable(diisbd%enabled,'enabled',opt=true,def=true)
 	void=bdCollect('diis',addr(1:3),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 

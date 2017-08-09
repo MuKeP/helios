@@ -1,13 +1,12 @@
 	subroutine projection_ccsd_singles_spin_cue_spare
 
-	use coupledCluster      , only: Nel,No,Ne,R=>spin_cue_int,iapairs
+	use coupledCluster      , only: Nel,No,Ne,iapairs,R=>spin_cue_int
 	use coupledClusterSparse
 
 	implicit none
 
-	integer(kind=iglu) :: swit
 	integer(kind=iglu) :: i,j,a,b,k,c,mm,nn,vv,sta1,sto1,sta2,sto2,vv2,vv3
-	real   (kind=rglu) :: Ax,Bx,woint,wint,sss
+	real   (kind=rglu) :: Ax,Bx,woint,wint,sum
 
 
 	d1=0
@@ -64,12 +63,10 @@
 			j=Indexs(nn,1)
 			b=Indexs(nn,2)
 
-			Ax=vt(vv)
-
-			d1(i,a)=d1(i,a)+R(j,b,iapairs(b),iapairs(j))*Ax*t1(iapairs(b),iapairs(j))
+			d1(i,a)=d1(i,a)+R(j,b,iapairs(b),iapairs(j))*vt(vv)*t1(iapairs(b),iapairs(j))
 			if (j.EQ.iapairs(b)) then
 				do k = 1,Nel
-					d1(i,a)=d1(i,a)+R(j,b,k,iapairs(k))*Ax*t1(k,iapairs(k))
+					d1(i,a)=d1(i,a)+R(j,b,k,iapairs(k))*vt(vv)*t1(k,iapairs(k))
 				enddo
 			endif
 		enddo
@@ -143,67 +140,67 @@
 		enddo
 	enddo
 
-	!$omp parallel default(shared) private(i,a,wint,woint,sss,sta1,sto1,vv,j,b,vv2,c,vv3,k,Ax)
+	!$omp parallel default(shared) private(i,a,wint,woint,sum,sta1,sto1,vv,j,b,vv2,c,vv3,k,Ax)
 	!$omp do
 	do i = 1,Nel ! only t1
 	do a = Nel+1,No
 
 		wint=0; woint=0
 
-		sss=0 ! F(a,b)*t1(i,b)
+		sum=0 ! F(a,b)*t1(i,b)
 		sta1=whOVf(a)
 		sto1=ferow(a+1)-1
 		do vv = sta1,sto1
-			sss=sss+vF(vv)*t1(i,fnumcol(vv))
+			sum=sum+vF(vv)*t1(i,fnumcol(vv))
 		enddo
-		woint=woint+sss
+		woint=woint+sum
 
-		sss=0 ! -F(i,j)*t1(j,a)
+		sum=0 ! -F(i,j)*t1(j,a)
 		sta1=ferow(i)
 		sto1=whOVf(i)-1
 		do vv = sta1,sto1
-			sss=sss+vF(vv)*t1(fnumcol(vv),a)
+			sum=sum+vF(vv)*t1(fnumcol(vv),a)
 		enddo
-		woint=woint-sss
+		woint=woint-sum
 
-		sss=0
-		sss=sss+R(i,i,a,a)*t1(i,a) ! -[ji||ab]*t1(j,b)
+		sum=0
+		sum=sum+R(i,i,a,a)*t1(i,a) ! -[ji||ab]*t1(j,b)
 		if (iapairs(i).EQ.a) then
 			do j = 1,i-1
-				sss=sss+R(j,i,a,iapairs(j))*t1(j,iapairs(j))
+				sum=sum+R(j,i,a,iapairs(j))*t1(j,iapairs(j))
 			enddo
 			do j = i+1,Nel
-				sss=sss+R(j,i,a,iapairs(j))*t1(j,iapairs(j))
+				sum=sum+R(j,i,a,iapairs(j))*t1(j,iapairs(j))
 			enddo
 		endif
-		wint=wint-sss
+		wint=wint-sum
 
-		sss=0
+		sum=0
 		do j = 1,Nel ! -F(j,b)*t1(i,b)*t1(j,a)
 			sta1=whOVf(j)
 			sto1=ferow(j+1)-1
 			do vv = sta1,sto1
 				b=fnumcol(vv)
-				sss=sss+vF(vv)*t1(i,b)*t1(j,a)
+				sum=sum+vF(vv)*t1(i,b)*t1(j,a)
 			enddo
 		enddo
-		woint=woint-sss
+		woint=woint-sum
 
-		sss=0
+		sum=0
 		do j = 1,Nel ! [ab||jc]*t1(i,b)*t1(j,c)
-			sss=sss+R(a,a,j,iapairs(j))*t1(i,a)*t1(j,iapairs(j))
-			sss=sss+R(a,iapairs(j),j,a)*t1(i,iapairs(j))*t1(j,a)
+			sum=sum+R(a,a,j,iapairs(j))*t1(i,a)*t1(j,iapairs(j))
+			sum=sum+R(a,iapairs(j),j,a)*t1(i,iapairs(j))*t1(j,a)
 		enddo
-		wint=wint+sss
+		wint=wint+sum
 
-		sss=0
+		sum=0
 		do j = 1,Nel ! -[ji||kb]*t1(j,a)*t1(k,b)
-			sss=sss+R(j,i,i,iapairs(j))*t1(j,a)*t1(i,iapairs(j))
-			sss=sss+R(i,i,j,iapairs(j))*t1(i,a)*t1(j,iapairs(j))
+			sum=sum+R(j,i,i,iapairs(j))*t1(j,a)*t1(i,iapairs(j))
+			sum=sum+R(i,i,j,iapairs(j))*t1(i,a)*t1(j,iapairs(j))
 		enddo
-		wint=wint-sss
+		wint=wint-sum
 
-		sss=0 ! -[jb||kc]*t1(j,b)*t1(i,c)*t1(k,a)
+		sum=0 ! -[jb||kc]*t1(j,b)*t1(i,c)*t1(k,a)
 		do vv2 = 1,t1mrEx(i,0)
 			c=t1mrEx(i,vv2)
 			do vv3 = 1,t1mrEx(a,0)
@@ -214,16 +211,16 @@
 				if (k.EQ.iapairs(c)) then
 					do j = 1,Nel
 						b=iapairs(j)
-						sss=sss+R(j,b,k,c)*t1(j,b)*Ax
+						sum=sum+R(j,b,k,c)*t1(j,b)*Ax
 					enddo
 				else
 					j=iapairs(c)
 					b=iapairs(k)
-					sss=sss+R(j,b,k,c)*t1(j,b)*Ax
+					sum=sum+R(j,b,k,c)*t1(j,b)*Ax
 				endif
 			enddo
 		enddo
-		wint=wint-sss
+		wint=wint-sum
 
 		d1(i,a)=d1(i,a)+woint+wint/4
 	enddo

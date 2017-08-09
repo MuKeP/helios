@@ -123,7 +123,17 @@ SOURCE=.\mod_cc.f90
 DEP_F90_MOD_C=\
 	".\Release\coupledClusterSparse.mod"\
 	".\Release\hdb.mod"\
+	".\Release\scf.mod"\
 	
+
+!IF  "$(CFG)" == "helios - Win32 Release"
+
+# ADD F90 /warn:unused
+
+!ELSEIF  "$(CFG)" == "helios - Win32 Debug"
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
@@ -158,9 +168,7 @@ SOURCE=.\mod_filecontrol.f90
 
 SOURCE=.\mod_global.f90
 NODEP_F90_MOD_G=\
-	".\Release\ifcore.mod"\
 	".\Release\ifport.mod"\
-	".\Release\ifposix.mod"\
 	".\Release\omp_lib.h"\
 	
 # End Source File
@@ -235,6 +243,14 @@ DEP_F90_MOD_PR=\
 # End Source File
 # Begin Source File
 
+SOURCE=.\mod_scf.f90
+DEP_F90_MOD_S=\
+	".\Release\hdb.mod"\
+	".\Release\math.mod"\
+	
+# End Source File
+# Begin Source File
+
 SOURCE=.\mod_txtParser.f90
 DEP_F90_MOD_T=\
 	".\Release\fcontrol.mod"\
@@ -296,6 +312,7 @@ DEP_F90_VERSI=\
 
 SOURCE=.\defineArguments.f90
 DEP_F90_DEFIN=\
+	".\Release\argsParser.mod"\
 	".\Release\hdb.mod"\
 	
 # End Source File
@@ -303,6 +320,7 @@ DEP_F90_DEFIN=\
 
 SOURCE=.\definebd.f90
 DEP_F90_DEFINE=\
+	".\Release\datablock.mod"\
 	".\Release\hdb.mod"\
 	
 # End Source File
@@ -310,6 +328,8 @@ DEP_F90_DEFINE=\
 
 SOURCE=.\parseInput.f90
 DEP_F90_PARSE=\
+	".\Release\argsParser.mod"\
+	".\Release\datablock.mod"\
 	".\Release\hdb.mod"\
 	
 # End Source File
@@ -337,6 +357,7 @@ DEP_F90_READM=\
 SOURCE=.\gIterator.f90
 DEP_F90_GITER=\
 	".\Release\glob.mod"\
+	".\Release\hdb.mod"\
 	
 # End Source File
 # End Group
@@ -361,17 +382,12 @@ DEP_F90_CUEST=\
 # Begin Group "coupledCluster"
 
 # PROP Default_Filter ""
+# Begin Group "ccs"
+
+# PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=".\prepare-ccsd-sparse.f90"
-DEP_F90_PREPA=\
-	".\Release\coupledCluster.mod"\
-	".\Release\coupledClusterSparse.mod"\
-	
-# End Source File
-# Begin Source File
-
-SOURCE=".\proj-ccsd-spat-cue-1.f90"
+SOURCE=".\proj-ccs-spat-cue-1.f90"
 DEP_F90_PROJ_=\
 	".\Release\coupledCluster.mod"\
 	".\Release\glob.mod"\
@@ -379,32 +395,47 @@ DEP_F90_PROJ_=\
 # End Source File
 # Begin Source File
 
-SOURCE=".\proj-ccsd-spat-cue-2.f90"
+SOURCE=".\proj-ccs-spin-cue-1.f90"
 DEP_F90_PROJ_C=\
 	".\Release\coupledCluster.mod"\
 	".\Release\glob.mod"\
 	
 # End Source File
+# End Group
+# Begin Group "ccd"
+
+# PROP Default_Filter ""
 # Begin Source File
 
-SOURCE=".\proj-ccsd-spin-cue-1-spare.f90"
+SOURCE=".\proj-ccd-spat-hf-2.f90"
 DEP_F90_PROJ_CC=\
 	".\Release\coupledCluster.mod"\
-	".\Release\coupledClusterSparse.mod"\
-	
-# End Source File
-# Begin Source File
-
-SOURCE=".\proj-ccsd-spin-cue-2-spare.f90"
-DEP_F90_PROJ_CCS=\
-	".\Release\coupledCluster.mod"\
-	".\Release\coupledClusterSparse.mod"\
 	".\Release\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
-SOURCE=".\proj-ccsdt-spin-cue-1.f90"
+SOURCE=".\proj-ccd-spin-hf-2.f90"
+DEP_F90_PROJ_CCD=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# End Group
+# Begin Group "ccsd"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spat-cue-1.f90"
+DEP_F90_PROJ_CCS=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spat-cue-2.f90"
 DEP_F90_PROJ_CCSD=\
 	".\Release\coupledCluster.mod"\
 	".\Release\glob.mod"\
@@ -412,10 +443,128 @@ DEP_F90_PROJ_CCSD=\
 # End Source File
 # Begin Source File
 
-SOURCE=".\proj-ccsdt-spin-cue-2.f90"
+SOURCE=".\proj-ccsd-spat-hf-1.f90"
+DEP_F90_PROJ_CCSD_=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spat-hf-2.f90"
+DEP_F90_PROJ_CCSD_S=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spin-cue-1-spare.f90"
+DEP_F90_PROJ_CCSD_SP=\
+	".\Release\coupledCluster.mod"\
+	".\Release\coupledClusterSparse.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spin-cue-1.f90"
+DEP_F90_PROJ_CCSD_SPI=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spin-cue-2-spare.f90"
+DEP_F90_PROJ_CCSD_SPIN=\
+	".\Release\coupledCluster.mod"\
+	".\Release\coupledClusterSparse.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spin-cue-2.f90"
+DEP_F90_PROJ_CCSD_SPIN_=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spin-hf-1.f90"
+DEP_F90_PROJ_CCSD_SPIN_H=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsd-spin-hf-2.f90"
+DEP_F90_PROJ_CCSD_SPIN_HF=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# End Group
+# Begin Group "ccsdt"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=".\proj-ccsdt-spin-cue-1.f90"
 DEP_F90_PROJ_CCSDT=\
 	".\Release\coupledCluster.mod"\
 	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsdt-spin-cue-2.f90"
+DEP_F90_PROJ_CCSDT_=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsdt-spin-cue-3.f90"
+DEP_F90_PROJ_CCSDT_S=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsdt-spin-hf-1.f90"
+DEP_F90_PROJ_CCSDT_SP=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsdt-spin-hf-2.f90"
+DEP_F90_PROJ_CCSDT_SPI=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-ccsdt-spin-hf-3.f90"
+DEP_F90_PROJ_CCSDT_SPIN=\
+	".\Release\coupledCluster.mod"\
+	".\Release\glob.mod"\
+	
+# End Source File
+# End Group
+# Begin Source File
+
+SOURCE=".\prepare-ccsd-sparse.f90"
+DEP_F90_PREPA=\
+	".\Release\coupledCluster.mod"\
+	".\Release\coupledClusterSparse.mod"\
 	
 # End Source File
 # End Group

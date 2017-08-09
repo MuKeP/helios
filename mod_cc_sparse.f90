@@ -19,6 +19,6 @@
 
 	integer(kind=iglu), dimension   (:), allocatable :: ferow,fnumcol,whOVf
 
-	integer(kind=iglu), dimension (:,:), allocatable :: intersectOrbitals,intersectExcitations
+	integer(kind=iglu), dimension (:,:), allocatable :: intersectOrbitals
 
 	end module coupledClusterSparse

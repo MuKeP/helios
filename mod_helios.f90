@@ -104,13 +104,13 @@
 		integer(kind=iglu) :: nCUELayers
 
 		real   (kind=rglu) :: clearance(3)
-		real   (kind=rglu) :: cueLevel(3)
+		real   (kind=rglu) :: cueLevel(0:3)
 
 		type(atom)     , allocatable :: atm(:)
 		type(bond)     , allocatable :: bnd(:)
 		type(cueorb)   , allocatable :: orb(:)
 		real(kind=rglu), allocatable :: atmdist(:,:),cuedist(:,:)
-		real(kind=rglu), allocatable :: g(:,:),connect(:,:),core(:,:)
+		real(kind=rglu), allocatable :: g(:,:),connect(:,:),core(:,:),holdCore(:,:)
 		real(kind=rglu), allocatable :: cueLayers(:)
 	end type molecule ! Memory: uch%ln+na*atom+nb*bond+no*cueorb+rglu*(4*na*na+3)+9*iglu
 
@@ -174,7 +174,7 @@
 	end type bdhypercharges
 
 	type bdcue
-		integer(kind=iglu)          :: radius(3)
+		integer(kind=iglu)          :: radius(0:3)
 		logical(kind=lglu)          :: sparse,showBasis
 	end type bdcue
 
@@ -184,6 +184,7 @@
 	end type bdfci
 
 	type bdscf
+		type(uch)                   :: guess
 		integer(kind=iglu)          :: maxiters
 		real(kind=rglu)             :: accuracy,iterStep
 	end type bdscf
@@ -198,7 +199,7 @@
 		type(uch)                   :: projType
 		integer(kind=iglu)          :: maxiters
 		real(kind=rglu)             :: accuracy,iterStep(3)
-		logical(kind=lglu)          :: dcue
+		logical(kind=lglu)          :: dcue,forceSpin
 	end type bdcc
 
 	type bdlr

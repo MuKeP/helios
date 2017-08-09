@@ -117,10 +117,11 @@
 		enddo
 	endif
 
-	allocate (mol%core(N,N))
+	allocate (mol%core(N,N),mol%holdCore(N,N))
 	do i = 1,N
 	do j = 1,N
 		mol%core(i,j)=mol%connect(i,j)
+		mol%holdCore(i,j)=mol%connect(i,j)
 	enddo
 	enddo
 
@@ -131,6 +132,7 @@
 			val=val+mol%atm(l)%nels*mol%G(k,l)
 		enddo
 		mol%core(k,k)=mol%core(k,k)-val
+		mol%holdCore(k,k)=mol%core(k,k)
 	enddo
 
 	call cueOrbitals

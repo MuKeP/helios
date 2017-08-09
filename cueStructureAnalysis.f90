@@ -105,7 +105,7 @@
 	mol%nCUELayers=NLayers
 	allocate (mol%cueLayers(0:NLayers)); mol%cueLayers=cueLayers(0:NLayers)
 
-	do k = 1,3
+	do k = 0,3
 		if ( (cuebd%radius(k).LE.0).OR.(cuebd%radius(k).GT.NLayers)) then
 			cuebd%radius(k)=NLayers
 		endif
@@ -118,6 +118,7 @@
 			endif
 		enddo
 	enddo
+	mol%cueLevel(0)=mol%cueLayers( cuebd%radius(0) )
 
 	write (ou,'(/4X,A/)') 'Layer contents'
 	do k = 1,NLayers

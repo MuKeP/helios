@@ -7,8 +7,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	character (len=*), parameter :: tpVersion='3.500'
-	character (len=*), parameter :: tpDate   ='2017.08.03'
+	character (len=*), parameter :: tpVersion='3.510'
+	character (len=*), parameter :: tpDate   ='2017.08.09'
 	character (len=*), parameter :: tpAuthor ='Anton B. Zakharov'
 
 	integer*4, parameter :: maxStrLen=1024,maxCommentDefLen=5
@@ -827,7 +827,7 @@
 
 		nrml=0
 		do
-			if (pos+len(usub).GT.fnsh) then; ret=0; exit; endif
+			if (pos+len(usub)-1.GT.fnsh) then; ret=0; exit; endif
 			fnd=index(ustr(pos:fnsh),usub)
 
 			if (fnd.GT.0) then; nrml=nrml+1

@@ -48,3 +48,4 @@ general{method='cue-ccsd',jobtype='polarizability'}
 system{memory=2048,nproc=4,verbose=3,allow-restart,email-send,
 email-send-tared,email-reciver='abzakharov@karazin.ua'}
 coupled-cluster{t3-step=1.E-6}
+scf{max-iterations=200,accuracy=14,iter-step=0.05}

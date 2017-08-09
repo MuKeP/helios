@@ -1,25 +1,21 @@
 	subroutine projection_ccsd_doubles_spin_cue_spare
 
 	use glob                , only: getThreadNumber
-	use coupledCluster      , only: Nel,No,Ne,Nth,R=>spin_cue_int,iapairs
+	use coupledCluster      , only: Nel,No,Ne,Nth,iapairs,R=>spin_cue_int
 	use coupledClusterSparse
 
 	implicit none
 
-	integer(kind=iglu) :: ct,swit
-	integer(kind=iglu) :: i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,sta2,sto2,sta3,sto3,mm2,nn2,vv2,vv3,vv4,ccc
+	integer(kind=iglu) :: ct,p1,p2,intero
+	integer(kind=iglu) :: i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,sta2,sto2,sta3,sto3,mm2,nn2,vv2,vv3,vv4
 	real   (kind=rglu) :: Ax,Bx,Cx,Dx,sum
-
-	integer(kind=iglu) :: pi1,pi2
-
-	integer(kind=iglu) :: intero,intere
 
 
 	vd=0; pvd=0
-	!$omp parallel default(shared) private(ct,mm,i,a,nn,j,b)
-	!ct=getThreadNumber()
+	!$omp parallel default(shared) private(ct,mm,i,a,j,b,nn)
+	ct=getThreadNumber()
 	!$omp do
-	do mm = 1,Ne ! <ij||ab> = [ia||jb] !done
+	do mm = 1,Ne ! [ia||jb] !done
 		i=Indexs(mm,1)
 		a=Indexs(mm,2)
 
@@ -62,8 +58,7 @@
 					vv3=ftfm(mm,nn); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 					vv3=ftfm(nn,mm); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 
-					xx1=cIndex(i,b)
-					xx2=cIndex(j,a)
+					xx1=cIndex(i,b); xx2=cIndex(j,a)
 					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 					vv3=ftfm(xx2,xx1); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 				enddo
@@ -75,8 +70,7 @@
 				vv3=ftfm(mm,nn); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 				vv3=ftfm(nn,mm); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 
-				xx1=cIndex(i,b)
-				xx2=cIndex(j,a)
+				xx1=cIndex(i,b); xx2=cIndex(j,a)
 				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 				vv3=ftfm(xx2,xx1); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 			endif
@@ -99,8 +93,7 @@
 			l=Indexs(nn,1)
 			b=Indexs(nn,2)
 			
-			if (k.NE.l) pvd(vv,ct)=pvd(vv,ct)+vt(vv)*R(k,k,l,l) !k=i, l=j
-			! simplification due to [kk||ll]-[lk||kl]=2[kk||ll]: _old 0.5d0*vt(vv)*(R(k,k,l,l)-R(l,k,k,l))
+			if (k.NE.l) pvd(vv,ct)=pvd(vv,ct)+vt(vv)*R(k,k,l,l)
 		enddo
 	enddo
 	!$omp end parallel	
@@ -120,12 +113,12 @@
 			j=Indexs(nn,1)
 			d=Indexs(nn,2)
 
-			if (c.NE.d) pvd(vv,ct)=pvd(vv,ct)+vt(vv)*R(c,c,d,d) ! _old 0.5d0*vt(vv)*(R(c,c,d,d)-R(d,c,c,d))
+			if (c.NE.d) pvd(vv,ct)=pvd(vv,ct)+vt(vv)*R(c,c,d,d)
 		enddo
 	enddo				
 	!$omp end parallel	
 
-	!$omp parallel default(shared) private(ct,i,j,k,l,a,b,c,d,mm,nn,sta1,sto1,sta2,sto2,sta3,sto3,vv,vv2,vv3,vv4,Ax,Bx,intero,pi1,pi2,xx1,xx2)
+	!$omp parallel default(shared) private(ct,i,j,k,l,a,b,c,d,mm,nn,sta1,sto1,sta2,sto2,sta3,sto3,vv,vv2,vv3,vv4,Ax,Bx,intero,p1,p2,xx1,xx2)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ij) -0.5[kc||ld]*t(l,j,a,b)*t(k,i,c,d) !done
@@ -145,14 +138,14 @@
 
 				Ax=vt(vv)*R(k,c,l,d)
 
-				sta2=byExOrb(nn,iapairs(a))         ; sto2=byExOrb(nn,iapairs(a)+1)-1
-				sta3=byExOrb(cIndex(k,c),iapairs(d)); sto3=byExOrb(cIndex(k,c),iapairs(d)+1)-1
+				sta2=byExOrbbv(nn,a)         ; sto2=byExOrbbv(nn,a+1)-1
+				sta3=byExOrbbv(cIndex(k,c),d); sto3=byExOrbbv(cIndex(k,c),d+1)-1
 
 				intero=0
-				do vv3 = sta2,sto2; pi1=Indexsbv(numcolbv(vv3),1)
-				do vv4 = sta3,sto3; pi2=Indexsbv(numcolbv(vv4),1)
-					if (pi1.EQ.pi2) then
-						intero=intero+1; intersectOrbitals(intero,ct)=pi1
+				do vv3 = sta2,sto2; p1=Indexsbv(numcolbv(vv3),1)
+				do vv4 = sta3,sto3; p2=Indexsbv(numcolbv(vv4),1)
+					if (p1.EQ.p2) then
+						intero=intero+1; intersectOrbitals(intero,ct)=p1
 						exit
 					endif
 				enddo
@@ -163,20 +156,19 @@
 
 					Bx=Ax*vt( ftfm(cIndex(k,c),cIndex(i,d)) )
 
-					xx1=cIndex(i,a)
-					xx2=cIndex(j,b)
+					xx1=cIndex(i,a); xx2=cIndex(j,b)
 					vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)-Bx   !!!
 
-					xx1=cIndex(j,a)
-					xx2=cIndex(i,b)
+					xx1=cIndex(j,a); xx2=cIndex(i,b)
 					vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Bx   !!!
 				enddo
 			enddo
 		enddo
 	enddo
 	!$omp end parallel
-	
-	!$omp parallel default(shared) private(ct,i,j,k,l,a,b,c,d,mm,nn,sta1,sto1,sta2,sto2,sta3,sto3,vv,vv2,vv3,vv4,Ax,Bx,intero,pi1,pi2,xx1,xx2)
+	!stop
+
+	!$omp parallel default(shared) private(ct,i,j,k,l,a,b,c,d,mm,nn,sta1,sto1,sta2,sto2,sta3,sto3,vv,vv2,vv3,vv4,Ax,Bx,intero,p1,p2,xx1,xx2)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ab) -0.5[kc||ld]*t(l,k,d,b)*t(j,i,c,a) !done
@@ -200,10 +192,10 @@
 				sta3=byExOrb(cIndex(l,d),k); sto3=byExOrb(cIndex(l,d),k+1)-1
 
 				intero=0
-				do vv3 = sta2,sto2; pi1=Indexs(numcol(vv3),2)
-				do vv4 = sta3,sto3; pi2=Indexs(numcol(vv4),2)
-					if (pi1.EQ.pi2) then
-						intero=intero+1; intersectOrbitals(intero,ct)=pi1
+				do vv3 = sta2,sto2; p1=Indexs(numcol(vv3),2)
+				do vv4 = sta3,sto3; p2=Indexs(numcol(vv4),2)
+					if (p1.EQ.p2) then
+						intero=intero+1; intersectOrbitals(intero,ct)=p1
 						exit
 					endif
 				enddo
@@ -214,12 +206,10 @@
 
 					Bx=Ax*vt( ftfm(cIndex(k,b),cIndex(l,d)) )
 
-					xx1=cIndex(i,a)
-					xx2=cIndex(j,b)
+					xx1=cIndex(i,a); xx2=cIndex(j,b)
 					vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)-Bx
 
-					xx1=cIndex(i,b)
-					xx2=cIndex(j,a)
+					xx1=cIndex(i,b); xx2=cIndex(j,a)
 					vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Bx
 				enddo
 			enddo
@@ -227,10 +217,10 @@
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,sta2,sto2,mm2,nn2,vv2,vv3,Ax,Bx,Cx)
+	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,xx1,xx2,sta1,sto1,sta2,sto2,vv,vv2,vv3,Ax,Bx)
 	ct=getThreadNumber()
 	!$omp do
-	do mm = 1,Ne ! P(ij) -[kc||ld]*t(l,j,a,b)*t(k,c)*t(i,d)
+	do mm = 1,Ne ! P(ij) -[kc||ld]*t(l,j,a,b)*t(k,c)*t(i,d) !done
 		sta1=erow(mm)
 		sto1=erow(mm+1)-1
 
@@ -243,34 +233,31 @@
 			l=Indexs(nn,1)
 			a=Indexs(nn,2)
 
-			Ax=vt(vv)
-
 			do k = 1,Nel
 				if (k.EQ.l) cycle
 
 				d=iapairs(l); c=iapairs(k)
-				Bx=Ax*R(k,c,l,d)
+				Ax=vt(vv)*R(k,c,l,d)
 
 				sta2=byExOrbbv(mm,a)
 				sto2=byExOrbbv(mm,a+1)-1
 				do vv2 = sta2,sto2
 					i=Indexsbv(numcolbv(vv2),1)
 
-					Cx=Bx*(t1(i,d)*t1(k,c)-t1(i,c)*t1(k,d))
+					Bx=Ax*(t1(i,d)*t1(k,c)-t1(i,c)*t1(k,d))
 
 					xx1=cIndex(i,a)
-					vv3=ftfm(xx1,mm); pvd(vv3,ct)=pvd(vv3,ct)-Cx
+					vv3=ftfm(xx1,mm); pvd(vv3,ct)=pvd(vv3,ct)-Bx
 
-					xx1=cIndex(j,a)
-					xx2=cIndex(i,b)
-					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
+					xx1=cIndex(j,a); xx2=cIndex(i,b)
+					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
 				enddo
 			enddo
 		enddo
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,sta1,sto1,sta2,sto2,mm2,nn2,vv2,vv3,Ax,Bx,Cx)
+	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,sta1,sto1,sta2,sto2,nn2,vv2,vv3,Ax,Bx,Cx)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ab) -[kc||ld]*t(i,j,a,c)*t(l,d)*t(k,b) !done
@@ -340,8 +327,7 @@
 
 					pvd(vv,ct)=pvd(vv,ct)+Cx
 
-					xx1=cIndex(j,a)
-					xx2=cIndex(i,b)
+					xx1=cIndex(j,a); xx2=cIndex(i,b)
 					vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)-Cx
 				enddo
 			enddo
@@ -349,7 +335,7 @@
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,sta1,sto1,sta2,sto2,vv2,vv3,vv4,Ax,intero,intere)
+	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,sta1,sto1,sta2,sto2,vv2,vv3,vv4,Ax,intero)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! 0.25[kc||ld]*t(i,j,c,d)*t(k,l,a,b) !done
@@ -370,10 +356,10 @@
 			Ax=R(k,c,l,d)*vt(vv)/2
 
 			intero=0
-			do vv2 = 1,occEx(cIndex(iapairs(c),d),0); pi1=occEx(cIndex(iapairs(c),d),vv2)
-			do vv3 = 1,occEx(cIndex(iapairs(a),b),0); pi2=occEx(cIndex(iapairs(a),b),vv3)
-				if (pi1.EQ.pi2) then
-					intero=intero+1; intersectOrbitals(intero,ct)=pi1
+			do vv2 = 1,occEx(cIndex(iapairs(c),d),0); p1=occEx(cIndex(iapairs(c),d),vv2)
+			do vv3 = 1,occEx(cIndex(iapairs(a),b),0); p2=occEx(cIndex(iapairs(a),b),vv3)
+				if (p1.EQ.p2) then
+					intero=intero+1; intersectOrbitals(intero,ct)=p1
 					exit
 				endif
 			enddo
@@ -381,21 +367,16 @@
 
 			do vv2 = 1,intero
 				i=intersectOrbitals(vv2,ct)
-
 				do vv3 = 1,intero
 					j=intersectOrbitals(vv3,ct)
-
-					vv4=ftfm(cIndex(i,a),cIndex(j,b))
-
-					Cx=vt( ftfm(cIndex(i,c),cIndex(j,d)) )
-					pvd(vv4,ct)=pvd(vv4,ct)+Ax*Cx   !!!
+					vv4=ftfm(cIndex(i,a),cIndex(j,b)); pvd(vv4,ct)=pvd(vv4,ct)+Ax*vt( ftfm(cIndex(i,c),cIndex(j,d)) )
 				enddo
 			enddo
 		enddo
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,vv4,Ax,Bx,Cx)
+	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,vv4,Ax,Bx)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ij|ab) [kc||bd]*t(k,i,c,a)*t(j,d) !done
@@ -410,53 +391,48 @@
 			i=Indexs(nn,1)
 			a=Indexs(nn,2)
 
-			Ax=vt(vv)
-
 			if (k.EQ.iapairs(c)) then
-				do vv4 = 1,mrEx(i,0)
-					b=mrEx(i,vv4); d=b
-					Bx=Ax*R(k,c,b,d)
+				do vv2 = 1,mrEx(i,0)
+					b=mrEx(i,vv2); d=b
+					Ax=vt(vv)*R(k,c,b,d)
 
 					do vv3 = byExOrbbv(nn,b),byExOrbbv(nn,b+1)-1
 						j=Indexsbv(numcolbv(vv3),1)
 
-						Cx=Bx*t1(j,d)
+						Bx=Ax*t1(j,d)
 
 						xx2=cIndex(j,b)
-						vv2=ftfm(nn,xx2); pvd(vv2,ct)=pvd(vv2,ct)+Cx
-						vv2=ftfm(xx2,nn); pvd(vv2,ct)=pvd(vv2,ct)+Cx
+						vv4=ftfm(nn,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Bx
+						vv4=ftfm(xx2,nn); pvd(vv4,ct)=pvd(vv4,ct)+Bx
 
-						xx1=cIndex(j,a)
-						xx2=cIndex(i,b)
-						vv2=ftfm(xx1,xx2); pvd(vv2,ct)=pvd(vv2,ct)-Cx
-						vv2=ftfm(xx2,xx1); pvd(vv2,ct)=pvd(vv2,ct)-Cx
+						xx1=cIndex(j,a); xx2=cIndex(i,b)
+						vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)-Bx
+						vv4=ftfm(xx2,xx1); pvd(vv4,ct)=pvd(vv4,ct)-Bx
 					enddo
 				enddo
 			else
 				b=c; d=iapairs(k)
-				Bx=Ax*R(k,c,b,d)
+				Ax=vt(vv)*R(k,c,b,d)
 
-				do vv3 = byExOrbbv(nn,b),byExOrbbv(nn,b+1)-1
-					j=Indexsbv(numcolbv(vv3),1)
+				do vv2 = byExOrbbv(nn,b),byExOrbbv(nn,b+1)-1
+					j=Indexsbv(numcolbv(vv2),1)
 
-					Cx=Bx*t1(j,d)
+					Bx=Ax*t1(j,d)
 
-					xx1=cIndex(i,a)
-					xx2=cIndex(j,b)
-					vv2=ftfm(nn,xx2); pvd(vv2,ct)=pvd(vv2,ct)+Cx
-					vv2=ftfm(xx2,nn); pvd(vv2,ct)=pvd(vv2,ct)+Cx
+					xx1=cIndex(i,a); xx2=cIndex(j,b)
+					vv3=ftfm(nn,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+					vv3=ftfm(xx2,nn); pvd(vv3,ct)=pvd(vv3,ct)+Bx
 
-					xx1=cIndex(j,a)
-					xx2=cIndex(i,b)
-					vv2=ftfm(xx1,xx2); pvd(vv2,ct)=pvd(vv2,ct)-Cx
-					vv2=ftfm(xx2,xx1); pvd(vv2,ct)=pvd(vv2,ct)-Cx
+					xx1=cIndex(j,a); xx2=cIndex(i,b)
+					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+					vv3=ftfm(xx2,xx1); pvd(vv3,ct)=pvd(vv3,ct)-Bx
 				enddo
 			endif
 		enddo
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,vv4,Ax,Bx,Cx)
+	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,vv4,Ax,Bx)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ij|ab) -[kc||lj]*t(k,i,c,a)*t(l,b) !done
@@ -471,51 +447,47 @@
 			i=Indexs(nn,1)
 			a=Indexs(nn,2)
 
-			Ax=vt(vv)
-
 			if (k.EQ.iapairs(c)) then
-				do vv4 = 1,mrEx(a,0)
-					j=mrEx(a,vv4); l=j
-					Bx=Ax*R(k,c,l,j)
+				do vv2 = 1,mrEx(a,0)
+					j=mrEx(a,vv2); l=j
+					Ax=vt(vv)*R(k,c,l,j)
 
 					do vv3 = byExOrb(nn,j),byExOrb(nn,j+1)-1
 						b=Indexs(numcol(vv3),2)
 
-						Cx=Bx*t1(l,b)
+						Bx=Ax*t1(l,b)
 
 						xx2=cIndex(j,b)
-						vv2=ftfm(nn,xx2); pvd(vv2,ct)=pvd(vv2,ct)-Cx
-						vv2=ftfm(xx2,nn); pvd(vv2,ct)=pvd(vv2,ct)-Cx
+						vv4=ftfm(nn,xx2); pvd(vv4,ct)=pvd(vv4,ct)-Bx
+						vv4=ftfm(xx2,nn); pvd(vv4,ct)=pvd(vv4,ct)-Bx
 
-						xx1=cIndex(j,a)
-						xx2=cIndex(i,b)
-						vv2=ftfm(xx1,xx2); pvd(vv2,ct)=pvd(vv2,ct)+Cx
-						vv2=ftfm(xx2,xx1); pvd(vv2,ct)=pvd(vv2,ct)+Cx
+						xx1=cIndex(j,a); xx2=cIndex(i,b)
+						vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Bx
+						vv4=ftfm(xx2,xx1); pvd(vv4,ct)=pvd(vv4,ct)+Bx
 					enddo
 				enddo
 			else
 				l=iapairs(c); j=k
-				Bx=Ax*R(k,c,l,j)
+				Ax=vt(vv)*R(k,c,l,j)
 
-				do vv3 = byExOrb(nn,j),byExOrb(nn,j+1)-1
-					b=Indexs(numcol(vv3),2)
-					Cx=Bx*t1(l,b)
+				do vv2 = byExOrb(nn,j),byExOrb(nn,j+1)-1
+					b=Indexs(numcol(vv2),2)
+					Bx=Ax*t1(l,b)
 
 					xx2=cIndex(j,b)
-					vv2=ftfm(nn,xx2); pvd(vv2,ct)=pvd(vv2,ct)-Cx
-					vv2=ftfm(xx2,nn); pvd(vv2,ct)=pvd(vv2,ct)-Cx
+					vv3=ftfm(nn,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+					vv3=ftfm(xx2,nn); pvd(vv3,ct)=pvd(vv3,ct)-Bx
 
-					xx1=cIndex(j,a)
-					xx2=cIndex(i,b)
-					vv2=ftfm(xx1,xx2); pvd(vv2,ct)=pvd(vv2,ct)+Cx
-					vv2=ftfm(xx2,xx1); pvd(vv2,ct)=pvd(vv2,ct)+Cx
+					xx1=cIndex(j,a); xx2=cIndex(i,b)
+					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+					vv3=ftfm(xx2,xx1); pvd(vv3,ct)=pvd(vv3,ct)+Bx
 				enddo
 			endif
 		enddo
 	enddo
 	!$omp end parallel	
 
-	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,Ax,Bx)
+	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,Ax)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ij) -[kj||lc]*t(k,i,b,a)*t(l,c) !done
@@ -531,7 +503,6 @@
 			k=Indexs(nn,1)
 			b=Indexs(nn,2)
 
-			Ax=vt(vv)
 			do vv2 = byExOrbbv(mm,b),byExOrbbv(mm,b+1)-1
 				j=Indexsbv(numcolbv(vv2),1)
 
@@ -539,33 +510,31 @@
 					do l = 1,Nel
 						c=iapairs(l)
 
-						Bx=Ax*R(k,j,l,c)*t1(l,c)
+						Ax=vt(vv)*R(k,j,l,c)*t1(l,c)
 
 						xx2=cIndex(j,b)
-						vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+						vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 
-						xx1=cIndex(j,a)
-						xx2=cIndex(i,b)
-						vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+						xx1=cIndex(j,a); xx2=cIndex(i,b)
+						vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 					enddo
 				else
 					l=j; c=iapairs(k)
 
-					Bx=Ax*R(k,j,l,c)*t1(l,c)
+					Ax=vt(vv)*R(k,j,l,c)*t1(l,c)
 
 					xx2=cIndex(j,b)
-					vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+					vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 
-					xx1=cIndex(j,a)
-					xx2=cIndex(i,b)
-					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+					xx1=cIndex(j,a); xx2=cIndex(i,b)
+					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 				endif
 			enddo
 		enddo
 	enddo
 	!$omp end parallel	
 
-	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,Ax,Bx)
+	!$omp parallel default(shared) private(ct,i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,vv2,vv3,Ax)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ab) [cb||dk]*t(j,i,c,a)*t(k,d) !done
@@ -581,7 +550,6 @@
 			j=Indexs(nn,1)
 			c=Indexs(nn,2)
 
-			Ax=vt(vv)
 			do vv2 = byExOrb(mm,j),byExOrb(mm,j+1)-1
 				b=Indexs(numcol(vv2),2)
 
@@ -589,26 +557,24 @@
 					do d = Nel+1,No
 						k=iapairs(d)
 
-						Bx=Ax*R(c,b,d,k)*t1(k,d)
+						Ax=vt(vv)*R(c,b,d,k)*t1(k,d)
 
 						xx2=cIndex(j,b)
-						vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+						vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 
-						xx1=cIndex(i,b)
-						xx2=cIndex(j,a)
-						vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+						xx1=cIndex(i,b); xx2=cIndex(j,a)
+						vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 					enddo
 				else
 					d=b; k=iapairs(c)
 
-					Bx=Ax*R(c,b,d,k)*t1(k,d)
+					Ax=vt(vv)*R(c,b,d,k)*t1(k,d)
 
 					xx2=cIndex(j,b)
-					vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+					vv3=ftfm(mm,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 
-					xx1=cIndex(i,b)
-					xx2=cIndex(j,a)
-					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+					xx1=cIndex(i,b); xx2=cIndex(j,a)
+					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 				endif
 			enddo
 		enddo
@@ -643,8 +609,7 @@
 
 				vv3=ftfm(cIndex(i,a),mm2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 
-				xx1=cIndex(j,a)
-				xx2=cIndex(i,b)
+				xx1=cIndex(j,a); xx2=cIndex(i,b)
 				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 			enddo
 
@@ -657,8 +622,7 @@
 
 				vv3=ftfm(cIndex(i,a),mm2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 
-				xx1=cIndex(j,a)
-				xx2=cIndex(i,b)
+				xx1=cIndex(j,a); xx2=cIndex(i,b)
 				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 			enddo
 
@@ -694,8 +658,7 @@
 
 				vv3=ftfm(mm2,cIndex(j,b)); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 
-				xx1=cIndex(i,b)
-				xx2=cIndex(j,a)
+				xx1=cIndex(i,b); xx2=cIndex(j,a)
 				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 			enddo
 
@@ -708,8 +671,7 @@
 
 				vv3=ftfm(mm2,cIndex(j,b)); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 
-				xx1=cIndex(i,b)
-				xx2=cIndex(j,a)
+				xx1=cIndex(i,b); xx2=cIndex(j,a)
 				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 			enddo
 
@@ -753,9 +715,7 @@
 						vv3=ftfm(nn2,nn); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 						vv3=ftfm(nn,nn2); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 
-						xx1=cIndex(j,a)
-						xx2=cIndex(i,b)
-						
+						xx1=cIndex(j,a); xx2=cIndex(i,b)
 						vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 						vv3=ftfm(xx2,xx1); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 					enddo
@@ -790,9 +750,7 @@
 					vv3=ftfm(nn2,nn); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 					vv3=ftfm(nn,nn2); pvd(vv3,ct)=pvd(vv3,ct)-Cx
 
-					xx1=cIndex(j,a)
-					xx2=cIndex(i,b)
-					
+					xx1=cIndex(j,a); xx2=cIndex(i,b)
 					vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 					vv3=ftfm(xx2,xx1); pvd(vv3,ct)=pvd(vv3,ct)+Cx
 				enddo
@@ -866,10 +824,9 @@
 	enddo
 	!$omp end parallel	
 
-	!$omp parallel default(shared) private(mm,sta1,sto1,i,a,vv,nn,j,b,sss,k,c,l,d,vv2,vv3)
+	!$omp parallel default(shared) private(mm,sta1,sto1,i,a,vv,nn,j,b,sum,k,c,l,d,vv2,vv3)
 	ct=getThreadNumber()
 	!$omp do
-	! Only t1
 	do mm = 1,Ne
 		sta1=erow(mm)
 		sto1=erow(mm+1)-1
@@ -885,60 +842,56 @@
 			
 			sum=0
 			
-			if (j.EQ.iapairs(b)) sum=sum+R(a,a,j,b)*t1(i,a)
+			if (j.EQ.iapairs(b)) sum=sum+R(a,a,j,b)*t1(i,a) ! P(ij) [ca||jb]t(i,c)
 			if (j.EQ.iapairs(a)) sum=sum+R(b,a,j,b)*t1(i,b)
 			if (i.EQ.iapairs(b)) sum=sum-R(a,a,i,b)*t1(j,a)
 			if (i.EQ.iapairs(a)) sum=sum-R(b,a,i,b)*t1(j,b)
-			if (j.EQ.iapairs(b)) sum=sum-R(i,i,b,j)*t1(i,a)
+			if (j.EQ.iapairs(b)) sum=sum-R(i,i,b,j)*t1(i,a) ! P(ab) -[ki||bj]t(k,a)
 			if (i.EQ.iapairs(b)) sum=sum-R(j,i,b,j)*t1(j,a)
 			if (j.EQ.iapairs(a)) sum=sum+R(i,i,a,j)*t1(i,b)
 			if (i.EQ.iapairs(a)) sum=sum+R(j,i,a,j)*t1(j,b)
 
-			if (j.EQ.iapairs(a)) then
+			if (j.EQ.iapairs(a)) then ! P(ij|ab) [kc||aj]*t(i,c)*t(k,b)
 				do k = 1,Nel
 					c=iapairs(k); sum=sum+R(a,j,k,c)*t1(i,c)*t1(k,b)
 				enddo
-			else
-				k=j; c=a; sum=sum+R(a,j,k,c)*t1(i,c)*t1(k,b)
+			else;       k=j; c=a; sum=sum+R(a,j,k,c)*t1(i,c)*t1(k,b)
 			endif
 
 			if (j.EQ.iapairs(b)) then
 				do k = 1,Nel
 					c=iapairs(k); sum=sum-R(b,j,k,c)*t1(i,c)*t1(k,a)
 				enddo
-			else
-				k=j; c=b; sum=sum-R(b,j,k,c)*t1(i,c)*t1(k,a)
+			else;       k=j; c=b; sum=sum-R(b,j,k,c)*t1(i,c)*t1(k,a)
 			endif
 
 			if (i.EQ.iapairs(a)) then
-				do k = 1,Nel
+				do k = 1,Nel ! 
 					c=iapairs(k); sum=sum-R(a,i,k,c)*t1(j,c)*t1(k,b)
 				enddo
-			else
-				k=i; c=a; sum=sum-R(a,i,k,c)*t1(j,c)*t1(k,b) 
+			else;       k=i; c=a; sum=sum-R(a,i,k,c)*t1(j,c)*t1(k,b) 
 			endif
 
 			if (i.EQ.iapairs(b)) then
 				do k = 1,Nel
 					c=iapairs(k); sum=sum+R(b,i,k,c)*t1(j,c)*t1(k,a)
 				enddo
-			else
-				k=i; c=b; sum=sum+R(b,i,k,c)*t1(j,c)*t1(k,a)
+			else;       k=i; c=b; sum=sum+R(b,i,k,c)*t1(j,c)*t1(k,a)
 			endif
 
-			k=i; l=j; sum=sum+R(i,k,j,l)*t1(k,a)*t1(l,b)
+			k=i; l=j; sum=sum+R(i,k,j,l)*t1(k,a)*t1(l,b) ! [ik||jl]*t(k,a)*t(l,b)
 			k=j; l=i; sum=sum+R(i,k,j,l)*t1(k,a)*t1(l,b)
-			c=a; d=b; sum=sum+R(a,c,b,d)*t1(i,c)*t1(j,d)
+			c=a; d=b; sum=sum+R(a,c,b,d)*t1(i,c)*t1(j,d) ! [ac||bd]*t(i,c)*t(j,d)
 			c=b; d=a; sum=sum+R(a,c,b,d)*t1(i,c)*t1(j,d)
 
-			do c = Nel+1,No
+			do c = Nel+1,No ! P(ij) [kc||lj]*t(i,c)*t(k,a)
 				k=iapairs(c); l=j; sum=sum+R(c,k,j,l)*t1(i,c)*t1(k,a)*t1(l,b)
 				k=j; l=iapairs(c); sum=sum+R(c,k,j,l)*t1(i,c)*t1(k,a)*t1(l,b)
 				k=iapairs(c); l=i; sum=sum-R(c,k,i,l)*t1(j,c)*t1(k,a)*t1(l,b)
 				k=i; l=iapairs(c); sum=sum-R(c,k,i,l)*t1(j,c)*t1(k,a)*t1(l,b)
 			enddo
 
-			do k = 1,Nel
+			do k = 1,Nel ! P(ab) -[kd||ac]*t(j,d)*t(k,b)
 				c=a; d=iapairs(k); sum=sum-R(a,c,k,d)*t1(i,c)*t1(j,d)*t1(k,b)
 				c=iapairs(k); d=a; sum=sum-R(a,c,k,d)*t1(i,c)*t1(j,d)*t1(k,b)
 				c=b; d=iapairs(k); sum=sum+R(b,c,k,d)*t1(i,c)*t1(j,d)*t1(k,a)
@@ -970,16 +923,17 @@
 		do vv2 = 1,Nth
 			vd(vv)=vd(vv)+pvd(vv,vv2); pvd(vv,vv2)=0
 		enddo
-		vd(vv)=vd(vv)/4 ! 1/4 for integrals
+		vd(vv)=vd(vv)/4 ! *( 1/sqrt(2) )^4
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,mm,sta1,sto1,i,a,vv,nn,j,c,Ax,vv2,Bx,b,xx1,xx2,vv3)
+	!$omp parallel default(shared) private(ct,mm,sta1,sto1,i,a,vv,nn,j,c,vv2,b,Ax,xx1,xx2,vv3)
 	ct=getThreadNumber()
 	!$omp do
-	do mm = 1,Ne ! P(ab) F(b,c)*t(i,j,a,c) !done
+	do mm = 1,Ne ! P(ab) F(b,c)*t(i,j,a,c)
 		sta1=erow(mm)
 		sto1=erow(mm+1)-1
+
 		i=Indexs(mm,1)
 		a=Indexs(mm,2)
 
@@ -989,24 +943,21 @@
 			j=Indexs(nn,1)
 			c=Indexs(nn,2)
 
-			Ax=vt(vv)
-
 			do vv2 = whOVf(c),ferow(c+1)-1
 				b=fnumcol(vv2)
 
-				Bx=vF(vv2)*Ax
+				Ax=vF(vv2)*vt(vv)
 
-				vv3=ftfm(mm,cIndex(j,b)); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+				vv3=ftfm(mm,cIndex(j,b)); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 
-				xx1=cIndex(i,b)
-				xx2=cIndex(j,a)
-				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+				xx1=cIndex(i,b); xx2=cIndex(j,a)
+				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 			enddo
 		enddo
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,mm,sta1,sto1,i,a,vv,nn,k,b,Ax,vv2,Bx,j,xx1,xx2,vv3)
+	!$omp parallel default(shared) private(ct,mm,sta1,sto1,i,a,vv,nn,k,b,vv2,Ax,j,xx1,xx2,vv3)
 	ct=getThreadNumber()
 	!$omp do
 	do mm = 1,Ne ! P(ij) -F(k,j)*t(i,k,a,b)
@@ -1021,31 +972,26 @@
 			k=Indexs(nn,1)
 			b=Indexs(nn,2)
 
-			Ax=vt(vv)
-
 			do vv2 = ferow(k),whOVf(k)-1
 				j=fnumcol(vv2)
 
-				Bx=Ax*vF(vv2)
+				Ax=vt(vv)*vF(vv2)
 
-				vv3=ftfm(mm,cIndex(j,b)); pvd(vv3,ct)=pvd(vv3,ct)-Bx
+				vv3=ftfm(mm,cIndex(j,b)); pvd(vv3,ct)=pvd(vv3,ct)-Ax
 
-				xx1=cIndex(j,a)
-				xx2=cIndex(i,b)
-				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Bx
+				xx1=cIndex(j,a); xx2=cIndex(i,b)
+				vv3=ftfm(xx1,xx2); pvd(vv3,ct)=pvd(vv3,ct)+Ax
 			enddo
 		enddo
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,k,vv,c,Ax,a,mm2,vv2,nn2,j,b,Bx,vv3,i,Cx,xx1,xx2,vv4)
+	!$omp parallel default(shared) private(ct,k,vv,c,a,mm2,vv2,nn2,j,b,Ax,vv3,i,Bx,xx1,xx2,vv4)
 	ct=getThreadNumber()
 	!$omp do
 	do k = 1,Nel ! P(ij) -F(k,c)*t(k,j,a,b)*t(i,c)
 		do vv = whOVf(k),ferow(k+1)-1
 			c=fnumcol(vv)
-
-			Ax=vF(vv)
 
 			do a = Nel+1,No
 				mm2=cIndex(k,a)
@@ -1056,18 +1002,17 @@
 					j=Indexs(nn2,1)
 					b=Indexs(nn2,2)
 
-					Bx=Ax*vt(vv2)
+					Ax=vF(vv)*vt(vv2)
 
 					do vv3 = byExOrbbv(nn2,a),byExOrbbv(nn2,a+1)-1
 						i=Indexsbv(numcolbv(vv3),1)
 
-						Cx=Bx*t1(i,c)
+						Bx=Ax*t1(i,c)
 
-						vv4=ftfm(cIndex(i,a),nn2); pvd(vv4,ct)=pvd(vv4,ct)-Cx
+						vv4=ftfm(cIndex(i,a),nn2); pvd(vv4,ct)=pvd(vv4,ct)-Bx
 
-						xx1=cIndex(j,a)
-						xx2=cIndex(i,b)
-						vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Cx
+						xx1=cIndex(j,a); xx2=cIndex(i,b)
+						vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Bx
 					enddo
 				enddo
 			enddo
@@ -1075,14 +1020,12 @@
 	enddo
 	!$omp end parallel
 
-	!$omp parallel default(shared) private(ct,k,vv,c,Ax,j,mm2,vv2,nn2,i,a,Bx,vv3,b,Cx,xx1,xx2,vv4)
+	!$omp parallel default(shared) private(ct,k,vv,c,j,mm2,vv2,nn2,i,a,Ax,vv3,b,Bx,xx1,xx2,vv4)
 	ct=getThreadNumber()
 	!$omp do
 	do k = 1,Nel ! P(ab) -F(k,c)*t(j,i,c,a)*t(k,b)
 		do vv = whOVf(k),ferow(k+1)-1
 			c=fnumcol(vv)
-
-			Ax=vF(vv)
 
 			do j = 1,Nel
 				mm2=cIndex(j,c)
@@ -1093,18 +1036,17 @@
 					i=Indexs(nn2,1)
 					a=Indexs(nn2,2)
 					
-					Bx=Ax*vt(vv2)
+					Ax=vF(vv)*vt(vv2)
 
 					do vv3 = byExOrb(nn2,j),byExOrb(nn2,j+1)-1
 						b=Indexs(numcol(vv3),2)
 
-						Cx=Bx*t1(k,b)
+						Bx=Ax*t1(k,b)
 
-						vv4=ftfm(nn2,cIndex(j,b)); pvd(vv4,ct)=pvd(vv4,ct)-Cx
+						vv4=ftfm(nn2,cIndex(j,b)); pvd(vv4,ct)=pvd(vv4,ct)-Bx
 
-						xx1=cIndex(i,b)
-						xx2=cIndex(j,a)
-						vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Cx
+						xx1=cIndex(i,b); xx2=cIndex(j,a)
+						vv4=ftfm(xx1,xx2); pvd(vv4,ct)=pvd(vv4,ct)+Bx
 					enddo
 				enddo
 			enddo
