@@ -41,8 +41,6 @@
 	geometrybd%symmetryTolerance=real(10,rglu)**-geometrybd%symmetryTolerance
 	scfbd%accuracy=real(10,rglu)**-scfbd%accuracy
 
-	
-
 	open (ou,file=uchGet(generalbd%outfile))
 	open (init,file=uchGet(generalbd%fname))
 

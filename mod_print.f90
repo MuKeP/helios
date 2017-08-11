@@ -2,8 +2,9 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	use glob, only: mid,sort,void,true,false,collectArray,lenTrimArray
-	use fcontrol
+	use glob    , only: mid,sort,void,true,false,collectArray,lenTrimArray
+	use glob    , only: uch,uchGet,uchSet
+	use fcontrol, only: fcNewID,fcNullID
 	use txtParser
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

@@ -1,7 +1,9 @@
 	subroutine prepareSparseIndexInformation
 
+	use glob                , only: rglu,iglu
+	use hdb                 , only: mol,cuebd
+	use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,iapairs
 	use coupledClusterSparse
-	use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,mol,cuebd,iapairs
 
 	implicit none
 
@@ -357,9 +359,10 @@
 
 	subroutine initSpareCC
 
+	use glob                , only: rglu,iglu
+	use hdb                 , only: gluCompare
+	use coupledCluster      , only: Nel,No,F,NFnz
 	use coupledClusterSparse
-	use coupledCluster      , only: Nel,No,gluCompare
-	use coupledCluster      , only: F,NFnz
 
 	implicit none
 

@@ -2,15 +2,15 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	use glob    , only: uch,uchGet,uchSet,find,collectArray,true,false,void,voidl
+	use glob    , only: mid,uch,uchGet,uchSet,find,collectArray,true,false,void,voidl
 	use txtParser
 	use fcontrol, only: fcNewID,fcNullID,fcBanID
 	use printmod, only: prLongText,prStrByVal,prTable,prEchoFile
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	character (len=*), parameter :: bdVersion='1.550'
-	character (len=*), parameter :: bdDate   ='2017.08.03'
+	character (len=*), parameter :: bdVersion='1.551'
+	character (len=*), parameter :: bdDate   ='2017.08.10'
 	character (len=*), parameter :: bdAuthor ='Anton B. Zakharov'
 
 	integer*4, parameter :: typeSetSize=12,mxKindNameLen=9,maxListSetLen=100
@@ -614,11 +614,13 @@
 	integer*4, allocatable :: variables(:,:)
 
 
+!	if (uchGet(bdSet(bdPos)%name).EQ.'diis') then
+!	call system('CLS')
 	!write (*,'(A)' ) uchGet( bdSet(bdPos)%name  )
 	!write (*,'(A)' ) uchGet( bdSet(bdPos)%bdStr )
 	!write (*,'(A)' ) '123456789012345678901234567890123456789012345678901234567890123456789012345678'
 	!write (*,'(A/)') '         1         2         3         4         5         6         7        '
-	!stop
+!	endif
 
 	rcode=0
 	if (bdSet(bdPos)%freeBlock) then
@@ -691,8 +693,10 @@
 			if (shortKindLabels(variableSet(j)%kind).EQ.'lo') then
 				pStart=tpIndex( uchGet(bdSet(bdPos)%bdStr), uchGet(bdSet(bdPos)%accordCh)   , start=fnd)
 				pEnd  =tpIndex( uchGet(bdSet(bdPos)%bdStr), uchGet(bdSet(bdPos)%separatorCh), start=fnd)
+
 				if ((pStart.EQ.0) .OR. (pStart.GT.pEnd)) then
 					void=modify( variableSet(j)%address, true )
+					!write (*,*) uchGet( variableSet(j)%name ), ' modified'
 					cycle
 				endif
 			endif
@@ -768,6 +772,8 @@
 		enddo
 		deallocate (variables)
 	endif
+
+	!if (uchGet(bdSet(bdPos)%name).EQ.'diis') stop
 
 	return
 	end function bdSetValues
@@ -1817,7 +1823,7 @@
 				case (10); variableSet(i)%pntl1=transfer(variableSet(i)%defstor,variableSet(i)%pntl1)
 
 				! Please, let me 'shoot myself in the foot'.
-				! Will raise exception 'array bounds exceeded', but works fine without boundary check.
+				! Will raise 'array bounds exceeded', but works fine without boundary check.
 				! Source file should be compiled without "-CB" (for ifort) and "-fbounds-check" for GNU fortran
 				case (11)
 					variableSet(i)%pntch(1:variableSet(i)%vlen)=tpFill(variableSet(i)%vlen)
@@ -1939,8 +1945,8 @@
 
 	i=find(variableSet(:)%address,address)
 	if (i.GT.0) then
-		if ((variableSet(i)%kind.NE.6).AND.(variableSet(i)%kind.NE.7).AND.&
-			(variableSet(i)%kind.NE.8).AND.(variableSet(i)%kind.NE.9)) then
+		if ((variableSet(i)%kind.NE.7).AND.(variableSet(i)%kind.NE.8).AND.&
+			(variableSet(i)%kind.NE.9).AND.(variableSet(i)%kind.NE.10)) then
 			ret=-1
 			return
 		endif

@@ -94,6 +94,9 @@
 				 tpLocateOne,tpLocateOneOf,tpIsIn_ch_ch,tpIsIn_ch_uc,&
 				 tpIsIn_uc_ch,tpIsIn_uc_uc
 
+	private   :: fcNewID,fcBanID,fcUnBanID,fcNullID
+	private   :: mid,uch,uchSet,uchGet,void,voidl,true,false
+
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 	contains

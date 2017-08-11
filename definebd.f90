@@ -117,7 +117,7 @@
 
 	addr(1)=bdShareVariable(diisbd%storage,'storage',opt=true,def='ram',expect='list(ram,hdd)')
 	addr(2)=bdShareVariable(diisbd%steps  ,'steps'    ,opt=true,def=20,expect='range(2,50)')
-	addr(3)=bdShareVariable(diisbd%enabled,'enabled',opt=true,def=true)
+	addr(3)=bdShareVariable(diisbd%enabled,'enabled',opt=true,def=false)
 	void=bdCollect('diis',addr(1:3),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
 	void=bdCollect('molecule',addr(1:1),bdstart,bdstop,bdcomment,bdaccord,bdseparator,true,in)

@@ -1,6 +1,6 @@
 	module coupledClusterSparse
 
-	use hdb, only: iglu,rglu,lglu,true,false
+	use glob, only: iglu,rglu,lglu,true,false
 
 	!   ~~~ CCSD ~~~   !
 	real   (kind=rglu), dimension (:,:), allocatable :: pvd,t1,d1
@@ -20,5 +20,8 @@
 	integer(kind=iglu), dimension   (:), allocatable :: ferow,fnumcol,whOVf
 
 	integer(kind=iglu), dimension (:,:), allocatable :: intersectOrbitals
+
+
+	private :: iglu,rglu,lglu,true,false
 
 	end module coupledClusterSparse

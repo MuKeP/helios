@@ -7,9 +7,10 @@
 	implicit none
 
 	interface
-		subroutine callsub(iter,accuracy)
+		subroutine callsub(iteration,epsilon,accuracy)
 		use glob, only: iglu,rglu
-		integer(kind=iglu), intent(in)  :: iter
+		integer(kind=iglu), intent(in)  :: iteration
+		real   (kind=rglu), intent(in)  :: epsilon
 		real   (kind=rglu), intent(out) :: accuracy(5)
 		end subroutine callsub
 	end interface
@@ -28,11 +29,11 @@
 	logical(kind=lglu)             :: dnull
 
 	character (len=1)              :: success
-	real   (kind=rglu)             :: accuracy(5),frequency=10
+	real   (kind=rglu)             :: accuracy(5),frequency=-10
 	integer(kind=iglu)             :: iteration,successfulIterations,printRate
 	real   (kind=rglu)             :: currentAccuracy,previousAccuracy
 	real   (kind=rglu)             :: improvementPercent,meanImprovement
-	real   (kind=rglu)             :: estimatedIters,estimatedTime,energy(5)
+	real   (kind=rglu)             :: estimatedIters,estimatedTime,energy(5),saveEstimatedIters
 	real   (kind=rglu)             :: timePerIter,sTime(2),cTime(2),successPercent
 	type(uch)                      :: printLine,header
 
@@ -47,6 +48,7 @@
 	sTime(1)=timeControl(sTime(2))
 	iteration=0; successfulIterations=1
 	currentAccuracy=0; previousAccuracy=10
+	meanImprovement=0
 
 	if (.NOT.dnull) then
 		write (ou,'(/A)') tpFill (len( uchGet(header) ),'=' )
@@ -60,11 +62,7 @@
 			exit
 		endif
 
-		if (currentAccuracy.GT.feelDivergence) then
-			write (*,*) 'Divergance occured.'
-			exit
-		endif
-		call callSub(iteration,accuracy)
+		call callSub(iteration,eps,accuracy)
 		call energysub(energy)
 
 		cTime(1)=timeControl(cTime(2))
@@ -86,9 +84,10 @@
 			else
 				printRate=int(frequency/timePerIter)
 			endif
+			printRate=1
 			improvementPercent=0
 			successPercent=100
-			estimatedIters=0
+			estimatedIters=maxiter
 			estimatedTime=0
 			success=' '
 		else
@@ -96,15 +95,31 @@
 			successPercent=100.*(successfulIterations)/iteration
 			if (improvementPercent.GT.1D-5) meanImprovement=meanImprovement+improvementPercent
 
-			estimatedIters=int( (log(eps) - log(currentAccuracy))/log(1.-improvementPercent/100.) )
+			if (success.EQ.'u') then
+				improvementPercent=abs(improvementPercent)
+				estimatedIters=saveEstimatedIters
+			else
+				!estimatedIters=int( (log(eps) - log(currentAccuracy))/log(1.-improvementPercent/100.) )
+				estimatedIters=int( (log(eps) - log(currentAccuracy))/log(1.-(meanImprovement/iteration)/100.) )
+
+				saveEstimatedIters=estimatedIters
+			endif
+
 			if (estimatedIters.GT.maxiter) estimatedIters=maxiter-iteration
 			estimatedTime=estimatedIters*timePerIter
 		endif
+
+		write (*,*) iteration, currentAccuracy,improvementPercent
 
 		if (.NOT.dnull) then
 			if (mod(iteration-1,printRate).EQ.0) then
 				call output
 			endif
+		endif
+
+		if (currentAccuracy.GT.feelDivergence) then
+			write (*,*) 'Divergance occured.'
+			exit
 		endif
 
 		if (currentAccuracy.LT.eps) then

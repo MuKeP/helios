@@ -1494,7 +1494,7 @@
 		implicit none
 
 		character (len=*)  , intent(in) :: fstr,sstr
-		integer*4                       :: fnd,k
+		integer*4                       :: k
 
 
 		do k = 1,min(len(fstr),len(sstr))

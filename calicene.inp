@@ -28,6 +28,6 @@ molecule{
 general{method='cue-ccsd',jobtype='polarizability'}
 system{memory=2048,nproc=4,verbose=3,allow-restart,email-send,
 email-send-tared,email-reciver='abzakharov@karazin.ua'}
-coupled-cluster{t1-step=1,t2-step=1,t3-step=1}
+coupled-cluster{t1-step=1,t2-step=1,t3-step=1,projection-type=2-1}
 scf{max-iterations=200,accuracy=14,iter-step=0.05d0}
-diis{enabled, steps=20, storage=ram}
+diis{enabled,steps=20, storage=ram}

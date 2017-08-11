@@ -48,11 +48,12 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-		subroutine iterationSCF(iter,accuracy)
+		subroutine iterationSCF(iteration,epsilon,accuracy)
 
 		implicit none
 
-		integer(kind=iglu), intent(in)  :: iter
+		integer(kind=iglu), intent(in)  :: iteration
+		real   (kind=rglu), intent(in)  :: epsilon
 		real   (kind=rglu), intent(out) :: accuracy(5)
 
 		real   (kind=rglu)              :: eps

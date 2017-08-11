@@ -2,22 +2,13 @@
 
 	use glob    , only: true,false,rspu,rglu,iglu,lglu,void
 	use math    , only: tred4
-	use fcontrol
+	use fcontrol, only: fcNewID,fcNullID
 
 	private
 
 	character (len=*), parameter :: ciVersion='4.400'       !5
 	character (len=*), parameter :: ciDate   ='2017.07.07'  !10
 	character (len=*), parameter :: ciAuthor ='Vladimir V. Ivanov'
-
-	! glu = real for global use  (storage and non-accuracy-demanding procedures).
-	! spu = real for special use (accuracy-demanding procedures).
-	!integer*4, parameter :: rglu=r8kind, rspu=r8kind
-	!integer*4, parameter :: iglu=i4kind, ispu=i8kind
-	!integer*4, parameter :: lglu=l1kind
-
-	!real(kind=rglu), parameter :: gluzero=real(0,rglu)
-	!real(kind=rspu), parameter :: spuzero=real(0,rspu)
 
 	! default parameter values
 	integer(kind=iglu)     :: fciNSteps=7,fciMaxiter=1000,fciNStates=1,iount

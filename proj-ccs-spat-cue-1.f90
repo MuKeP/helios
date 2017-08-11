@@ -4,6 +4,7 @@
 	use coupledCluster, only: N,Nocc,Ne,NFnz
 	use coupledCluster, only: F,R,Fnz
 	use coupledCluster, only: t1,d1,excSet,iapairs
+	use coupledCluster, only: notFitRadius
 
 	implicit none
 
@@ -15,6 +16,8 @@
 	do u = 1,Ne
 		i=excSet(u,1)
 		a=excSet(u,2)
+
+		if (notFitRadius(1,i,a)) cycle
 
 		rez=F(i,a)
 

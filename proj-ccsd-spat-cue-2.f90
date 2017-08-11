@@ -4,6 +4,7 @@
 	use coupledCluster, only: N,Nocc,Ne,NFnz
 	use coupledCluster, only: F,R,Fnz !,mol
 	use coupledCluster, only: t1,t2,d2,excSet,iapairs
+	use coupledCluster, only: notFitRadius
 
 	implicit none
 
@@ -17,23 +18,11 @@
 	do u = 1,Ne
 		i=excSet(u,1)
 		a=excSet(u,2)
-
-		!if (mol%cuedist(i,a).GT.mol%cueLevel(2)) cycle
 		do v = u,Ne
 			j=excSet(v,1)
 			b=excSet(v,2)
 
-			!if (mol%cuedist(j,b).GT.mol%cueLevel(2)) cycle
-
-			!oset(1)=mol%cuedist(i,j)
-			!oset(2)=mol%cuedist(i,b)
-			!oset(3)=mol%cuedist(j,a)
-			!oset(4)=mol%cuedist(a,b)
-
-			!if (maxval(oset).GT.mol%cueLevel(2)) cycle
-
-			!write (*,*) mol%cueLevel(2)
-			!stop
+			if (notFitRadius(2,i,a,j,b)) cycle
 
 			ai=a.EQ.iapairs(i); aj=a.EQ.iapairs(j)
 			bi=b.EQ.iapairs(i); bj=b.EQ.iapairs(j)

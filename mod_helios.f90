@@ -175,7 +175,7 @@
 
 	type bdcue
 		integer(kind=iglu)          :: radius(0:3)
-		logical(kind=lglu)          :: sparse,showBasis
+		logical(kind=lglu)          :: sparse,showBasis,local(3)
 	end type bdcue
 
 	type bdfci

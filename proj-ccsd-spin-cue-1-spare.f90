@@ -1,6 +1,7 @@
 	subroutine projection_ccsd_singles_spin_cue_spare
 
-	use coupledCluster      , only: Nel,No,Ne,iapairs,R=>spin_cue_int
+	use glob                , only: iglu,rglu
+	use coupledCluster      , only: Nel,No,Ne,iapairs,notFitRadius,R=>spin_cue_int
 	use coupledClusterSparse
 
 	implicit none
@@ -247,6 +248,13 @@
 				d1(i,a)=d1(i,a)+Ax*vt(vv2)
 			enddo
 		enddo
+	enddo
+
+	do i = 1,Nel
+	do a = Nel+1,No
+		if (.NOT.notFitRadius(1,i,a)) cycle
+		d1(i,a)=0
+	enddo
 	enddo
 
 	return

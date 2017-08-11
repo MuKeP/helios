@@ -21,8 +21,6 @@
 	public  :: orVersion,orDate,orAuthor
 	public  :: shareCoords,getNewCoords,putOnPlane,putOnAxis,orSetIOunit
 
-	!private :: N,iounit,oX,oY,oZ,prevCentre,void,dtr
-
 	contains
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

@@ -120,6 +120,12 @@
 	enddo
 	mol%cueLevel(0)=mol%cueLayers( cuebd%radius(0) )
 
+	do k = 1,3
+		if (cuebd%radius(k).LT.mol%nCUELayers) then
+			cuebd%local(k)=true
+		endif
+	enddo
+
 	write (ou,'(/4X,A/)') 'Layer contents'
 	do k = 1,NLayers
 

@@ -4,6 +4,7 @@
 	use coupledCluster, only: No,Nel,NFnz
 	use coupledCluster, only: R,F,Fnz
 	use coupledCluster, only: t1,t2,t3,d3,iapairs
+	use coupledCluster, only: notFitRadius
 
 	implicit none
 
@@ -18,6 +19,8 @@
 	do k = j+1,Nel
 	do c = b+1,No
 		if (btest(i+j+k,0).NE.btest(a+b+c,0)) cycle
+
+		if (notFitRadius(1,i,a,j,b,k,c)) cycle
 
 		rez=0
 

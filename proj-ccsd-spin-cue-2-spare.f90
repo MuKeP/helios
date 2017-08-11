@@ -1,6 +1,6 @@
 	subroutine projection_ccsd_doubles_spin_cue_spare
 
-	use glob                , only: getThreadNumber
+	use glob                , only: getThreadNumber,iglu,rglu
 	use coupledCluster      , only: Nel,No,Ne,Nth,iapairs,R=>spin_cue_int
 	use coupledClusterSparse
 

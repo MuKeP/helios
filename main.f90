@@ -28,10 +28,10 @@
 	!call primaryInformation('init')
 	call readMoleculeInformation
 
-	call setCCParameters('spin-r-ccsdt')
+	call setCCParameters('cue-ccsdt')
 	call initCC
 
-	call iterator(iterationCC,energyCC,400,1D-14,false)
+	call iterator(iterationCC,energyCC,400,1D-13,false)
 	!call energyCC
 
 	select case( uchGet(generalbd%task) )

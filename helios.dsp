@@ -43,6 +43,7 @@ RSC=rc.exe
 # PROP Target_Dir ""
 # ADD BASE F90 /compile_only /nologo /warn:nofileopt
 # ADD F90 /compile_only /nologo /warn:nofileopt
+# SUBTRACT F90 /warn:unused
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
 # ADD CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
 # ADD BASE RSC /l 0x419 /d "NDEBUG"
@@ -123,6 +124,7 @@ SOURCE=.\mod_cc.f90
 DEP_F90_MOD_C=\
 	".\Release\coupledClusterSparse.mod"\
 	".\Release\hdb.mod"\
+	".\Release\math.mod"\
 	".\Release\scf.mod"\
 	
 

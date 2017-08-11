@@ -1,23 +1,12 @@
 	module derivat
 
-	use glob     , only: true,false,rglu,rspu,iglu,lglu,i4kind,r8kind
-	use glob     , only: find
+	use glob     , only: true,false,rglu,rspu,iglu,lglu,i4kind,r8kind,find
 	use math     , only: getLagrangDeriv,factorial
 	use txtParser, only: tpCount
-!	use printmod
 
 	character (len=*), parameter :: deVersion='1.000'
 	character (len=*), parameter :: deDate   ='2015.08.22'
 	character (len=*), parameter :: deAuthor ='Anton B. Zakharov'
-
-	! glu = real for global use  (storage and non-accuracy-demanding procedures).
-	! spu = real for special use (accuracy-demanding procedures).
-	!integer*4, parameter :: rglu=r8kind, rspu=r8kind
-	!integer*4, parameter :: iglu=i4kind, ispu=i8kind
-	!integer*4, parameter :: lglu=l1kind
-
-	!real(kind=rglu), parameter :: gluzero=real(0,rglu)
-	!real(kind=rspu), parameter :: spuzero=real(0,rspu)
 
 	character (len=*), parameter :: crt='xyz'
 

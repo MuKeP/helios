@@ -6,15 +6,6 @@
 	character (len=*), parameter :: tdDate   ='2017.05.23'
 	character (len=*), parameter :: tdAuthor ='Anton B. Zakharov'
 
-	! glu = real for global use  (storage and non-accuracy-demanding procedures).
-	! spu = real for special use (accuracy-demanding procedures).
-	!integer*4, parameter :: rglu=r8kind, rspu=r8kind
-	!integer*4, parameter :: iglu=i4kind, ispu=i8kind
-	!integer*4, parameter :: lglu=l1kind
-
-	!real(kind=rglu), parameter :: gluzero=real(0,rglu)
-	!real(kind=rspu), parameter :: spuzero=real(0,rspu)
-
 	real(kind=rglu), allocatable :: thX(:),thY(:),thZ(:)
 
 	contains
