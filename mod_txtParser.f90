@@ -1874,7 +1874,7 @@
 
 		dsymbol=','; if (present(symbol)) dsymbol=symbol
 
-		ret=0.d0; cnt=0; sta=1; sto=len_trim(str)
+		ret=0; cnt=0; sta=1; sto=len_trim(str)
 		do
 			if (cnt.GE.n) exit
 
@@ -1940,6 +1940,5 @@
 		end subroutine tpFinalize
 
 		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
 
 	end module txtParser

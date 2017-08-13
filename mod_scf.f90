@@ -1,20 +1,40 @@
 	module scf
 
-	use hdb , only: iglu,rglu,rspu,void,true,false,uch,uchGet
-	use hdb , only: mol,scfbd
-	use hdb , only: tpFill
-	use math, only: tred4
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	integer(kind=iglu) :: N,Nocc
+	use glob      , only: iglu,rglu,rspu,void,true,false,uch,uchGet
+	use hdb       , only: mol,scfbd
+	use txtParser , only: tpFill
+	use math      , only: tred4
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+	character (len=*), parameter :: hfVersion='1.000'
+	character (len=*), parameter :: hfDate   ='2017.08.11'
+	character (len=*), parameter :: hfAuthor ='Anton B. Zakharov'
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
 	real   (kind=rglu), allocatable :: F(:,:),V(:,:),E(:),D(:,:)
 	real   (kind=rglu), allocatable :: Fmin(:,:),Comut(:,:),Refl(:,:)
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+	integer(kind=iglu) :: N,Nocc
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+	private
+
+	public :: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFResult,finalizeSCF
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
 	contains
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine setSCFParameters
-
 		implicit none
 
 
@@ -26,10 +46,9 @@
 		return
 		end subroutine setSCFParameters
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine initSCF(vecs)
-
 		implicit none
 
 		real(kind=rglu), optional :: vecs(:,:)
@@ -46,10 +65,9 @@
 		return
 		end subroutine initSCF
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine iterationSCF(iteration,epsilon,accuracy)
-
 		implicit none
 
 		integer(kind=iglu), intent(in)  :: iteration
@@ -58,7 +76,6 @@
 
 		real   (kind=rglu)              :: eps
 		integer(kind=iglu)              :: mu,nu
-
 
 
 		call prepareFmin; eps=maxval(abs(Fmin))
@@ -77,10 +94,9 @@
 		return
 		end subroutine iterationSCF
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine energySCF(energy)
-
 		implicit none
 
 		real   (kind=rglu) :: energy(5)
@@ -108,14 +124,13 @@
 		return
 		end subroutine energySCF
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine getSCFResult(fockian,vectors,energies)
-
 		implicit none
 
 		real   (kind=rglu), optional :: fockian(:,:),vectors(:,:),energies(:)
-		integer(kind=iglu) :: i,j
+		integer(kind=iglu)           :: i,j
 
 
 		if (present(fockian)) then
@@ -149,10 +164,9 @@
 		return
 		end subroutine getSCFResult
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine finalizeSCF
-
 		implicit none
 
 
@@ -161,14 +175,13 @@
 		return
 		end subroutine finalizeSCF
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine scfGuess(vecs)
-
 		implicit none
 
-		character (len=10) :: guess
-		integer(kind=iglu) :: mu
+		character (len=10)           :: guess
+		integer(kind=iglu)           :: mu
 		real   (kind=rglu), optional :: vecs(N,N)
 
 
@@ -196,10 +209,9 @@
 		return
 		end subroutine scfGuess
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine prepareDensity(vec)
-
 		implicit none
 
 		real(kind=rglu)    :: vec(N,N)
@@ -209,7 +221,6 @@
 
 		do mu = 1,N
 			do nu = 1,N
-
 				sum=0
 				do i = 1,Nocc
 					sum=sum+vec(mu,i)*vec(nu,i)
@@ -221,10 +232,9 @@
 		return
 		end subroutine prepareDensity
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine prepareFockian
-
 		implicit none
 
 		real(kind=rglu)    :: sum
@@ -247,10 +257,9 @@
 		return
 		end subroutine prepareFockian
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 		subroutine prepareFmin
-
 		implicit none
 
 		real   (kind=rglu) :: sum1,sum2
@@ -288,6 +297,6 @@
 		return
 		end subroutine prepareFmin
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 	end module scf

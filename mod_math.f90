@@ -8,7 +8,9 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
-	public
+	private
+	public :: maVersion,maDate,maAuthor,maFinalize
+	public :: tred4,gaussSLE,LagrangeDerivative,getMult,factorial,gcd,lcm,reduceFraction
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -282,7 +284,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
-	real(kind=rspu) function getLagrangDeriv(nump,power,enGrid,ff)
+	real(kind=rspu) function LagrangeDerivative(nump,power,enGrid,ff) result(ret)
 
 	implicit none
 
@@ -323,7 +325,7 @@
 	lagChis(:,maxpower)=1
 
 	do j = -shif,shif
-		lagDerivat(j)=(-1)**dble(power)*lagChis(j,power)*factorial(power)
+		lagDerivat(j)=-1.**power*lagChis(j,power)*factorial(power) !change
 	enddo
 
 	do j = -shif,shif
@@ -342,10 +344,10 @@
 
 	deAllocate ( lagZnam,lagChis,lagWork,lagDerivat,lagFr )
 
-	getLagrangDeriv=sum/(ff**power)
+	ret=sum/(ff**power)
 		
 	return
-	end function getLagrangDeriv
+	end function LagrangeDerivative
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -454,7 +456,6 @@
 
 	return
 	end subroutine maFinalize
-
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 

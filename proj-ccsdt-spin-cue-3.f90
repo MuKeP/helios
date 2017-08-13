@@ -8,8 +8,8 @@
 
 	implicit none
 
-	real   (kind=rglu) :: rez,sum,sum1,sum2
-	integer(kind=iglu) :: ab(2),t,mm,nn,i,a,j,b,k,c,l,d,m,e
+	real   (kind=rglu) :: rez,sum
+	integer(kind=iglu) :: ab(2),t,i,a,j,b,k,c,l,d,m,e
 
 
 	do i = 1,Nel-2

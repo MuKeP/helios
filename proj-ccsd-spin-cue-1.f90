@@ -8,7 +8,7 @@
 
 	implicit none
 
-	real   (kind=rglu) :: sum,rez,woint,wint
+	real   (kind=rglu) :: sum,rez
 	integer(kind=iglu) :: ab(2),t,i,a,j,b,k,c
 
 

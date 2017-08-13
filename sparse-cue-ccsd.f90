@@ -2,19 +2,18 @@
 
 	use glob                , only: rglu,iglu
 	use hdb                 , only: mol,cuebd
-	use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,iapairs
+	use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,iapairs,notFitRadius
 	use coupledClusterSparse
 
 	implicit none
 
-	integer(kind=iglu) :: i,j,a,b,c,d,mm,nn,pp,vv,cnt,sta,sto,idelta
-	real   (kind=rglu) :: thCentroid(4),rnt2,rpert2
+	integer(kind=iglu) :: i,j,a,b,mm,nn,pp,vv,cnt,sta,sto
 
 
 	Ne=0
 	do i = 1,Nel
 	do a = Nel+1,No
-		if (cueDistance(i,a).GT.mol%cueLevel(2)) cycle !length of excitation is bigger than mol%cueLevel(2)
+		if (notFitRadius(2,i,a)) cycle !length of excitation is bigger than mol%cueLevel(2)
 		Ne=Ne+1
 	enddo
 	enddo
@@ -29,7 +28,7 @@
 	mm=0
 	do i = 1,Nel
 	do a = Nel+1,No
-		if (cueDistance(i,a).GT.mol%cueLevel(2)) cycle
+		if (notFitRadius(2,i,a)) cycle
 
 		mm=mm+1
 		Indexs(mm,1)=i
@@ -42,7 +41,7 @@
 	mm=0
 	do a = Nel+1,No
 	do i = 1,Nel
-		if (cueDistance(i,a).GT.mol%cueLevel(2)) cycle
+		if (notFitRadius(2,i,a)) cycle
 
 		mm=mm+1
 		Indexsbv(mm,1)=i
@@ -66,7 +65,7 @@
 	t1Ne=0
 	do i = 1,Nel
 		do a = Nel+1,No
-			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
+			if (notFitRadius(0,i,a)) cycle
 			t1Ne=t1Ne+1
 		enddo
 	enddo
@@ -78,7 +77,7 @@
 	do i = 1,Nel
 		t1erow(i)=mm
 		do a = Nel+1,No
-			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
+			if (notFitRadius(0,i,a)) cycle
 			t1numcol(mm)=a
 			t1cIndex(i,a)=mm
 
@@ -97,7 +96,7 @@
 	do i = 1,Nel ! vacant by occupied.
 		cnt=0
 		do a = Nel+1,No
-			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
+			if (notFitRadius(0,i,a)) cycle
 			cnt=cnt+1
 			t1mrEx(i,cnt)=a
 		enddo
@@ -109,7 +108,7 @@
 	do a = Nel+1,No ! occupied by vacant
 		cnt=0
 		do i = 1,Nel
-			if (cueDistance(i,a).GT.mol%cueLevel(0)) cycle
+			if (notFitRadius(0,i,a)) cycle
 			cnt=cnt+1
 			t1mrEx(a,cnt)=i
 		enddo
@@ -183,23 +182,11 @@
 			b=Indexs(nn,2)
 
 			if (btest(i+j,0).NE.btest(a+b,0)) cycle
-
-			thCentroid(1)=cueDistance(i,b)
-			thCentroid(2)=cueDistance(j,a)
-			thCentroid(3)=cueDistance(a,b)
-			thCentroid(4)=cueDistance(i,j)
-			if (maxval(thCentroid).GT.mol%cueLevel(2)) cycle
+			if (notFitRadius(2,i,a,j,b)) cycle
 
 			Nue=Nue+1
 		enddo
 	enddo
-
-	rnt2=float(Nel)*float(Nel)*float(Nel)*float(Nel); rpert2=100000.d0*float(Nue)/rnt2
-	!write (*,*) rnt2,nue,rpert2
-
-	!write (ou,300) Nel,Ne,Nue,rpert2
-	!write (fu,300) Nel,Ne,Nue,rpert2
-	!write (*,300) Nel,Ne,Nue,rpert2
 
 	! amplitude arrays.
 	allocate ( t1(1:Nel,Nel+1:No),d1(1:Nel,Nel+1:No) )
@@ -213,8 +200,8 @@
 	numcol=0; erow=0; numcolbv=0; erowbv=0
 
 	! ftfm=find t for me
-	! position in vvd&vvt vectors by two excitations.
-	!! the most expensive by memory. !!
+	! position in vd&vt by two excitations.
+	! the most expensive by memory
 
 	allocate ( ftfm(0:Ne,0:Ne) )
 
@@ -232,14 +219,9 @@
 			b=Indexs(nn,2)
 
 			if (btest(i+j,0).NE.btest(a+b,0)) cycle
+			if (notFitRadius(2,i,a,j,b)) cycle
 
-			thCentroid(1)=cueDistance(i,b)
-			thCentroid(2)=cueDistance(j,a)
-			thCentroid(3)=cueDistance(a,b)
-			thCentroid(4)=cueDistance(i,j)
-			if (maxval(thCentroid).GT.mol%cueLevel(2)) cycle
 			numcol(pp)=nn
-
 			ftfm(mm,nn)=pp
 			pp=pp+1
 		enddo
@@ -291,14 +273,9 @@
 			b=Indexsbv(nn,2)
 
 			if (btest(i+j,0).NE.btest(a+b,0)) cycle
-
-			thCentroid(1)=cueDistance(i,b)
-			thCentroid(2)=cueDistance(j,a)
-			thCentroid(3)=cueDistance(a,b)
-			thCentroid(4)=cueDistance(i,j)
-			if (maxval(thCentroid).GT.mol%cueLevel(2)) cycle
+			if (notFitRadius(2,i,a,j,b)) cycle
+			
 			numcolbv(pp)=nn
-
 			pp=pp+1
 		enddo
 	enddo
@@ -338,19 +315,6 @@
 
 	! Fockian sparse information
 	allocate (ferow(No+1),whOVf(No))
-
-	!write (90,*) t1mrEx,t1cIndex,t1Indexs,t1erow,t1numcol
-	!write (90,*) Indexs,Indexsbv ,cIndex ,erow,numcol,erowbv,numcolbv
-	!write (90,*) byExOrbbv,occEx,mrEx,byExOrb,ftfm
-	!stop
-
-	!memy=memoryControl(30)+memoryControl(31)
-	!write (su,200) memy; write (ou,200) memy; write (fu,200) memy; write (se,200) memy
-200	format ( 4X,'All necessary memory:',2X,F12.4,' MB'/)
-300 format (/4X,'Number of electrons:                ',2X,i10/&
-&            4X,'Number of single excitations:       ',2X,i10/&
-&            4X,'Number of accounted T2 amplitudes:  ',2X,i10/&
-&            4X,'Promille of accounted T2 amplitudes:',2X,F10.5,'E-03%'/)
 
 	return
 	end subroutine prepareSparseIndexInformation
@@ -430,8 +394,20 @@
 	enddo
 	ferow(No+1)=k
 
-	!write (90,*) ferow,whOVf,fnumcol,vF
-	!stop
-
 	return
 	end subroutine initSpareCC
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	subroutine finalizeSparseCC
+
+	use coupledClusterSparse
+
+	implicit none
+
+
+	deallocate (Indexs,Indexsbv,intersectOrbitals,cIndex,t1erow,t1numcol,byExOrbbv,mrEx,t1,d1,occEx)
+	deallocate (ftfm,ferow,whOVf,numcolbv,erowbv,numcol,erow,vt,vd,pvd,t1cIndex,t1Indexs,t1mrEx,byExOrb)
+
+	return
+	end subroutine finalizeSparseCC

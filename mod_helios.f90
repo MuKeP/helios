@@ -33,10 +33,6 @@
 
 	! ~~~~~ Common constants ~~~~~ !
 
-	!tolerance in comparison of two real variables.
-	real(kind=rglu), parameter :: gluCompare=10**floor(log10(epsilon(gluUnity))+real(2,rglu))
-	real(kind=rspu), parameter :: spuCompare=10**floor(log10(epsilon(spuUnity))+real(2,rspu))
-
 	real(kind=rglu), parameter :: diisTol=real(1d-10,rglu) !control value for the sum of DIIS coefficients
 	real(kind=rglu), parameter :: cordTol=real(1d-5 ,rglu) !tolerance for coordinate
 	!real(kind=rglu), parameter :: symmTol=real(1d-10,rglu) !tolerance for the symmetry search
@@ -56,8 +52,7 @@
 
 	! ~~~~~ CUE Constants ~~~~~ !
 
-	! Unfortunately, compiler does not allow to use "sqrt" in this statement.
-	real(kind=rglu) :: cueConstant1,cueConstant2,cueConstant4 !=real(1.,rglu)/sqrt( real(2.,rglu) )
+	real(kind=rglu) :: cueConstant1,cueConstant2,cueConstant4
 
 	! Memory: 8*rglu bytes
 
@@ -175,7 +170,7 @@
 
 	type bdcue
 		integer(kind=iglu)          :: radius(0:3)
-		logical(kind=lglu)          :: sparse,showBasis,local(3)
+		logical(kind=lglu)          :: sparse,showBasis,local(0:3)
 	end type bdcue
 
 	type bdfci

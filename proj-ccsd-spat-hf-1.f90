@@ -8,7 +8,7 @@
 	implicit none
 
 	real   (kind=rglu) :: sum,rez
-	integer(kind=iglu) :: i,j,a,b, c,d,k,l,mm,nn
+	integer(kind=iglu) :: i,j,a,b, c,k,mm
 
 
 	do mm = 1,Ne

@@ -488,8 +488,7 @@
 	integer*4           :: dexpectWidth
 
 	integer*4           :: bdPos,startFnd,stopFnd,bdStart,bdStop,i,fnd,err,id
-	logical*1           :: atTheStart,atTheEnd,ppp
-	real*8              :: sta,sto
+	logical*1           :: atTheStart,atTheEnd
 
 
 	rcode=0
@@ -607,7 +606,7 @@
 	integer*4 function bdSetValues(bdPos) result(rcode)
 	implicit none
 
-	integer*4              :: bdPos,k,j,l,fnd,pStart,pEnd,id,err,optcount,nvars,seplen,seppos
+	integer*4              :: bdPos,k,j,l,fnd,pStart,pEnd,err,optcount,nvars,seplen,seppos
 	integer*4              :: bdsta,bdsto
 	logical*1              :: isBlank
 	type(uch)              :: ustr
@@ -910,7 +909,6 @@
 	character (len=reslen)      :: resStr
 	character (len=256)         :: valueString
 	character (len=32)          :: mfmt
-	character (len=3)           :: reType
 
 	real*8                      :: uReal
 	integer*4                   :: uInt

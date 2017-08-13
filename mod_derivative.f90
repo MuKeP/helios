@@ -1,7 +1,7 @@
 	module derivat
 
 	use glob     , only: true,false,rglu,rspu,iglu,lglu,i4kind,r8kind,find
-	use math     , only: getLagrangDeriv,factorial
+	use math     , only: LagrangeDerivative,factorial
 	use txtParser, only: tpCount
 
 	character (len=*), parameter :: deVersion='1.000'
@@ -72,29 +72,29 @@
 	select case (tp) !
 		case (1)
 			select case (j)
-				case (1); ret=getLagrangDeriv(nPoints,icart(1),im3(aStart:aStop,0,0),real(deStep,rspu))
-				case (2); ret=getLagrangDeriv(nPoints,icart(2),im3(0,aStart:aStop,0),real(deStep,rspu))
-				case (3); ret=getLagrangDeriv(nPoints,icart(3),im3(0,0,aStart:aStop),real(deStep,rspu))
+				case (1); ret=LagrangeDerivative(nPoints,icart(1),im3(aStart:aStop,0,0),real(deStep,rspu))
+				case (2); ret=LagrangeDerivative(nPoints,icart(2),im3(0,aStart:aStop,0),real(deStep,rspu))
+				case (3); ret=LagrangeDerivative(nPoints,icart(3),im3(0,0,aStart:aStop),real(deStep,rspu))
 			end select
 
 		case (2)
 			do i = aStart,aStop
 				select case (j)
-					case (1); im1(i)=getLagrangDeriv(nPoints,icart2(2),im3(0,i,aStart:aStop),real(deStep,rspu))
-					case (2); im1(i)=getLagrangDeriv(nPoints,icart2(2),im3(i,0,aStart:aStop),real(deStep,rspu))
-					case (3); im1(i)=getLagrangDeriv(nPoints,icart2(2),im3(i,aStart:aStop,0),real(deStep,rspu))
+					case (1); im1(i)=LagrangeDerivative(nPoints,icart2(2),im3(0,i,aStart:aStop),real(deStep,rspu))
+					case (2); im1(i)=LagrangeDerivative(nPoints,icart2(2),im3(i,0,aStart:aStop),real(deStep,rspu))
+					case (3); im1(i)=LagrangeDerivative(nPoints,icart2(2),im3(i,aStart:aStop,0),real(deStep,rspu))
 				end select
-			enddo; ret=getLagrangDeriv(nPoints,icart2(1),im1(aStart:aStop),real(deStep,rspu))
+			enddo; ret=LagrangeDerivative(nPoints,icart2(1),im1(aStart:aStop),real(deStep,rspu))
 
 		case (3)
 			do i = aStart,aStop
 				do j = aStart,aStop
-					im2(i,j)=getLagrangDeriv(nPoints,icart(3),im3(i,j,aStart:aStop),real(deStep,rspu))
+					im2(i,j)=LagrangeDerivative(nPoints,icart(3),im3(i,j,aStart:aStop),real(deStep,rspu))
 				enddo
 			enddo
 			do i = aStart,aStop
-				im1(i)=getLagrangDeriv(nPoints,icart(2),im2(i,aStart:aStop),real(deStep,rspu))
-			enddo; ret=getLagrangDeriv(nPoints,icart(1),im1,real(deStep,rspu))
+				im1(i)=LagrangeDerivative(nPoints,icart(2),im2(i,aStart:aStop),real(deStep,rspu))
+			enddo; ret=LagrangeDerivative(nPoints,icart(1),im1,real(deStep,rspu))
 
 	end select
 

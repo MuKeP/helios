@@ -75,6 +75,10 @@
 	real(kind=rglu), parameter :: gluUnity=real(1,rglu),gluZero=real(0,rglu)
 	real(kind=rspu), parameter :: spuUnity=real(1,rspu),spuZero=real(0,rspu)
 
+	!tolerance in comparison of two real variables.
+	real(kind=rglu), parameter :: gluCompare=real(10,kind=rglu)**floor(log10(epsilon(gluUnity))+real(1,rglu))
+	real(kind=rspu), parameter :: spuCompare=real(10,kind=rspu)**floor(log10(epsilon(spuUnity))+real(1,rspu))
+
 	logical(kind=lglu), parameter :: true=.true., false=.false.
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TYPES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -151,7 +155,7 @@
 		public :: SIGABRT,SIGINT,SIGTERM
 	!DEC$endif
 
-	public :: rglu,rspu,iglu,ispu,lglu,gluUnity,gluZero,spuUnity,spuZero
+	public :: rglu,rspu,iglu,ispu,lglu,gluUnity,gluZero,spuUnity,spuZero,gluCompare,spuCompare
 
 	public :: glVersion,glDate,glAuthor
 

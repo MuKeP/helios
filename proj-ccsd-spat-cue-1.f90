@@ -9,7 +9,7 @@
 	implicit none
 
 	real   (kind=rglu) :: rez,sum
-	integer(kind=iglu) :: u,v,i,a,j,b,k,c,l,d
+	integer(kind=iglu) :: u,i,a,j,b,k,c
 	integer(kind=iglu) :: t,ab(2)
 
 

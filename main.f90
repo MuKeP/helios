@@ -7,9 +7,13 @@
 	program HELIOS
 
 	use hdb
-	use coupledCluster, only: setCCParameters,initCC,iterationCC,energyCC
+	use coupledCluster, only: setCCParameters,initCC,iterationCC,energyCC,finalizeCC
+	use mbpt
+	use fciModule
 
 	implicit none
+
+	real(kind=rglu) :: energy(2)
 
 
 	call onLoad
@@ -23,16 +27,14 @@
 		void=signal(SIGSTOP, ontrap, -1)
 	!MS$endif
 
+	!call primaryInformation('init')
 	call parseInput
 	call setParams
-	!call primaryInformation('init')
 	call readMoleculeInformation
 
-	call setCCParameters('cue-ccsdt')
-	call initCC
-
-	call iterator(iterationCC,energyCC,400,1D-13,false)
-	!call energyCC
+	call setFCIParameters
+	call initFCI
+	call finalizeFCI
 
 	select case( uchGet(generalbd%task) )
 		case ('polarizability'); call Null

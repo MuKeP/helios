@@ -40,6 +40,10 @@
 	! todo for all accuracies.
 	geometrybd%symmetryTolerance=real(10,rglu)**-geometrybd%symmetryTolerance
 	scfbd%accuracy=real(10,rglu)**-scfbd%accuracy
+	fcibd%accuracy=real(10,rglu)**-fcibd%accuracy
+	fcibd%zeroThreshold=real(10,rglu)**-fcibd%zeroThreshold
+
+	
 
 	open (ou,file=uchGet(generalbd%outfile))
 	open (init,file=uchGet(generalbd%fname))

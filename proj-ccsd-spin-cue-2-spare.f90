@@ -8,7 +8,7 @@
 
 	integer(kind=iglu) :: ct,p1,p2,intero
 	integer(kind=iglu) :: i,j,a,b,k,l,c,d,mm,nn,vv,xx1,xx2,sta1,sto1,sta2,sto2,sta3,sto3,mm2,nn2,vv2,vv3,vv4
-	real   (kind=rglu) :: Ax,Bx,Cx,Dx,sum
+	real   (kind=rglu) :: Ax,Bx,Cx,sum
 
 
 	vd=0; pvd=0

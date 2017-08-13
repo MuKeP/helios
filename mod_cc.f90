@@ -2,11 +2,12 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	use glob     , only: uch,uchGet,uchSet,iglu,rglu,lglu,rspu,true,false
+	use glob     , only: uch,uchGet,uchSet,iglu,rglu,lglu,rspu,true,false,gluCompare
 	use txtParser, only: operator(.in.)
 	use printmod , only: prMatrix
-	use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult,energySCF
-	use hdb      , only: mol,ccbd,diisbd,cuebd,systembd,scfbd,ou,gluCompare
+	use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
+	use scf      , only: energySCF,finalizeSCF
+	use hdb      , only: mol,ccbd,diisbd,cuebd,systembd,scfbd,ou
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -110,13 +111,13 @@
 			enddo
 
 		case default
-			stop 'Unknown method'
+			stop 'CC: Unknown method'
 
 	end select
 
 	N=mol%nAtoms; Nel=mol%nEls; Nth=systembd%nNodes; Nd=diisbd%steps
 
-	do i = 1,N
+	do i = 1,N !?????
 	do j = 1,N
 		mol%core(i,j)=mol%holdCore(i,j)
 	enddo
@@ -190,7 +191,6 @@
 			enddo
 
 			call prepareSparseIndexInformation
-			deallocate (cueDistance)
 
 		case ('cue-ccs','cue-ccsd')
 			No=N; Nocc=Nel/2; Ne=(N-Nocc)*Nocc
@@ -426,7 +426,6 @@
 			enddo
 			enddo
 
-			! one- and two-electron integrals
 			allocate (G(N,N),density(N,N)); G=mol%G; density=0
 			
 			allocate ( R(N,N,N,N),F(N,N) )
@@ -477,7 +476,6 @@
 			enddo
 			enddo
 
-			! one- and two-electron integrals
 			allocate (G(N,N),density(N,N)); G=mol%G; density=0
 			
 			allocate ( R(N,N,N,N),F(N,N) )
@@ -659,7 +657,6 @@
 			call getSCFResult(vectors=hV)
 			call prepareDensity(hV)
 			call prepareFock('spatial')
-			!deallocate (G,hV,density)
 
 		case ('r-ccd','r-ccsd')
 			call initSCF
@@ -686,7 +683,6 @@
 			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
 			call getSCFResult(vectors=hV)
 			call prepareDensity(hV)
-
 			call prepareFock('spin')
 
 		case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
@@ -694,7 +690,6 @@
 			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
 			call getSCFResult(vectors=hV)
 			call prepareDensity(hV)
-
 			call prepareFock('spin')
 
 			do i = 1,N
@@ -2051,20 +2046,71 @@
 
 	select case (uchGet(umethod))
 		case ('spare-cue-ccsd')
-		case ('cue-ccs')
-		case ('cue-ccsd')
-		case ('cue-ccsdt')
+			deallocate (cueIndex,V,iapairs,G,density,cueDistance,F)
+			call finalizeSparseCC
 
-		case ('u-ccd')
-		case ('u-ccsd')
-		case ('u-ccsdt')
+		case ('cue-ccs','cue-ccsd')
+			deallocate (cueIndex,V,iapairs,excSet,G,density,cueDistance,R,F)
+			select case (uchGet(umethod))
+				case ('cue-ccs' ); deallocate (t1,d1)
+				case ('cue-ccsd'); deallocate (t1,t2,d1,d2)
+			end select
 
-		case ('r-ccd')
-		case ('r-ccsd')
-		case ('r-ccsdt')
-		case ('r-ccsd(t)')
+		case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
+			deallocate (cueIndex,V,iapairs,R,F,G,density,cueDistance)
+			select case (uchGet(umethod))
+				case ('spin-cue-ccs' ) ; deallocate (t1,d1)
+				case ('spin-cue-ccsd') ; deallocate (t1,t2,d1,d2)
+				case ('spin-cue-ccsdt'); deallocate (t1,t2,t3,d1,d2,d3)
+			end select
+
+		case ('u-ccd','u-ccsd')
+			deallocate (hV,R,F,excSet,G,density)
+			select case (uchGet(umethod))
+				case ('u-ccd' ); deallocate (t2,d2)
+				case ('u-ccsd'); deallocate (t1,t2,d1,d2)
+			end select
+			call finalizeSCF
+
+		case ('r-ccd','r-ccsd')
+			deallocate (hV,R,F,excSet,G,density)
+			select case (uchGet(umethod))
+				case ('r-ccd' ); deallocate (t2,d2)
+				case ('r-ccsd'); deallocate (t1,t2,d1,d2)
+			end select
+			call finalizeSCF
+
+		case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt')
+			deallocate (hV,hVs,R,F,G,density)
+			select case (uchGet(umethod))
+				case ('spin-u-ccd'  ); deallocate (t2,d2)
+				case ('spin-u-ccsd' ); deallocate (t1,t2,d1,d2)
+				case ('spin-u-ccsdt'); deallocate (t1,t2,t3,d1,d2,d3)
+			end select
+			call finalizeSCF
+
+		case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
+			deallocate (hVs,hV,R,F,G,density)
+			select case (uchGet(umethod))
+				case ('spin-r-ccd')                  ; deallocate (t2,d2)
+				case ('spin-r-ccsd','spin-r-ccsd(t)'); deallocate (t1,t2,d1,d2)
+				case ('spin-r-ccsdt')                ; deallocate (t1,t2,t3,d1,d2,d3)
+
+			end select
+			call finalizeSCF
 
 	end select
+
+	if (diisbd%enabled) then
+		deallocate (diisVectors,diisValues,diisMatrix,diisCoefficients)
+
+		if (allocated(st1)) deallocate(st1)
+		if (allocated(st2)) deallocate(st2)
+		if (allocated(st3)) deallocate(st3)
+		if (allocated(sd1)) deallocate(sd1)
+		if (allocated(sd2)) deallocate(sd2)
+		if (allocated(sd3)) deallocate(sd3)
+	endif
 
 	return
 	end subroutine finalizeCC

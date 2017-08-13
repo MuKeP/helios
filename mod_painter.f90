@@ -8,6 +8,15 @@
 
 	real(kind=rglu), allocatable :: thX(:),thY(:),thZ(:)
 
+!	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+	private
+	public :: tdVersion,tdDate,tdAuthor
+	public :: centrcord,xyz,sft,plr,rem,rot,rpl,ini
+
+
+!	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
 	contains
 
 !	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -38,7 +47,7 @@
 
 !	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	integer(kind=iglu) function xyz (singleX,singleY,singleZ,Ncurr)
+	integer(kind=iglu) function xyz(singleX,singleY,singleZ,Ncurr)
 	implicit none
 
 	real(kind=rglu)    :: singleX,singleY,singleZ
@@ -133,7 +142,7 @@
 
 !	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	integer(kind=iglu) function rot (alph,plane,Ncurr)
+	integer(kind=iglu) function rot(alph,plane,Ncurr)
 	implicit none
 
 	real(kind=rglu)    :: sinAlphRad,cosAlphRad,ttx,tty,alph

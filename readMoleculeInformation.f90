@@ -8,8 +8,6 @@
 	real(kind=rglu)     :: coords(3),val
 	character (len=256) :: rname
 
-	integer(kind=iglu), allocatable :: connectivity(:)
-
 
 	read (in,*,err=666) rname; mol%name=uchSet( trim(rname) )
 	read (in,*,err=666) mol%nAtoms
@@ -304,7 +302,6 @@
 		subroutine centrateCoordinates
 		implicit none
 
-		integer(kind=iglu) :: N
 		real   (kind=rglu) :: sumCoords(3)
 
 

@@ -1,8 +1,9 @@
 	subroutine iterator(callsub,energysub,maxiter,eps,dnull)
 
-	use hdb, only: rglu,iglu,lglu,true,false,ou,uch,uchSet,uchGet,timeControl
-	use hdb, only: tpSplit,tpSplitLen,tpRetSplit,operator(.in.),mid,prStrByVal
-	use hdb, only: tpFill,tpAdjustc,tpIndex
+	use glob     , only: mid,rglu,iglu,lglu,true,false,void,uch,uchSet,uchGet,uchDel,timeControl,gluCompare
+	use printmod , only: prStrByVal
+	use txtParser, only: tpSplit,tpSplitLen,tpRetSplit,operator(.in.),tpFill,tpAdjustc,tpIndex,tpNewLine
+	use hdb      , only: ou
 
 	implicit none
 
@@ -22,43 +23,34 @@
 		end subroutine energysub
 	end interface
 
-	real   (kind=rglu), parameter  :: feelDivergence=1000
+	real   (kind=rglu), parameter  :: feelDivergence=1000,frequency=-5,notRearly=20
 
 	integer(kind=iglu), intent(in) :: maxiter
 	real   (kind=rglu), intent(in) :: eps
 	logical(kind=lglu)             :: dnull
 
 	character (len=1)              :: success
-	real   (kind=rglu)             :: accuracy(5),frequency=-10
-	integer(kind=iglu)             :: iteration,successfulIterations,printRate
-	real   (kind=rglu)             :: currentAccuracy,previousAccuracy
-	real   (kind=rglu)             :: improvementPercent,meanImprovement
-	real   (kind=rglu)             :: estimatedIters,estimatedTime,energy(5),saveEstimatedIters
-	real   (kind=rglu)             :: timePerIter,sTime(2),cTime(2),successPercent
-	type(uch)                      :: printLine,header
+	integer(kind=iglu)             :: iteration,successfulIterations,printRate,headLen
+	real   (kind=rglu)             :: accuracy(5),energy(5)
+	real   (kind=rglu)             :: currentAccuracy,previousAccuracy,successPercent
+	real   (kind=rglu)             :: improvementPercent,meanImprovement,saveEstimatedIters
+	real   (kind=rglu)             :: estimatedIters
+	real   (kind=rglu)             :: timePerIter,estimatedTime,sTime(2),cTime(2),fTime(2)
 
 
 	!ou=6
 
-	header=uchSet( 'Iteration'         //tpFill(1)//'|'//tpFill(3)//'Accuracy'   //tpFill(3)//'|'//tpFill(1)//&
-	               'Success'           //tpFill(1)//'|'//tpFill(1)//'Improvement'//tpFill(1)//'|'//tpFill(1)//&
-				   'Time per iteration'//tpFill(1)//'|'//tpFill(7)//'Energy'     //tpFill(8)//'|'//tpFill(1)//&
-				   'Iters left'        //tpFill(1)//'|'//tpFill(1)//'Time left'  //tpFill(1) )
-
 	sTime(1)=timeControl(sTime(2))
 	iteration=0; successfulIterations=1
 	currentAccuracy=0; previousAccuracy=10
-	meanImprovement=0
+	meanImprovement=0; printRate=1
 
-	if (.NOT.dnull) then
-		write (ou,'(/A)') tpFill (len( uchGet(header) ),'=' )
-		write (ou,'( A)') uchGet(header)
-		write (ou,'( A)') tpFill (len( uchGet(header) ),'=' )
-	endif
+	if (.NOT.dnull) call printInfo('header')
 	do
 		iteration=iteration+1
 		if (iteration.GT.maxiter) then
-			write (*,*) 'Iterations failed.'
+			iteration=iteration-1
+			call printInfo('failed')
 			exit
 		endif
 
@@ -82,9 +74,14 @@
 			if (timePerIter.GT.frequency) then
 				printRate=1
 			else
-				printRate=int(frequency/timePerIter)
+				if (timePerIter.LT.10**6*gluCompare) then
+					printRate=notRearly
+				else
+					printRate=int(frequency/timePerIter)
+				endif
 			endif
-			printRate=1
+			if (printRate.GT.notRearly) printRate=notRearly
+
 			improvementPercent=0
 			successPercent=100
 			estimatedIters=maxiter
@@ -99,8 +96,10 @@
 				improvementPercent=abs(improvementPercent)
 				estimatedIters=saveEstimatedIters
 			else
-				!estimatedIters=int( (log(eps) - log(currentAccuracy))/log(1.-improvementPercent/100.) )
-				estimatedIters=int( (log(eps) - log(currentAccuracy))/log(1.-(meanImprovement/iteration)/100.) )
+				!estimatedIters=int( (log(eps)-log(currentAccuracy) )/log(1.-improvementPercent/100.) )
+				estimatedIters=int( (log(eps)-log(currentAccuracy) )/log(1.-(meanImprovement/iteration)/100.) )
+
+				if (estimatedIters.LT.0) estimatedIters=0
 
 				saveEstimatedIters=estimatedIters
 			endif
@@ -109,21 +108,20 @@
 			estimatedTime=estimatedIters*timePerIter
 		endif
 
-		write (*,*) iteration, currentAccuracy,improvementPercent
-
 		if (.NOT.dnull) then
 			if (mod(iteration-1,printRate).EQ.0) then
-				call output
+				write (*,*) iteration,currentAccuracy,energy(1)
+				call printInfo('iteration')
 			endif
 		endif
 
 		if (currentAccuracy.GT.feelDivergence) then
-			write (*,*) 'Divergance occured.'
+			call printInfo('diverged')
 			exit
 		endif
 
 		if (currentAccuracy.LT.eps) then
-			write (*,*) 'Iterations done.'
+			call printInfo('converged')
 			exit
 		endif
 	enddo
@@ -132,21 +130,101 @@
 
 	contains
 
-		subroutine output
+		subroutine printInfo(string)
 		implicit none
 
-		printLine=uchSet( tpFill(1)//prStrByVal(iteration,5) )
-		printLine=uchSet( uchGet(printLine)//tpFill(4)//'|'//prStrByVal(currentAccuracy,0,6,'exp') )
-		printLine=uchSet( uchGet(printLine)//tpFill(1)//'|'//tpFill(1)//prStrByVal(successPercent,3,3) )
-		printLine=uchSet( uchGet(printLine)//tpFill(1)//'|'//tpFill(1)//success//' '//prStrByVal(improvementPercent,3,2) )
-		printLine=uchSet( uchGet(printLine)//tpFill(4)//'|'//tpFill(3)//prStrByVal(timePerIter,0,4,'exp') )
-		printLine=uchSet( uchGet(printLine)//tpFill(6)//'|'//tpFill(1)//prStrByVal(energy(1),0,12,'exp') )
-		printLine=uchSet( uchGet(printLine)//tpFill(1)//'|'//tpFill(2)//prStrByVal(int(estimatedIters),5) )
-		printLine=uchSet( uchGet(printLine)//tpFill(5)//'|'//prStrByVal(estimatedTime,0,4,'exp') )
+		character (len=*) :: string
+		type(uch)         :: printLine
 
-		write (ou,'(A)') uchGet(printLine)
+
+		select case (string)
+			case ('header')
+				printLine=uchSet(&
+				'Iteration'         //tpFill(1)//'|'//tpFill(3)//'Accuracy'   //tpFill(3)//'|'//tpFill(1)//&
+				'Success'           //tpFill(1)//'|'//tpFill(1)//'Improvement'//tpFill(1)//'|'//tpFill(1)//&
+				'Time per iteration'//tpFill(1)//'|'//tpFill(7)//'Energy'     //tpFill(8)//'|'//tpFill(1)//&
+				'Iters left'        //tpFill(1)//'|'//tpFill(1)//'Time left'  //tpFill(1)&
+				)
+				headLen=len( uchGet(printLine) )
+
+				write (ou,'(/A)') tpFill(headLen,'=')
+				write (ou,'(A)' ) uchGet(printLine)
+				write (ou,'(A)' ) tpFill(headLen,'=')
+
+				void=uchDel(printLine)
+
+			case ('iteration')
+				write (ou,'(A)') &
+
+				tpFill(1)//prStrByVal(iteration,5)//&
+				tpFill(4)//'|'//prStrByVal(currentAccuracy,0,6,'exp')//&
+				tpFill(1)//'|'//tpFill(1)//prStrByVal(successPercent,3,3)//&
+				tpFill(1)//'|'//tpFill(1)//success//' '//prStrByVal(improvementPercent,3,2)//&
+				tpFill(4)//'|'//tpFill(3)//prStrByVal(timePerIter,0,4,'exp')//&
+				tpFill(6)//'|'//tpFill(1)//prStrByVal(energy(1),0,12,'exp')//&
+				tpFill(1)//'|'//tpFill(2)//prStrByVal(int(estimatedIters),5)//&
+				tpFill(5)//'|'//prStrByVal(estimatedTime,0,4,'exp')
+
+			case ('converged')
+				fTime(1)=timeControl(fTime(2))
+
+				write (ou,'(A)') tpFill(headLen,'=')
+
+				write (ou,'(A)') &
+
+				tpAdjustc(&
+				'Procedure converged after '//prStrByVal(iteration)//'('//prStrByVal(successfulIterations)//') iterations'//&
+				' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'. Resulting energy '//prStrByVal(energy(1),0,15,'exp')//' eV.'&
+				,headLen)//tpNewLine()//&
+
+				tpAdjustc(&
+				'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent. Average iteration efficiency'//&
+				prStrByVal(meanImprovement/iteration,3,2)//'%. Average iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.'&
+				,headLen)
+
+				write (ou,'(A)') tpFill(headLen,'=')
+
+			case ('failed')
+				fTime(1)=timeControl(fTime(2))
+
+				write (ou,'(A)') tpFill(headLen,'=')
+
+				write (ou,'(A)') &
+
+				tpAdjustc(&
+				'Required accuracy was not reached after '//prStrByVal(iteration)//' iterations'//&
+				' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'. Energy '//prStrByVal(energy(1),0,13,'exp')//' eV.'&
+				,headLen)//tpNewLine()//&
+
+				tpAdjustc(&
+				'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent. Average iteration efficiency'//&
+				prStrByVal(meanImprovement/iteration,3,2)//'%. Average iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.'&
+				,headLen)
+
+				write (ou,'(A)') tpFill(headLen,'=')
+
+			case ('diverged')
+				fTime(1)=timeControl(fTime(2))
+
+				write (ou,'(A)') tpFill(headLen,'=')
+
+				write (ou,'(A)') &
+
+				tpAdjustc(&
+				'Procedure diverged and stopped after '//prStrByVal(iteration)//' iterations'//&
+				' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'. Energy '//prStrByVal(energy(1),0,13,'exp')//' eV.'&
+				,headLen)//tpNewLine()//&
+
+				tpAdjustc(&
+				'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent. Average iteration efficiency'//&
+				prStrByVal(meanImprovement/iteration,3,2)//'%. Average iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.'&
+				,headLen)
+
+				write (ou,'(A)') tpFill(headLen,'=')
+
+		end select
 
 		return
-		end subroutine output
+		end subroutine printInfo
 
 	end subroutine iterator
