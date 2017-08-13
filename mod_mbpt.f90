@@ -126,7 +126,7 @@
 			enddo
 			enddo
 			!$omp end parallel
-			energy(1)=sum1 !+refeEnergy
+			energy(1)=sum1+refeEnergy
 
 		case ('mp3')
 			sum1=0
@@ -142,7 +142,7 @@
 			enddo
 			enddo
 			!$omp end parallel
-			energy(2)=sum1 !+refeEnergy
+			energy(2)=sum1+refeEnergy
 
 			sum4=0
 			do i = 1,Nel
