@@ -1,9 +1,9 @@
-	module fciModule
+	module fci
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 	use glob    , only: true,false,rspu,rglu,iglu,lglu,void
-	use math    , only: tred4
+	use math    , only: gltred4
 	use fcontrol, only: fcNewID,fcNullID
 	use hdb     , only: mol,fcibd,statesbd,ou
 
@@ -105,7 +105,7 @@
 	implicit none
 
 	integer(kind=iglu) :: I,J,IJ,II
-	integer(kind=iglu) :: iter,istate
+	integer(kind=iglu) :: istate
 	real   (kind=rglu) :: AN0
 
 
@@ -166,7 +166,7 @@
 		endif
 		AN0=ANOR(X,NN,NN1)
 
-		call iterator(iteractionFCI,energyFCI,fcibd%maxiters,fcibd%accuracy,false)
+		call iterator(iteractionFCI,energyFCI,fcibd%maxiters,fcibd%accuracy*real(2**(istate-1),rglu),false)
 
 		fciHoldStateEnergy(  istate)=currentEnergy
 		fciHoldStateVector(:,istate)=X
@@ -359,7 +359,7 @@
 		enddo
 	enddo
 
-	call tred4(eiMas,eiVec,eiVal,fciNSteps,real(1.d-100,rspu),real(1.d-300,rspu))
+	call gltred4(eiMas,eiVec,eiVal,fciNSteps,real(1.d-100,rglu),real(1.d-300,rglu))
 
 	D=0
 	do ii = 1,fciNSteps
@@ -378,7 +378,7 @@
 	subroutine operg(D,GRD,EEE,AMA)
 	implicit none
 
-	integer(kind=iglu) :: I,J,IJ,IE,NX,L,LJ,IL,KK
+	integer(kind=iglu) :: I,J,IJ,IE,NX,L,LJ,IL
 	real   (kind=rglu) :: D(:),GRD(:)
 	real   (kind=rglu) :: EEE,AMA,SUM1,SUM2,SEN
 
@@ -548,7 +548,6 @@
 	implicit none
 
 	integer(kind=iglu) :: I,J,IJ,NJ
-	real   (kind=rglu) :: PRSNT
 
 
 	do I=1,NN
@@ -582,7 +581,6 @@
 			JR(I)=NEL
 		enddo
 	enddo
-	!PRSNT=100.-(NEL*100.)/dble(NN*NN)
 
 	return
 	end subroutine fspars
@@ -592,7 +590,7 @@
 	subroutine super
 	implicit none
 
-	integer(kind=iglu) :: ILA,ILB,IP,JP,ISS,JSS,LAA,LBB,LL,MM
+	integer(kind=iglu) :: ILA,ILB,IP,JP,ISS,JSS,LAA,LBB,LL
 	integer(kind=iglu) :: I,J,K,L,M,IJ,K1,L1,KK,M1,KOL
 	real   (kind=rglu) :: GAM1,GAM2
 
@@ -799,4 +797,4 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
-	end module fciModule
+	end module fci

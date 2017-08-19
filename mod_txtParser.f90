@@ -7,8 +7,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	character (len=*), parameter :: tpVersion='3.510'
-	character (len=*), parameter :: tpDate   ='2017.08.09'
+	character (len=*), parameter :: tpVersion='3.520'
+	character (len=*), parameter :: tpDate   ='2017.08.19'
 	character (len=*), parameter :: tpAuthor ='Anton B. Zakharov'
 
 	integer*4, parameter :: maxStrLen=1024,maxCommentDefLen=5
@@ -64,7 +64,7 @@
 	end interface tpAdjustc
 
 	interface tpFill
-		module procedure tpFillbc,tpFillbl
+		module procedure tpFillbc_blank,tpFillbl_blank,tpFillbc_any,tpFillbl_any
 	end interface tpFill
 	
 	interface tpLocate
@@ -79,6 +79,14 @@
 		module procedure tpIsIn_ch_ch,tpIsIn_ch_uc,tpIsIn_uc_ch,tpIsIn_uc_uc
 	end interface tpIsIn
 
+	interface tpSplit
+		module procedure tpSplit_uc,tpSplit_ch
+	end interface tpSplit
+
+	interface tpRetSplit
+		module procedure tpRetSplit_ch,tpRetSplit_uc
+	end interface tpRetSplit
+
 	interface operator (.in.)
 		module procedure tpIsIn_ch_ch,tpIsIn_ch_uc,tpIsIn_uc_ch,tpIsIn_uc_uc,&
 		                 tpIsStrInList_ch,tpIsStrInList_uc
@@ -89,10 +97,12 @@
 	public
 
 	private   :: readstr
-	private   :: tpFillbl,tpFillbc,tpNomCentrString,tpDefCentrString,&
-	             defIntBySystem,tpIsStrInList_ch,tpIsStrInList_uc,   &
-				 tpLocateOne,tpLocateOneOf,tpIsIn_ch_ch,tpIsIn_ch_uc,&
-				 tpIsIn_uc_ch,tpIsIn_uc_uc
+	private   :: tpFillbc_blank,tpFillbl_blank,tpFillbc_any,tpFillbl_any,&
+	             tpNomCentrString,tpDefCentrString,defIntBySystem,       &
+	             tpIsStrInList_ch,tpIsStrInList_uc,tpLocateOne,          &
+	             tpLocateOneOf,tpIsIn_ch_ch,tpIsIn_ch_uc,tpIsIn_uc_ch,   &
+	             tpIsIn_uc_uc,tpSplit_uc,tpSplit_ch,tpRetSplit_ch,       &
+	             tpRetSplit_uc
 
 	private   :: fcNewID,fcBanID,fcUnBanID,fcNullID
 	private   :: mid,uch,uchSet,uchGet,void,voidl,true,false
@@ -620,38 +630,62 @@
 !
 !		return
 !		end function tpAdjustr
-!
-!		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-		pure function tpFillbl(ln,spacer) result(ret)
-		implicit none
-		integer*4, intent(in)                   :: ln
-		character (len=1), optional, intent(in) :: spacer
-
-		character (len=ln)                      :: ret
-		character (len=1)                       :: defSpacer
-
-
-		defSpacer=' '; if (present(spacer)) defSpacer=spacer
-
-		ret=repeat(defSpacer,ln); return
-		end function tpFillbl
 
 		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-		pure function tpFillbc(str,spacer) result(ret)
+		pure function tpFillbl_blank(ln) result(ret)
 		implicit none
-		character (len=*), optional, intent(in) :: str
-		character (len=1), optional, intent(in) :: spacer
-
-		character (len=len(str))                :: ret
-		character (len=1)                       :: defSpacer
+		integer*4, intent(in) :: ln
+		character (len=ln)    :: ret
 
 
-		defSpacer=' '; if (present(spacer)) defSpacer=spacer
+		ret=repeat(' ',ln); return
+		end function tpFillbl_blank
 
-		ret=repeat(defSpacer,len(str)); return
-		end function tpFillbc
+		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		pure function tpFillbc_blank(str) result(ret)
+		implicit none
+		character (len=*), intent(in) :: str
+		character (len=len(str))      :: ret
+
+
+		ret=repeat(' ',len(str)); return
+		end function tpFillbc_blank
+
+		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		pure function tpFillbl_any(ln,spacer) result(ret)
+		implicit none
+		integer*4        , intent(in) :: ln
+		character (len=*), intent(in) :: spacer
+		character (len=ln)            :: ret
+
+		integer*4                     :: splen
+
+
+		splen=len(spacer)
+		ret=repeat( spacer,int(ln/splen) )//spacer(1:mod(ln,splen) )
+				
+		return
+		end function tpFillbl_any
+
+		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		pure function tpFillbc_any(str,spacer) result(ret)
+		implicit none
+		character (len=*), intent(in) :: str
+		character (len=*), intent(in) :: spacer
+		character (len=len(str))      :: ret
+
+		integer*4                     :: ln,splen
+
+
+		splen=len(spacer); ln=len(str)
+		ret=repeat( spacer,int(ln/splen) )//spacer(1:mod(ln,splen) )
+				
+		return
+		end function tpFillbc_any
 
 		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -877,7 +911,7 @@
 
 		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-		logical*1 function tpSplit(str,delim) result(ret)
+		logical*1 function tpSplit_ch(str,delim) result(ret)
 		implicit none
 
 		character (len=*), intent(in) :: str,delim
@@ -902,8 +936,8 @@
 
 		!write (*,*)
 		!write (*,'(A)') trim(str)
+		!write (*,'(A)') '         1         2         3         4         5'
 		!write (*,'(A)') '12345678901234567890123456789012345678901234567890'
-		!write (*,'(A)') '00000000010000000002000000000300000000040000000005'
 
 		sta=1
 		do k = 1,ln-1
@@ -923,11 +957,62 @@
 		deallocate (spl)
 
 		ret=true; return
-		end function tpSplit
+		end function tpSplit_ch
 
 		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-		function tpRetSplit(str,nret,fcall,stat) result(ret)
+		logical*1 function tpSplit_uc(str,delim) result(ret)
+		implicit none
+
+		type(uch)        , intent(in) :: str
+		character (len=*), intent(in) :: delim
+		integer*4, allocatable        :: spl(:,:)
+		integer*4                     :: k,ln,sta,sto
+
+
+		if (allocated(tpSplitHold)) then
+			do k = 1,tpSplitLen; deallocate (tpSplitHold(k)%ch); enddo
+			deallocate (tpSplitHold)
+			tpSplitLen=0; tpSplitAdress=0
+		endif
+
+		ln=tpCount(uchGet(str),delim,overlap=false)+1
+
+		if (ln.LE.0) then; ret=false; return; endif
+
+		tpSplitLen=ln
+		tpSplitAdress=int(loc(str),8)
+
+		allocate (spl(ln,2),tpSplitHold(ln))
+
+		!write (*,*)
+		!write (*,'(A)') trim(uchGet(str))
+		!write (*,'(A)') '         1         2         3         4         5'
+		!write (*,'(A)') '12345678901234567890123456789012345678901234567890'
+
+		sta=1
+		do k = 1,ln-1
+			sto=tpIndex(uchGet(str),delim,start=sta)-1
+
+			spl(k,1)=sta; spl(k,2)=sto
+			sta=sto+len(delim)+1
+		enddo
+		spl(ln,1)=sta; spl(ln,2)=len_trim(uchGet(str))
+
+		sta=0
+		do k = 1,ln
+			sta=spl(k,1); sto=spl(k,2)
+			tpSplitHold(k)=uchSet(uchGet(str,sta,sto))
+		enddo
+
+		deallocate (spl)
+
+		ret=true; return
+		end function tpSplit_uc
+
+		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		function tpRetSplit_ch(str,nret,fcall,stat) result(ret)
 		implicit none
 		integer*4                                        :: nret
 		character (len=*)                                :: str
@@ -938,7 +1023,7 @@
 		integer*4                                        :: ln
 
 
-		ret=tpFill(len(ret))
+		ret=tpFill(ret)
 		if (present(fcall)) then
 			if (.NOT.fcall) then
 				if (present(stat)) stat=-1
@@ -960,7 +1045,44 @@
 		ret=uchGet(tpSplitHold(splitCheck(nret)))
 
 		if (present(stat)) stat=ln; return
-		end function tpRetSplit
+		end function tpRetSplit_ch
+
+		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		function tpRetSplit_uc(str,nret,fcall,stat) result(ret)
+		implicit none
+		integer*4                                        :: nret
+		type(uch)                                        :: str
+		integer*4, optional                              :: stat
+		logical*1, optional                              :: fcall
+
+		character (len=tpSplitHold(splitCheck(nret))%ln) :: ret
+		integer*4                                        :: ln
+
+
+		ret=tpFill(ret)
+		if (present(fcall)) then
+			if (.NOT.fcall) then
+				if (present(stat)) stat=-1
+				return
+			endif
+		endif
+
+		if (int(loc(str),8).NE.tpSplitAdress) then
+			if (present(stat)) stat=-1
+			return
+		endif
+
+		ln=len(ret)
+		if (ln.LE.0) then
+			if (present(stat)) stat=-1
+			return
+		endif
+
+		ret=uchGet(tpSplitHold(splitCheck(nret)))
+
+		if (present(stat)) stat=ln; return
+		end function tpRetSplit_uc
 
 		!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

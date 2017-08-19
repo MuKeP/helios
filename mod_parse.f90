@@ -95,7 +95,8 @@
 	public :: addArg,addGroup,parseArgs,setApplicationName,setPreamble,     &
 	          setComment,showHelp,getDefaultArgument,getArgumentValue,      &
 	          ap_errDescription,setGroupMembership,apSetIOunit,apSetERRunit,&
-			  ap_popLastError,apFinalize,apShare,apArgumentFound
+			  ap_popLastError,apFinalize,apShare,apArgumentFound,           &
+			  apGetCommandLine
 
 	public :: apVersion,apDate,apAuthor
 
@@ -660,6 +661,28 @@
 
 		ret=lastError; return
 		end function ap_popLastError
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		function apGetCommandLine() result(ret)
+		implicit none
+
+		type(uch)           :: ret
+		character (len=512) :: tempStr
+		integer*4           :: i
+
+
+		ret=uchSet(uchGet(appName)); i=1
+		do
+			tempStr=repeat(' ',len(tempStr))
+			call getarg(i,tempStr)
+			ret=uchSet( uchGet(ret)//' '//trim(tempStr) )
+			if (len_trim(tempStr).EQ.0) exit
+			i=i+1
+		enddo
+
+		return
+		end function apGetCommandLine
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

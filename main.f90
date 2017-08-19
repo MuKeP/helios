@@ -7,43 +7,43 @@
 	program HELIOS
 
 	use hdb
-	use coupledCluster, only: setCCParameters,initCC,iterationCC,energyCC,finalizeCC
-	use mbpt
-	use fciModule
+	use property
+!	use coupledCluster
+!	use lrccsdModule, only: setLRParameters,initLR
 
 	implicit none
 
-	real(kind=rglu) :: energy(2)
 
+	call onLoad; call trapSignals
+	void=signal(SIGHUP , ontrap, -1)
+	void=signal(SIGABRT, ontrap, -1)
+	void=signal(SIGINT , ontrap, -1)
+	void=signal(SIGTERM, ontrap, -1)
+	void=signal(SIGCONT, ontrap, -1)
+	void=signal(SIGSTOP, ontrap, -1)
 
-	call onLoad
-	!MS$if(OS.EQ.2)
-		call trapSignals
-		void=signal(SIGHUP , ontrap, -1)
-		void=signal(SIGABRT, ontrap, -1)
-		void=signal(SIGINT , ontrap, -1)
-		void=signal(SIGTERM, ontrap, -1)
-		void=signal(SIGCONT, ontrap, -1)
-		void=signal(SIGSTOP, ontrap, -1)
-	!MS$endif
-
-	!call primaryInformation('init')
 	call parseInput
 	call setParams
 	call readMoleculeInformation
 
-	call setFCIParameters
-	call initFCI
-	call finalizeFCI
+	!call setCCParameters('spin-cue-ccsd')
+	!call initCC
+	!call iterator(iterationCC,energyCC,ccbd%maxiters,ccbd%accuracy,false)
+
+	!call setLRParameters('spin-cue-ccsd')
+	!call initLR
+
 
 	select case( uchGet(generalbd%task) )
-		case ('polarizability'); call Null
+		case ('polarizability'); call getPolarizability
 		case ('density')       ; call Null
 		case ('coulson')       ; call Null
 		case ('hypercharges')  ; call Null
 		case ('energy')        ; call Null
 		case ('wf-analize')    ; call Null
 	end select
+
+	call primaryInformation('end')
 
 	stop
 	end program HELIOS

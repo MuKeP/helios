@@ -1,6 +1,7 @@
 	subroutine readMoleculeInformation
 
 	use hdb
+	use printmod, only: prMatrix
 
 	implicit none
 
@@ -115,11 +116,12 @@
 		enddo
 	endif
 
-	allocate (mol%core(N,N),mol%holdCore(N,N))
+	allocate (mol%core(N,N),mol%coreImage(N,N),mol%perturbation(N,N))
+	mol%perturbation=0
 	do i = 1,N
 	do j = 1,N
 		mol%core(i,j)=mol%connect(i,j)
-		mol%holdCore(i,j)=mol%connect(i,j)
+		mol%coreImage(i,j)=mol%connect(i,j)
 	enddo
 	enddo
 
@@ -130,8 +132,37 @@
 			val=val+mol%atm(l)%nels*mol%G(k,l)
 		enddo
 		mol%core(k,k)=mol%core(k,k)-val
-		mol%holdCore(k,k)=mol%core(k,k)
+		mol%coreImage(k,k)=mol%core(k,k)
 	enddo
+
+!	ou=6
+
+	write (ou, 99) uchGet(mol%name),mol%nAtoms,mol%nBonds,mol%nEls
+	write (ou,100)
+	do i = 1,N
+		write (ou,101) mol%atm(i)%symbol,mol%atm(i)%coords(1),mol%atm(i)%coords(2),&
+		               mol%atm(i)%coords(3),mol%atm(i)%alpha,int(mol%atm(i)%nels)
+	enddo
+
+	call prMatrix(mol%atmdist,ou,'Distance matrix','^.0000',maxwidth=ouWidth)
+
+	write (ou,102)
+	do k = 1,M
+		i=mol%bnd(k)%atoms(1)
+		j=mol%bnd(k)%atoms(2)
+
+		write (ou,103) k,i,j,mol%atmdist(i,j),mol%bnd(k)%beta,mol%bnd(k)%kind
+	enddo
+
+	call prMatrix(mol%G,ou,'Gammas: '//uchGet(generalbd%coulombType),'^.0000',maxwidth=ouWidth)
+
+ 99 format (/2X,'Molecule:',1X,A/&
+             2X,'Atoms: ',i<mid(mol%nAtoms)>,' Bonds: ',i<mid(mol%nBonds)>,' Electrons: ',i<mid(mol%nEls)>//)
+100 format ( 2X,'Type',23X,'Cartesian Coordinates',22X,'IP',3X,'e'/)
+101 format ( 4X,A,1X,3(1X,F19.12),1X,F8.3,1X,i1)
+
+102 format (/  2X,'bond',8X,'mu',10X,'nu',4X,'distance',8X,'beta',8X,'kind'/)
+103 format (   2X,i4,6X,i4,1X,'----->',1X,i4,2X,F10.5,2X,F10.5,1X,'eV',4X,A)
 
 	call cueOrbitals
 	call symmetrySettings
@@ -250,8 +281,11 @@
 		allocate (connect(N),uniqueAtom(N)); uniqueAtom=true
 
 		Na=N
-		do i = 1,N-1
+		do i = 1,N
 			connect(i)=mol%atm(i)%nels
+		enddo
+
+		do i = 1,N-1
 			do j = i+1,N
 
 				c=0

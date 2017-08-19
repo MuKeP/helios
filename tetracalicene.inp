@@ -85,5 +85,6 @@ molecule{
 general{method='cue-ccsd',jobtype='polarizability'}
 system{memory=2048,nproc=4,verbose=3,allow-restart,email-send,
 email-send-tared,email-reciver='abzakharov@karazin.ua'}
-coupled-cluster{t3-step=1.E-6}
+coupled-cluster{t1-step=1,t2-step=1,t3-step=1,projection-type=2-1,accuracy=13}
+diis{steps=20}
 cue{t2-limit=3}

@@ -1,6 +1,10 @@
 	module math
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
 	use glob, only: rglu,rspu,iglu,lglu,true,false
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 	character (len=*), parameter :: maVersion='1.000'
 	character (len=*), parameter :: maDate   ='2017.03.28'
@@ -10,7 +14,7 @@
 
 	private
 	public :: maVersion,maDate,maAuthor,maFinalize
-	public :: tred4,gaussSLE,LagrangeDerivative,getMult,factorial,gcd,lcm,reduceFraction
+	public :: gltred4,sptred4,gaussSLE,LagrangeDerivative,getMult,factorial,gcd,lcm,reduceFraction
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -18,7 +22,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
-	subroutine tred4(A,Z,D,N,AC,ATOL)
+	subroutine gltred4(A,Z,D,N,AC,ATOL)
 
 	implicit none
 	integer(kind=iglu),intent(in)  :: N
@@ -26,6 +30,207 @@
 
 	real(kind=rglu)   ,intent(in)  :: A(N,N)
 	real(kind=rglu)   ,intent(out) :: D(N),Z(N,N)
+
+	real(kind=rglu)   ,intent(in)  :: ATOL,AC
+
+	real(kind=rglu)                :: F,G,H,HH,B,P,R,C,S
+	real(kind=rglu), allocatable   :: E(:)
+
+
+	allocate (E(N)); E=0
+	do i=1,N
+		do j=1,i
+		   Z(i,j)=A(i,j)
+		enddo
+	enddo
+
+	if (N.GT.1) then
+		do i=N,2,-1
+			l=i-2
+			F=Z(i,i-1)
+			G=0
+			if(l.NE.0) then
+				do k = 1,l
+					G=G+Z(i,k)**2
+				enddo
+			endif
+			H=G+F**2
+			if (G.LE.ATOL) then
+				E(i)=F
+				H=0
+				D(i)=H
+				cycle
+			endif
+			l=l+1
+			G=sqrt(H)
+			if (F.GE.0) G=-G
+			E(i)=G
+			H=H-F*G
+			Z(i,i-1)=F-G
+			F=0
+			do j=1,l
+				Z(j,i)=Z(i,j)/H
+				G=0
+				do k=1,j
+					G=G+Z(j,k)*Z(i,k)
+				enddo
+				if (j+1.LE.l) then
+					do k=j+1,l
+						G=G+Z(k,j)*Z(i,k)
+					enddo
+				endif
+				E(j)=G/H
+				F=F+G*Z(j,i)
+			enddo
+			HH=F/(H+H)
+			do j=1,l
+				F=Z(i,j)
+				G=E(j)-HH*F
+				E(j)=G
+				do k=1,j
+					Z(j,k)=Z(j,k)-F*E(k)-G*Z(i,k)
+				enddo
+			enddo
+			D(i)=H
+		enddo
+	endif
+
+	E(1)=0
+	D(1)=0
+	do i=1,N
+		if (D(i).NE.0) then
+			do j=1,i-1
+				G=0
+				do k=1,i-1
+					G=G+Z(i,k)*Z(k,j)
+				enddo
+				do k=1,i-1
+					Z(k,j)=Z(k,j)-G*Z(k,i)
+				enddo
+			enddo
+		endif
+		D(i)=Z(i,i)
+		Z(i,i)=1
+		if (i-1.NE.0) then
+			do j=1,i-1
+				Z(i,j)=0
+				Z(j,i)=0
+			enddo
+		endif
+	enddo
+	if (N.NE.1) then
+		do i=2,N
+			E(i-1)=E(i)
+		enddo
+	endif
+	E(N)=0
+
+	B=0
+	F=0
+	j=30*N
+	do l=1,N
+		H=AC*(abs(D(l))+abs(E(l)))
+		if (B.LT.H) B=H
+		do m=l,N
+			if (abs(E(m)).LE.B) exit
+		enddo
+		if (m.EQ.l) then
+			D(l)=D(l)+F
+			cycle
+		endif
+1		if (j.LE.0) then
+			deallocate (E)
+			return
+		endif
+		j=j-1
+		G=D(l)
+		H=D(l+1)-G
+		if (abs(H).LT.abs(E(l))) then
+			P=H*real(0.5,rspu)/E(l)
+			R=sqrt(P**2+1)
+			H=P+R
+			if (P.LT.0) H=P-R
+			D(l)=E(l)/H
+		else
+			P=real(2,rspu)*E(l)/H
+			R=sqrt(P**2+1)
+			D(l)=E(l)*P/(1+R)
+		endif
+		H=G-D(l)
+		if (l+1.LE.N) then
+			do i=l+1,N
+				D(i)=D(i)-H
+			enddo
+		endif
+		F=F+H
+		P=D(m)
+		C=1
+		S=0
+		do i=m-1,l,-1
+			G=C*E(i)
+			H=C*P
+			if (abs(P).GE.abs(E(i))) then
+				C=E(i)/P
+				R=sqrt(C**2+1)
+				E(i+1)=S*P*R
+				S=C/R
+				C=1/R
+			else
+				C=P/E(i)
+				R=sqrt(C**2+1)
+				E(i+1)=S*E(i)*R
+				S=1/R
+				C=C/R
+			endif
+			P=C*D(i)-S*G
+			D(i+1)=H+S*(C*G+S*D(i))
+			do k=1,N
+				H=Z(k,i+1)
+				Z(k,i+1)=S*Z(k,i)+C*H
+				Z(k,i)=C*Z(k,i)-S*H
+			enddo
+		enddo
+		E(l)=S*P
+		D(l)=C*P
+		if (abs(E(l)).GT.B) goto 1
+		D(l)=D(l)+F
+	enddo
+
+	do i=1,N
+		k=i
+		P=D(i)
+		if(i+1.LE.N) then
+			do j=i+1,N
+				if(D(j).GE.P) cycle
+				k=j
+				P=D(j)
+			enddo
+		endif
+		if (k.EQ.i) cycle
+		D(k)=D(i)
+		D(i)=P
+		do j=1,N
+			P=Z(j,i)
+			Z(j,i)=Z(j,k)
+			Z(j,k)=P
+		enddo
+	enddo
+
+	deallocate (E)
+
+	return
+	end subroutine gltred4
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	subroutine sptred4(A,Z,D,N,AC,ATOL)
+
+	implicit none
+	integer(kind=iglu),intent(in)  :: N
+	integer(kind=iglu)             :: i,j,k,l,m
+
+	real(kind=rspu)   ,intent(in)  :: A(N,N)
+	real(kind=rspu)   ,intent(out) :: D(N),Z(N,N)
 
 	real(kind=rspu)   ,intent(in)  :: ATOL,AC
 
@@ -215,7 +420,7 @@
 	deallocate (E)
 
 	return
-	end subroutine tred4
+	end subroutine sptred4
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -325,7 +530,7 @@
 	lagChis(:,maxpower)=1
 
 	do j = -shif,shif
-		lagDerivat(j)=-1.**power*lagChis(j,power)*factorial(power) !change
+		lagDerivat(j)=(-1.)**power*lagChis(j,power)*factorial(power) !change
 	enddo
 
 	do j = -shif,shif

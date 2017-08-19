@@ -2,20 +2,7 @@ general{method='cue-ccsd',jobtype='polarizability'}
 system{memory=2048,nproc=4,verbose=3,allow-restart,email-send,
 email-send-tared,email-reciver='abzakharov@karazin.ua'}
 coupled-cluster{t3-step=1.E-6}
-cue{t2-limit=2}
-geometry{}
-diis{}
-polariz{}
-rdm{}
-scf{}
-hypercharges{}
-states{}
-coulson{}
-coupled-cluster{}
-linear-responce{}
-local{}
-fci{}
-cue{}
+cue{t2-limit=2,spare-algorithm}
 
 molecule{
   nanotore[7_20]

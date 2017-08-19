@@ -18,9 +18,10 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
-	character (len=*), parameter :: dbVersion='1.000'
-	character (len=*), parameter :: dbDate   ='2017.03.28'
-	character (len=*), parameter :: dbAuthor ='Anton B. Zakharov'
+	character (len=*), parameter :: heVersion   ='1.500'
+	character (len=*), parameter :: heDate      ='18-Aug-2017'
+	character (len=*), parameter :: heAuthor    ='Anton B. Zakharov'
+	character (len=*), parameter :: heCompilDate='18-Aug-2017'
 
 	! Memory: 32 bytes
 
@@ -50,6 +51,11 @@
 	real(kind=rglu), parameter :: ElementaryCharge  =real(1.6021766208d-19,rglu) ! C
 	real(kind=rglu), parameter :: VacuumSpeedOfLight=real(299792458.d0    ,rglu) ! m/s
 
+	! ~~~~~ Conversion factor ~~~~~ !
+
+	real(kind=rglu), parameter :: dipoleToDeby=real(4.8031d0,rglu)
+	real(kind=rglu), parameter :: gammaToesu  =real(5.036238d-4,rglu)
+
 	! ~~~~~ CUE Constants ~~~~~ !
 
 	real(kind=rglu) :: cueConstant1,cueConstant2,cueConstant4
@@ -62,7 +68,7 @@
 	character (len=*) , parameter :: inputType='inp'
 
 	! preset of the line length for s=screen, f=default file
-	integer(kind=iglu), parameter :: setsLineLen=78,setfLineLen=150
+	integer(kind=iglu), parameter :: setsLineLen=78,setfLineLen=79
 	integer(kind=iglu), parameter :: fnLen=128 !length of the file name.
 
 	! Memory: 3+3*iglu
@@ -105,7 +111,7 @@
 		type(bond)     , allocatable :: bnd(:)
 		type(cueorb)   , allocatable :: orb(:)
 		real(kind=rglu), allocatable :: atmdist(:,:),cuedist(:,:)
-		real(kind=rglu), allocatable :: g(:,:),connect(:,:),core(:,:),holdCore(:,:)
+		real(kind=rglu), allocatable :: g(:,:),connect(:,:),core(:,:),coreImage(:,:),perturbation(:,:)
 		real(kind=rglu), allocatable :: cueLayers(:)
 	end type molecule ! Memory: uch%ln+na*atom+nb*bond+no*cueorb+rglu*(4*na*na+3)+9*iglu
 
@@ -201,6 +207,7 @@
 		type(uch)                   :: guess
 		integer(kind=iglu)          :: maxiters
 		real(kind=rglu)             :: accuracy,iterStep
+		logical(kind=lglu)          :: orthogonalize
 	end type bdlr
 
 	type bddiis
@@ -230,7 +237,8 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 	! ~~~~~ Signals ~~~~~ !
-	integer(kind=i4kind) :: SIGNSET,SIGCONT,SIGSTOP,SIGHUP
+	integer(kind=i4kind) :: SIGNSET
+	integer(kind=i4kind), parameter :: SIGHUP=1,SIGCONT=18,SIGSTOP=19
 
 	! ~~~~~ File IDs ~~~~~ !
 	! su=screen; in=input; ou=output; rf=restart file; eu=error unit
@@ -250,6 +258,10 @@
 	! Memory: 4+7*iglu
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	real   (kind=rglu), allocatable :: GlEt(:,:,:),Et(:),MEt(:,:),MMEt(:,:,:)
+	integer(kind=iglu), allocatable :: pointAccordance(:,:,:),pointSet(:,:)
+	integer(kind=iglu)              :: pointToPut,pointToCalc
 
 	character (len=64) :: pauseFileName,continueFileName
 	type(uch)          :: holdMethods(30)
@@ -275,19 +287,16 @@
 		subroutine trapSignals
 		implicit none
 
-		integer(kind=i4kind) :: fid,pid,err
+		integer(kind=i4kind) :: fid,err
 
 
 		!MS$if(OS.EQ.2)
-			pid=getpid(); fid=fcNewID()
-			open  (fid,file=trim(pauseFileName))   ; write (fid,"('kill -19 ',i5)") pid; close (fid)
-			open  (fid,file=trim(continueFileName)); write (fid,"('kill -18 ',i5)") pid; close (fid)
+			fid=fcNewID()
+			open  (fid,file=trim(pauseFileName))   ; write (fid,"('kill -19 ',i5)") appPID; close (fid)
+			open  (fid,file=trim(continueFileName)); write (fid,"('kill -18 ',i5)") appPID; close (fid)
 			void=fcNullID(fid)
 			err=system('chmod +x '//trim(pauseFileName)); err=system('chmod +x '//trim(continueFileName))
 
-			SIGHUP =1
-			SIGCONT=18
-			SIGSTOP=19
 			call PXFSTRUCTCREATE("sigset",SIGNSET,err)
 			call PXFSIGADDSET(SIGNSET,SIGCONT,err)
 			call PXFSIGADDSET(SIGNSET,SIGSTOP,err)
@@ -325,31 +334,19 @@
 		!MS$if(OS.EQ.2)
 			character :: ddate*9,ttime*8
 			
-			call time(ttime); call date(ddate); write (ou,99) ddate,ttime; write (su,99) ddate,ttime
+			call time(ttime); call date(ddate); write (ou,99) ddate,ttime
 			select case (sig_num)
-
-				case ( 1)
-					write (su,100) 'SIGHUP  accured. Ignoring.  '
-					write (ou,100) 'SIGHUP  accured. Ignoring.  '; return
-				case ( 2)
-					write (su,100) 'SIGINT  accured. Stopping.  '
-					write (ou,100) 'SIGINT  accured. Stopping.  '; call finalizeHelios; stop
-				case ( 6)
-					write (su,100) 'SIGABRT accured. Stopping.  '
-					write (ou,100) 'SIGABRT accured. Stopping.  '; call finalizeHelios; stop
-				case (15)
-					write (su,100) 'SIGTERM accured. Stopping.  '
-					write (ou,100) 'SIGTERM accured. Stopping.  '; call finalizeHelios; stop
-				case (18)
-					write (su,100) 'SIGCONT accured. Waking up. '
-					write (ou,100) 'SIGCONT accured. Waking up. '
-				case (19)
-					write (su,100) 'SIGSTOP accured. Suspending.'
-					write (ou,100) 'SIGSTOP accured. Suspending.'; call PXFPAUSE(err)
-
+				case (SIGHUP) ; write (ou,100) 'SIGHUP  accured. Ignoring.  '; return
+				case (SIGINT) ; write (ou,100) 'SIGINT  accured. Stopping.  '; call finalizeHelios; stop
+				case (SIGABRT); write (ou,100) 'SIGABRT accured. Stopping.  '; call finalizeHelios; stop
+				case (SIGTERM); write (ou,100) 'SIGTERM accured. Stopping.  '; call finalizeHelios; stop
+				case (SIGCONT); write (ou,100) 'SIGCONT accured. Waking up. '
+				case (SIGSTOP); write (ou,100) 'SIGSTOP accured. Suspending.'; call PXFPAUSE(err)
+				case default  ; write (ou,101) 'Signal ',sig_num,'recived. Ignoring.'; return
 			end select
 		 99 format (/2X,A9,1X,A8,1X\)
 		100	format (2X,A/)
+		101 format (2X,A,i2,A/)
 		!MS$endif
 
 		rcode=0; return
@@ -367,6 +364,8 @@
 		! some actions.
 		call random_seed
 		void=definePi()
+
+		appPID=getpid()
 
 		! some constants.
 		ouWidth=setfLineLen; ouIndent=4
@@ -411,6 +410,28 @@
 
 		return
 		end subroutine onLoad
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+		subroutine perturbate(output)
+		implicit none
+
+		logical(kind=lglu), optional :: output
+		integer(kind=iglu)           :: i,j
+
+
+		do i = 1,mol%nAtoms
+			do j = 1,mol%nAtoms
+				mol%core(i,j)=mol%coreImage(i,j)+mol%perturbation(i,j)
+			enddo
+		enddo
+
+		if (present(output)) then
+			if (output) call prMatrix(mol%perturbation,ou,'Perturbation matrix','^.0000',maxwidth=ouWidth)
+		endif
+
+		return
+		end subroutine perturbate
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 

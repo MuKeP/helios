@@ -3,10 +3,10 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 	use glob     , only: uch,uchGet,uchSet,iglu,rglu,lglu,rspu,true,false
-	use printmod , only: prMatrix
+	use printmod , only: prMatrix,prEigenProblem
 	use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
-	use scf      , only: energySCF,finalizeSCF
-	use hdb      , only: mol,systembd,scfbd,ou
+	use scf      , only: energySCF,finalizeSCF,printSCFSolution
+	use hdb      , only: mol,systembd,scfbd,ou,ouWidth
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -41,7 +41,6 @@
 	implicit none
 
 	character (len=*), intent(in) :: method
-	integer(kind=iglu)            :: i,j
 
 
 	select case (method)
@@ -73,6 +72,8 @@
 	call initSCF
 	call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
 	call getSCFResult(vectors=V)
+
+	call printSCFSolution
 	call prepareDensity(V)
 	call prepareFock
 
@@ -105,8 +106,8 @@
 
 	implicit none
 
-	real   (kind=rglu), intent(out) :: energy(2)
-	real   (kind=rglu)              :: Ax,sum1,sum2,sum3,sum4
+	real   (kind=rglu), intent(out) :: energy(5)
+	real   (kind=rglu)              :: Ax,sum0,sum1,sum2,sum3,sum4
 	integer(kind=iglu)              :: i,j,a,b,k,c,l,d
 
 
@@ -127,22 +128,23 @@
 			enddo
 			!$omp end parallel
 			energy(1)=sum1+refeEnergy
+			energy(2)=refeEnergy
+			energy(3)=sum1
 
 		case ('mp3')
-			sum1=0
+			sum0=0
 			!$omp parallel default(shared) private(i,j,a,b) reduction(+:sum1)
 			!$omp do
 			do i = 1,Nel-1
 			do j = i+1,Nel
 				do a = Nel+1,No-1
 				do b = a+1,No
-					sum1=sum1+R(i,a,j,b)**2/(F(i,i)+F(j,j)-F(a,a)-F(b,b))
+					sum0=sum0+R(i,a,j,b)**2/(F(i,i)+F(j,j)-F(a,a)-F(b,b))
 				enddo
 				enddo
 			enddo
 			enddo
 			!$omp end parallel
-			energy(2)=sum1+refeEnergy
 
 			sum4=0
 			do i = 1,Nel
@@ -182,12 +184,15 @@
 				enddo
 				!$omp end parallel
 
-				sum4=sum4+Ax*( (sum1+sum2)/8.d0+sum3 )
+				sum4=sum4+Ax*( (sum1+sum2)/8+sum3 )
 			enddo
 			enddo
 			enddo
 			enddo
-			energy(1)=energy(2)+sum4
+			energy(1)=sum0+sum4+refeEnergy
+			energy(2)=refeEnergy
+			energy(3)=sum0+sum4
+			energy(4)=sum0
 
 	end select
 

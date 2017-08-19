@@ -27,18 +27,21 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 	!DEC$if (compiler.EQ.1) ! Intel Fortran Compiler
-		use ifport, only: signal,system,getpid
-		use ifport, only: SRT$REAL8,SRT$REAL4
-		use ifport, only: SRT$INTEGER8,SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
-		use ifport, only: SIGABRT,SIGINT,SIGTERM
-		!use ifcore
-		!use ifposix
+		use ifport , only: signal,system,getpid,splitpathqq
+		use ifport , only: SRT$REAL8,SRT$REAL4
+		use ifport , only: SRT$INTEGER8,SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
+		use ifport , only: SIGABRT,SIGINT,SIGTERM
+		use ifposix, only: PXFSTRUCTCREATE,PXFSIGADDSET
 	!DEC$elseif (compiler.EQ.2)
 		!
 	!DEC$elseif (compiler.EQ.3)
 		!
 	!DEC$elseif (compiler.EQ.4) ! Compaq© Visual Fortran
-		use DFLib   
+		use DFPort, only: signal,system,getpid
+		use DFLib , only: splitpathqq
+		use DFLib , only: SRT$REAL8,SRT$REAL4
+		use DFLib , only: SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
+		use DFPort, only: SIGABRT,SIGINT,SIGTERM
 	!DEC$endif
 
 	!MS$if(opnmp.EQ.1)
@@ -47,8 +50,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	character (len=*), parameter :: glVersion='4.210'
-	character (len=*), parameter :: glDate   ='2017.07.07'
+	character (len=*), parameter :: glVersion='4.220'
+	character (len=*), parameter :: glDate   ='2017.08.19'
 	character (len=*), parameter :: glAuthor ='Anton B. Zakharov'
 
 	integer*4, parameter :: r16kind=16, r8kind=8, r4kind=4
@@ -80,6 +83,10 @@
 	real(kind=rspu), parameter :: spuCompare=real(10,kind=rspu)**floor(log10(epsilon(spuUnity))+real(1,rspu))
 
 	logical(kind=lglu), parameter :: true=.true., false=.false.
+
+	character (len=*), parameter  :: months(12)=['Jan','Feb','Mar','Apr','May','Jun',&
+	                                             'Jul','Aug','Sep','Oct','Nov','Dec']
+	character (len=*), parameter  :: days(7)   =['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TYPES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -148,12 +155,10 @@
 
 	private
 
-	!DEC$if (compiler.EQ.1)
-		public :: signal,system,getpid
-		public :: SRT$REAL8,SRT$REAL4
-		public :: SRT$INTEGER8,SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
-		public :: SIGABRT,SIGINT,SIGTERM
-	!DEC$endif
+	public :: signal,system,getpid
+	public :: SRT$REAL8,SRT$REAL4
+	public :: SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
+	public :: SIGABRT,SIGINT,SIGTERM,PXFSTRUCTCREATE,PXFSIGADDSET
 
 	public :: rglu,rspu,iglu,ispu,lglu,gluUnity,gluZero,spuUnity,spuZero,gluCompare,spuCompare
 
@@ -171,8 +176,8 @@
 	public :: find,isEven,same,mid,lenTrimArray,collectArray,rangen,sort
 
 	! simple
-	public :: definePi,convertTime,glSetIOunit,glFinalize
-	public :: timeControl,compareStrings,dayOfWeek,isLeapYear,timeStamp
+	public :: definePi,convertTime,glSetIOunit,glFinalize,getPath,infiniteVoidLoop
+	public :: timeControl,compareStrings,dayOfWeek,isLeapYear,timeStamp,date_time
 
 	! platform constants
 	public :: os,osSeparator,osMove,osCopy,osCall
@@ -929,9 +934,9 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-		pure function convertTime(secs,spec)
+		pure function convertTime(secs,spec) result(ret)
 		implicit none
-		character (len=20)               :: convertTime
+		character (len=20)               :: ret
 		real*8, intent(in)               :: secs
 		logical*1, optional, intent(in)  :: spec
 
@@ -940,6 +945,7 @@
 		logical                          :: uspec
 
 
+		ret=repeat(' ',len(ret))
 		uspec=false
 		if (present(spec)) uspec=spec
 
@@ -952,17 +958,28 @@
 		if (uspec) then
 			hours=hours+days*24
 			inLen=mid(hours); if (hours.LT.2) inLen=2
-			write (convertTime,100) hours,minutes,seconds,mseconds
+			write (ret,100) hours,minutes,seconds,mseconds
 			100 format (i<inLen>.2,':',i2.2,':',i2.2,'.',i2.2)
 		else
 			dayid='day '
 			if ((days.GT.1).OR.(days.EQ.0)) dayid='days'
-			write (convertTime,101) days,dayid,hours,minutes,seconds,mseconds
+			write (ret,101) days,dayid,hours,minutes,seconds,mseconds
 			101 format (i<mid(days)>,1X,A4,1X,i2.2,':',i2.2,':',i2.2,'.',i2.2)
 		endif
 
 		return
 		end function convertTime
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+		subroutine infiniteVoidLoop()
+		implicit none
+
+
+		do
+		enddo
+
+		end subroutine infiniteVoidLoop
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -1552,7 +1569,25 @@
 		end function timeControl
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-		
+
+		function getPath() result(ret)
+		implicit none
+
+		type(uch)           :: ret
+		character (len=512) :: fpath,rpath,drive
+		character (len=1)   :: cnull
+
+
+		call getarg(0,fpath)
+		void=splitpathqq(fpath,drive,rpath,cnull,cnull)
+
+		ret=uchSet(trim(drive)//trim(rpath))
+
+		return
+		end function getPath
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
 		pure integer*4 function isLeapYear(year) result(ret)
 		implicit none
 
@@ -1611,7 +1646,28 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+		function date_time() result(ret)
+		implicit none
+
+		character (len=25) :: ret
+		integer*4          :: values(8)
+
+
+		values=0; call date_and_time(values=values)
+
+		write (ret,1) days(dayOfWeek(values(1),values(2),values(3))),&
+		              values(1),months(values(2)),values(3),values(5:7)
+
+		1 format (A3,1X,i4,'-',A3,'-',i2.2,2X,i2.2,':',i2.2,':',i2.2)
+
+
+		return
+		end function date_time
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
 		function timeStamp() result(ret)
+		implicit none
 		character (len=19) :: ret
 		integer*4          :: values(8)
 
@@ -1675,11 +1731,8 @@
 		integer*4         :: sstat
 
 
-		!MS$if(OS.EQ.1)
-			call  system(msg)
-		!MS$else
-			sStat=system(msg)
-		!MS$endif
+		sStat=system(msg)
+
 		ret=0; return
 		end function osCall
 

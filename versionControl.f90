@@ -3,10 +3,10 @@
 	use approx      , only: axVersion,axDate,axAuthor
 	use datablock   , only: bdVersion,bdDate,bdAuthor
 	use derivat     , only: deVersion,deDate,deAuthor
-	use fciModule   , only: ciVersion,ciDate,ciAuthor
+	use fci         , only: ciVersion,ciDate,ciAuthor
 	use fcontrol    , only: fcVersion,fcDate,fcAuthor
 	use glob        , only: glVersion,glDate,glAuthor,iglu
-	use hdb         , only: dbVersion,dbDate,dbAuthor,ou
+	use hdb         , only: heVersion,heDate,heAuthor,ou
 	use lrccsdModule, only: lrVersion,lrDate,lrAuthor
 	use math        , only: maVersion,maDate,maAuthor
 	use orientation , only: orVersion,orDate,orAuthor
@@ -27,7 +27,7 @@
 	        len(ciAuthor),&
 	        len(fcAuthor),&
 	        len(glAuthor),&
-	        len(dbAuthor),&
+	        len(heAuthor),&
 	        len(lrAuthor),&
 	        len(maAuthor),&
 	        len(orAuthor),&
@@ -37,7 +37,7 @@
 	        len(tpAuthor) &
 	)
 
-	write (ou,100) dbVersion,dbDate,adjustl(dbAuthor),&
+	write (ou,100) heVersion,heDate,adjustl(heAuthor),&
 	&			   glVersion,glDate,adjustl(glAuthor),&
 	&			   apVersion,apDate,adjustl(apAuthor),&
 	&			   maVersion,maDate,adjustl(maAuthor),&

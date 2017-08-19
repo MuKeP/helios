@@ -3,7 +3,7 @@
 	use glob     , only: mid,rglu,iglu,lglu,true,false,void,uch,uchSet,uchGet,uchDel,timeControl,gluCompare
 	use printmod , only: prStrByVal
 	use txtParser, only: tpSplit,tpSplitLen,tpRetSplit,operator(.in.),tpFill,tpAdjustc,tpIndex,tpNewLine
-	use hdb      , only: ou
+	use hdb      , only: ou,ouWidth
 
 	implicit none
 
@@ -37,20 +37,19 @@
 	real   (kind=rglu)             :: estimatedIters
 	real   (kind=rglu)             :: timePerIter,estimatedTime,sTime(2),cTime(2),fTime(2)
 
-
-	!ou=6
+!	ou=6
 
 	sTime(1)=timeControl(sTime(2))
 	iteration=0; successfulIterations=1
 	currentAccuracy=0; previousAccuracy=10
 	meanImprovement=0; printRate=1
 
-	if (.NOT.dnull) call printInfo('header')
+	if (.NOT.dnull) call printInfo('header',ou)
 	do
 		iteration=iteration+1
 		if (iteration.GT.maxiter) then
 			iteration=iteration-1
-			call printInfo('failed')
+			if (.NOT.dnull) call printInfo('failed',ou)
 			exit
 		endif
 
@@ -110,18 +109,17 @@
 
 		if (.NOT.dnull) then
 			if (mod(iteration-1,printRate).EQ.0) then
-				write (*,*) iteration,currentAccuracy,energy(1)
-				call printInfo('iteration')
+				call printInfo('iteration',ou)
 			endif
 		endif
 
 		if (currentAccuracy.GT.feelDivergence) then
-			call printInfo('diverged')
+			if (.NOT.dnull) call printInfo('diverged',ou)
 			exit
 		endif
 
 		if (currentAccuracy.LT.eps) then
-			call printInfo('converged')
+			if (.NOT.dnull) call printInfo('converged',ou)
 			exit
 		endif
 	enddo
@@ -130,97 +128,68 @@
 
 	contains
 
-		subroutine printInfo(string)
+		subroutine printInfo(string,iou)
 		implicit none
 
-		character (len=*) :: string
-		type(uch)         :: printLine
+		character (len=*)  :: string
+		integer(kind=iglu) :: i,iou
 
 
+		headLen=79
 		select case (string)
 			case ('header')
-				printLine=uchSet(&
-				'Iteration'         //tpFill(1)//'|'//tpFill(3)//'Accuracy'   //tpFill(3)//'|'//tpFill(1)//&
-				'Success'           //tpFill(1)//'|'//tpFill(1)//'Improvement'//tpFill(1)//'|'//tpFill(1)//&
-				'Time per iteration'//tpFill(1)//'|'//tpFill(7)//'Energy'     //tpFill(8)//'|'//tpFill(1)//&
-				'Iters left'        //tpFill(1)//'|'//tpFill(1)//'Time left'  //tpFill(1)&
-				)
-				headLen=len( uchGet(printLine) )
-
-				write (ou,'(/A)') tpFill(headLen,'=')
-				write (ou,'(A)' ) uchGet(printLine)
-				write (ou,'(A)' ) tpFill(headLen,'=')
-
-				void=uchDel(printLine)
+				write (iou,'(/A)') tpFill(headLen,'=')
+				write (iou, '(A)') tpAdjustc('1 - Iteration, 2 - Accuracy, 3 - Step efficiency, 4 - Time per iteration',headLen)
+				write (iou, '(A)') tpAdjustc('5 - Energy, 6 - Estimated iterations left, 7 - Estimated time left',headLen)
+				write (iou, '(A)') tpFill(headLen,'=')
+				write (iou, '(2X,i1,2X,"|",6X,i1,6X,"|",4X,i1,3X,"|",6X,i1,5X,"|",9X,i1,9X,"|",2X,i1,2X,"|",5X,i1,5X)' ) (i, i = 1,7)
+				write (iou, '(A)') tpFill(headLen,'=')
 
 			case ('iteration')
-				write (ou,'(A)') &
-
-				tpFill(1)//prStrByVal(iteration,5)//&
-				tpFill(4)//'|'//prStrByVal(currentAccuracy,0,6,'exp')//&
-				tpFill(1)//'|'//tpFill(1)//prStrByVal(successPercent,3,3)//&
-				tpFill(1)//'|'//tpFill(1)//success//' '//prStrByVal(improvementPercent,3,2)//&
-				tpFill(4)//'|'//tpFill(3)//prStrByVal(timePerIter,0,4,'exp')//&
-				tpFill(6)//'|'//tpFill(1)//prStrByVal(energy(1),0,12,'exp')//&
-				tpFill(1)//'|'//tpFill(2)//prStrByVal(int(estimatedIters),5)//&
-				tpFill(5)//'|'//prStrByVal(estimatedTime,0,4,'exp')
+				write (iou,'(A,"|",A,"|",A,1X,A,"|",A,1X,"|",A,"|",A,"|",A)') &
+				                tpAdjustc(trim(adjustl(prStrByVal(iteration,5))),5),&
+								prStrByVal(currentAccuracy,0,6,'exp'),&
+				                success,prStrByVal(improvementPercent,3,2),&
+								prStrByVal(timePerIter,0,4,'exp'),&
+				                prStrByVal(energy(1),0,12,'exp'),&
+								tpAdjustc(trim(adjustl(prStrByVal(int(estimatedIters),5))),5),&
+				                prStrByVal(estimatedTime,0,4,'exp')
 
 			case ('converged')
 				fTime(1)=timeControl(fTime(2))
 
-				write (ou,'(A)') tpFill(headLen,'=')
-
-				write (ou,'(A)') &
-
-				tpAdjustc(&
-				'Procedure converged after '//prStrByVal(iteration)//'('//prStrByVal(successfulIterations)//') iterations'//&
-				' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'. Resulting energy '//prStrByVal(energy(1),0,15,'exp')//' eV.'&
-				,headLen)//tpNewLine()//&
-
-				tpAdjustc(&
-				'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent. Average iteration efficiency'//&
-				prStrByVal(meanImprovement/iteration,3,2)//'%. Average iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.'&
-				,headLen)
-
-				write (ou,'(A)') tpFill(headLen,'=')
+				write (iou,'(A)') tpFill(headLen,'=')
+				write (iou,'(A)') tpAdjustc('Procedure converged after '//prStrByVal(iteration)//'('//prStrByVal(successfulIterations)//&
+				                            ') iterations'//' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'.',headLen)
+				write (iou,'(A)') tpAdjustc('Resulting energy '//prStrByVal(energy(1),0,15,'exp')//' eV. '//&
+				                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+				write (iou,'(A)') tpAdjustc('Avg iteration efficiency'//prStrByVal(meanImprovement/iteration,3,2)//&
+				                            '%. Avg iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.',headLen)
+				write (iou,'(A)') tpFill(headLen,'=')
 
 			case ('failed')
 				fTime(1)=timeControl(fTime(2))
 
-				write (ou,'(A)') tpFill(headLen,'=')
-
-				write (ou,'(A)') &
-
-				tpAdjustc(&
-				'Required accuracy was not reached after '//prStrByVal(iteration)//' iterations'//&
-				' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'. Energy '//prStrByVal(energy(1),0,13,'exp')//' eV.'&
-				,headLen)//tpNewLine()//&
-
-				tpAdjustc(&
-				'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent. Average iteration efficiency'//&
-				prStrByVal(meanImprovement/iteration,3,2)//'%. Average iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.'&
-				,headLen)
-
-				write (ou,'(A)') tpFill(headLen,'=')
+				write (iou,'(A)') tpFill(headLen,'=')
+				write (iou,'(A)') tpAdjustc('Accuracy was not reached after '//prStrByVal(iteration)//' iterations'//&
+				                            ' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'.',headLen)
+				write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
+				                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+				write (iou,'(A)') tpAdjustc('Avg iteration efficiency '//trim(adjustl(prStrByVal(meanImprovement/iteration,3,2)))//'%. '//&
+				                            'Avg iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.',headLen)
+				write (iou,'(A)') tpFill(headLen,'=')
 
 			case ('diverged')
 				fTime(1)=timeControl(fTime(2))
 
-				write (ou,'(A)') tpFill(headLen,'=')
-
-				write (ou,'(A)') &
-
-				tpAdjustc(&
-				'Procedure diverged and stopped after '//prStrByVal(iteration)//' iterations'//&
-				' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'. Energy '//prStrByVal(energy(1),0,13,'exp')//' eV.'&
-				,headLen)//tpNewLine()//&
-
-				tpAdjustc(&
-				'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent. Average iteration efficiency'//&
-				prStrByVal(meanImprovement/iteration,3,2)//'%. Average iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.'&
-				,headLen)
-
-				write (ou,'(A)') tpFill(headLen,'=')
+				write (iou,'(A)') tpFill(headLen,'=')
+				write (iou,'(A)') tpAdjustc('Procedure diverged and stopped after '//prStrByVal(iteration)//' iterations'//&
+				                            ' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'.',headLen)
+				write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
+				                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+				write (iou,'(A)') tpAdjustc('Avg iteration efficiency '//trim(adjustl(prStrByVal(meanImprovement/iteration,3,2)))//'%. '//&
+				                            'Avg iteration time '//trim(adjustl(prStrByVal(timePerIter,8,5)))//' seconds.',headlen)
+				write (iou,'(A)') tpFill(headLen,'=')
 
 		end select
 

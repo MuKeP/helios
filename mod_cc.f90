@@ -3,11 +3,12 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 	use glob     , only: uch,uchGet,uchSet,iglu,rglu,lglu,rspu,true,false,gluCompare
+	use glob     , only: timecontrol
 	use txtParser, only: operator(.in.)
-	use printmod , only: prMatrix
+	use printmod , only: prMatrix,prStrByVal
 	use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
-	use scf      , only: energySCF,finalizeSCF
-	use hdb      , only: mol,ccbd,diisbd,cuebd,systembd,scfbd,ou
+	use scf      , only: energySCF,finalizeSCF,printSCFSolution
+	use hdb      , only: mol,ccbd,diisbd,cuebd,systembd,scfbd,ou,ouWidth
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -42,7 +43,8 @@
 
 	type(uch)          :: umethod
 	integer(kind=iglu) :: N,Nel,No,Nocc,Ne,NFnz,Nth,Nd
-	real   (kind=rglu) :: accuracy(5),refeEnergy
+	real   (kind=rglu) :: accuracy(5),Enuc,Eel,refeEnergy
+	logical(kind=lglu) :: onceEnergyPrinted
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -111,17 +113,20 @@
 			enddo
 
 		case default
-			stop 'CC: Unknown method'
+			umethod=uchSet(method)
+			!stop 'CC: Unknown method'
 
 	end select
 
 	N=mol%nAtoms; Nel=mol%nEls; Nth=systembd%nNodes; Nd=diisbd%steps
 
-	do i = 1,N !?????
-	do j = 1,N
-		mol%core(i,j)=mol%holdCore(i,j)
-	enddo
-	enddo
+	!do i = 1,N
+	!do j = 1,N
+	!	mol%core(i,j)=mol%coreImage(i,j) !+mol%perturbation(i,j)
+	!enddo
+	!enddo
+
+	onceEnergyPrinted=false
 
 	select case (uchGet(umethod))
 		case ('spare-cue-ccsd')
@@ -592,6 +597,8 @@
 	integer (kind=iglu) :: i,j,a,b
 
 
+	call finalizeDIIS
+
 	select case (uchGet(umethod))
 		case ('spare-cue-ccsd')
 			call prepareFockCUE('spin')
@@ -663,6 +670,7 @@
 			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
 			call getSCFResult(vectors=hV)
 			call prepareDensity(hV)
+			call printSCFSolution
 			call prepareFock('spatial')
 
 			!$omp parallel default(shared) private(i,j,a,b)
@@ -690,6 +698,7 @@
 			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
 			call getSCFResult(vectors=hV)
 			call prepareDensity(hV)
+			call printSCFSolution
 			call prepareFock('spin')
 
 			do i = 1,N
@@ -713,6 +722,18 @@
 			!$omp end parallel
 
 	end select
+
+	if (.NOT.onceEnergyPrinted) then
+		write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+		               prStrByVal(Enuc,0,14,'exp'),&
+		               prStrByVal(Eel+Enuc,0,14,'exp')
+
+100 format ('Electronic energy:       ',1X,A/&
+            'Nuclear repulsion energy:',1X,A/&
+			'Reference state energy:  ',1X,A)
+
+		onceEnergyPrinted=true
+	endif
 
 	if (diisbd%enabled) call prepareDIIS
 	call guessCC
@@ -856,6 +877,8 @@
 			!$omp parallel default(shared) private(mm,nn,i,a,j,b)
 			!$omp do
 			do mm = 1,Ne
+				i=excSet(mm,1)
+				a=excSet(mm,2)
 				do nn = mm,Ne
 					j=excSet(nn,1)
 					b=excSet(nn,2)
@@ -921,7 +944,7 @@
 	real   (kind=rglu), intent(in)  :: epsilon
 	real   (kind=rglu), intent(out) :: saccuracy(5)
 
-
+ 
 	select case (uchGet(umethod))
 		case ('spare-cue-ccsd')
 			call projection_ccsd_singles_spin_cue_spare
@@ -996,7 +1019,7 @@
 	implicit none
 
 	integer(kind=iglu) :: i,j,k,a,b,c,mm,nn,vv,sta1,sto1,projtype
-	real   (kind=rglu) :: rez,Ax
+	real   (kind=rglu) :: rez !,Ax
 
 
 	select case (uchGet(ccbd%projType))
@@ -1016,7 +1039,7 @@
 			!$omp end parallel
 
 			spd2(0)=0; spt2(0)=0
-			!$omp parallel default(shared) private(mm,sta1,sto1,i,a,vv,nn,j,b,Ax)
+			!$omp parallel default(shared) private(mm,sta1,sto1,i,a,vv,nn,j,b)
 			!$omp do
 			do mm = 1,Ne
 				sta1=erow(mm)
@@ -1036,23 +1059,44 @@
 			enddo
 			!$omp end parallel
 
-			!$omp parallel default(shared) private(i,j,a,b,Ax)
-			!$omp do
-			do i = 1,Nel-1
-			do j = i+1,Nel
-			do a = Nel+1,No-1
-			do b = a+1,No
-				Ax=spt2( ftfm( cIndex(i,a),cIndex(j,b) ) )
-			
-				spt2(ftfm(cIndex(i,a),cIndex(j,b)))= Ax
-				spt2(ftfm(cIndex(j,a),cIndex(i,b)))=-Ax
-				spt2(ftfm(cIndex(i,b),cIndex(j,a)))=-Ax
-				spt2(ftfm(cIndex(j,b),cIndex(i,a)))= Ax
-			enddo
-			enddo
-			enddo
-			enddo
-			!$omp end parallel
+			!!$omp parallel default(shared) private(mm,sta1,sto1,i,a,vv,nn,j,b,Ax)
+			!!$omp do
+			!do mm = 1,Ne
+			!	sta1=erow(mm)
+			!	sto1=erow(mm+1)-1
+			!	i=Indexs(mm,1)
+			!	a=Indexs(mm,2)
+			!	do vv = sta1,sto1
+			!		nn=numcol(vv)
+
+			!		j=Indexs(nn,1)
+			!		b=Indexs(nn,2)
+
+			!		Ax=spt2(vv)
+			!		spt2(ftfm(cIndex(j,a),cIndex(i,b)))=-Ax
+			!		spt2(ftfm(cIndex(i,b),cIndex(j,a)))=-Ax
+			!		spt2(ftfm(cIndex(j,b),cIndex(i,a)))= Ax
+			!	enddo
+			!enddo
+			!!$omp end parallel
+
+			!!$omp parallel default(shared) private(i,j,a,b,Ax)
+			!!$omp do
+			!do i = 1,Nel-1
+			!do j = i+1,Nel
+			!do a = Nel+1,No-1
+			!do b = a+1,No
+			!	Ax=spt2( ftfm( cIndex(i,a),cIndex(j,b) ) )
+			!
+			!	spt2(ftfm(cIndex(i,a),cIndex(j,b)))= Ax
+			!	spt2(ftfm(cIndex(j,a),cIndex(i,b)))=-Ax
+			!	spt2(ftfm(cIndex(i,b),cIndex(j,a)))=-Ax
+			!	spt2(ftfm(cIndex(j,b),cIndex(i,a)))= Ax
+			!enddo
+			!enddo
+			!enddo
+			!enddo
+			!!$omp end parallel
 
 			accuracy(1)=maxval(abs(spd1))
 			accuracy(2)=maxval(abs(spd2))
@@ -1272,7 +1316,7 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
 	subroutine pushCCVectors
-	use coupledClusterSparse, only: vt,vd
+	use coupledClusterSparse, only: vt,vd,spt1=>t1,spd1=>d1
 
 	implicit none
 
@@ -1300,7 +1344,7 @@
 			do i = 1,Nel
 			do a = Nel+1,No
 				if (btest(i,0).NE.btest(a,0)) cycle
-				v=vv+1; sd1(vv,1)=d1(i,a); st1(vv,1)=t1(i,a)
+				vv=vv+1; sd1(vv,1)=spd1(i,a); st1(vv,1)=spt1(i,a)
 			enddo
 			enddo
 
@@ -1507,8 +1551,8 @@
 
 	subroutine newCCVectors(iteration)
 
-	use coupledClusterSparse, only: vt,vd
-	use math, only: tred4
+	use coupledClusterSparse, only: vt,vd,spt1=>t1
+	use math                , only: gltred4
 
 	implicit none
 
@@ -1534,7 +1578,7 @@
 	enddo; diisMatrix(iteration+1,iteration+1)=0
 
 	ub=iteration+1
-	call tred4(diisMatrix(1:ub,1:ub),diisVectors(1:ub,1:ub),diisValues(1:ub),ub,real(1.d-100,rspu),real(1.d-300,rspu))
+	call gltred4(diisMatrix(1:ub,1:ub),diisVectors(1:ub,1:ub),diisValues(1:ub),ub,real(1.d-100,rglu),real(1.d-300,rglu))
 
 	do k = 1,iteration
 		diisCoefficients(k)=0
@@ -1554,7 +1598,7 @@
 				do pp = 1,Nd
 					sum=sum+diisCoefficients(pp)*st1(vv,pp)
 				enddo
-				t1(i,a)=sum
+				spt1(i,a)=sum
 			enddo
 			enddo
 
@@ -1771,7 +1815,7 @@
 
 	subroutine energyCC(energy)
 
-	use coupledClusterSparse, only: Indexs,numcol,erow
+	use coupledClusterSparse, only: Indexs,numcol,erow,ferow,whOVf,fnumcol,vF,cIndex,ftfm
 	use coupledClusterSparse, only: spt1=> t1, spd1=> d1, spt2=>vt, spd2=>vd
 
 	implicit none
@@ -1788,8 +1832,8 @@
 			!$omp parallel default(shared) private(i,a) reduction(+:sum1)
 			!$omp do
 			do i = 1,Nel
-				do a = Nel+1,No
-					sum1=sum1+F(i,a)*spt1(i,a)
+				do k = whOVf(i),ferow(i+1)-1
+					a=fnumcol(k); sum1=sum1+vF(k)*spt1(i,a)
 				enddo
 			enddo
 			!$omp end parallel
@@ -1815,16 +1859,20 @@
 			!$omp parallel default(shared) private(i,a,j,b) reduction(+:sum3)
 			!$omp do	
 			do i = 1,Nel
-			do a = Nel+1,No
-				do j = 1,Nel
-				do b = Nel+1,No
-					sum3=sum3+spin_cue_int(a,i,b,j)*(spt1(i,a)*spt1(j,b)-spt1(j,a)*spt1(i,b))
-				enddo
-				enddo
+			do j = 1,Nel
+				a=iapairs(i); b=iapairs(j)
+				sum3=sum3+spin_cue_int(a,i,b,j)*(spt1(i,a)*spt1(j,b)-spt1(j,a)*spt1(i,b))
+
+				b=iapairs(i); a=iapairs(j)
+				sum3=sum3+spin_cue_int(a,i,b,j)*(spt1(i,a)*spt1(j,b)-spt1(j,a)*spt1(i,b))
 			enddo
 			enddo
 			!$omp end parallel
-			energy(1)=refeEnergy+sum1+(sum2+sum3)/16
+
+			energy(1)=sum1+(sum2+sum3)/16+refeEnergy
+			energy(2)=refeEnergy
+			energy(3)=sum1
+			energy(4)=(sum2+sum3)/16
 
 		case ('cue-ccs')
 			sum1=0
@@ -1837,6 +1885,8 @@
 			!$omp end parallel
 
 			energy(1)=refeEnergy+2*sum1
+			energy(2)=refeEnergy
+			energy(3)=2*sum1
 
 		case ('spin-cue-ccs')
 			sum1=0
@@ -1849,6 +1899,8 @@
 			enddo
 			!$omp end parallel
 			energy(1)=refeEnergy+sum1
+			energy(2)=refeEnergy
+			energy(3)=sum1
 
 		case ('cue-ccsd','u-ccsd','r-ccsd')
 			sum1=0; sum2=0; sum3=0
@@ -1882,7 +1934,10 @@
 				sum3=sum3+ R(a,i,b,j)*( t2(i,j,a,b) + t1(i,a)*t1(j,b) )
 			enddo
 			!$omp end parallel
-			energy(1)=refeEnergy+2*sum1+(2*sum2+sum3)
+			energy(1)=2*sum1+(2*sum2+sum3)+refeEnergy
+			energy(2)=refeEnergy
+			energy(3)=2*sum1
+			energy(4)=2*sum2+sum3
 
 		case ('spin-cue-ccsd','spin-u-ccsd','spin-r-ccsd','spin-cue-ccsdt','spin-u-ccsdt','spin-r-ccsdt')
 			sum1=0
@@ -1909,6 +1964,9 @@
 			enddo
 			!$omp end parallel
 			energy(1)=refeEnergy+sum1+sum2
+			energy(2)=refeEnergy
+			energy(3)=sum1
+			energy(4)=sum2
 
 		case ('u-ccd','r-ccd')
 			sum1=0; sum2=0
@@ -1934,6 +1992,8 @@
 			enddo
 			!$omp end parallel
 			energy(1)=refeEnergy+2*sum1+sum2
+			energy(2)=refeEnergy
+			energy(3)=2*sum1+sum2
 
 		case ('spin-u-ccd','spin-r-ccd')
 			sum1=0
@@ -1950,6 +2010,8 @@
 			enddo
 			!$omp end parallel
 			energy(1)=refeEnergy+sum1
+			energy(2)=refeEnergy
+			energy(3)=sum1
 
 		case ('spin-r-ccsd(t)')
 			sum1=0
@@ -1975,7 +2037,6 @@
 			enddo
 			enddo
 			!$omp end parallel
-			energy(3)=refeEnergy+sum1+sum2
 
 			c1=0; c2=0; c3=0
 			!$omp parallel default(shared) private(i,j,k,a,b,c,l,d,sum1,sum2,denom,amp) reduction(+:c1,c2,c3)
@@ -2030,8 +2091,11 @@
 			!$omp end parallel
 			c1=c1/36; c2=c2/4
 
-			energy(2)=energy(3)+c1
-			energy(1)=energy(3)+c1+c2+c3
+			energy(1)=refeEnergy+sum1+sum2+c1+c2+c3
+			energy(2)=refeEnergy
+			energy(3)=sum1
+			energy(4)=sum2
+			energy(5)=c1
 
 	end select
 
@@ -2101,19 +2165,31 @@
 
 	end select
 
-	if (diisbd%enabled) then
-		deallocate (diisVectors,diisValues,diisMatrix,diisCoefficients)
-
-		if (allocated(st1)) deallocate(st1)
-		if (allocated(st2)) deallocate(st2)
-		if (allocated(st3)) deallocate(st3)
-		if (allocated(sd1)) deallocate(sd1)
-		if (allocated(sd2)) deallocate(sd2)
-		if (allocated(sd3)) deallocate(sd3)
-	endif
+	call finalizeDIIS
 
 	return
 	end subroutine finalizeCC
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	subroutine finalizeDIIS
+	implicit none
+
+
+	if (allocated(diisVectors)) deallocate(diisVectors)
+	if (allocated(diisValues)) deallocate(diisValues)
+	if (allocated(diisMatrix)) deallocate(diisMatrix)
+	if (allocated(diisCoefficients)) deallocate(diisCoefficients)
+
+	if (allocated(st1)) deallocate(st1)
+	if (allocated(st2)) deallocate(st2)
+	if (allocated(st3)) deallocate(st3)
+	if (allocated(sd1)) deallocate(sd1)
+	if (allocated(sd2)) deallocate(sd2)
+	if (allocated(sd3)) deallocate(sd3)
+
+	return
+	end subroutine finalizeDIIS
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -2142,7 +2218,7 @@
 			enddo
 			enddo
 
-			nn=UBound(sd2,1)
+			nn=UBound(vd,1)
 
 			allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0	
 			allocate ( sd2(nn,Nd),st2(nn,Nd) ); sd2=0; st2=0
@@ -2523,6 +2599,8 @@
 		enddo
 	enddo
 	!$omp end parallel	
+
+	call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
 	
 	deallocate (X)
 
@@ -2594,6 +2672,8 @@
 	enddo
 	!$omp end parallel
 
+	call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
+
 	deallocate (X)
 
 	return
@@ -2604,7 +2684,7 @@
 	subroutine referenceEnergy(X)
 	implicit none
 
-	real   (kind=rglu) :: Eel,Enuc,X(:,:)
+	real   (kind=rglu) :: X(:,:)
 	integer(kind=iglu) :: mu,nu
 
 

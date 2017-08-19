@@ -1,7 +1,7 @@
 	module approx
 
 	use glob     , only: rglu,iglu,lglu,rspu,true,false
-	use math     , only: tred4,gaussSLE
+	use math     , only: gltred4,gaussSLE
 	use txtParser, only: tpLowerCase
 
 	character (len=*), parameter :: axVersion='1.100'
@@ -117,7 +117,7 @@
 
 		select case (meth)
 			case ('sd')
-				call tred4 (B,eVec,eVal,M,real(1d-100,rspu),real(1d-100,rspu))
+				call gltred4 (B,eVec,eVal,M,real(1d-100,rglu),real(1d-100,rglu))
 				do i = 1,M
 				do j = 1,M
 					sum1=0

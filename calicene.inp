@@ -5,14 +5,14 @@ molecule{
        4
        4
 
- Ñ        0.000000000000       -0.083789434000        0.000000000000   -11.160    11.130  1.0
- Ñ        1.132623792200       -0.906688787300        0.000000000000   -11.160    11.130  1.0
- Ñ        0.700000000000       -2.238167910100        0.000000000000   -11.160    11.130  1.0
- Ñ       -0.700000000000       -2.238167910100        0.000000000000   -11.160    11.130  1.0
- Ñ       -1.132623792100       -0.906688787300        0.000000000000   -11.160    11.130  1.0
- Ñ        0.000000000000        1.316210566000        0.000000000000   -11.160    11.130  1.0
- Ñ       -0.700000000000        2.528646131300        0.000000000000   -11.160    11.130  1.0
- Ñ        0.700000000000        2.528646131300        0.000000000000   -11.160    11.130  1.0
+ C        0.000000000000       -0.083789434000        0.000000000000   -11.160    11.130  1.0
+ C        1.132623792200       -0.906688787300        0.000000000000   -11.160    11.130  1.0
+ C        0.700000000000       -2.238167910100        0.000000000000   -11.160    11.130  1.0
+ C       -0.700000000000       -2.238167910100        0.000000000000   -11.160    11.130  1.0
+ C       -1.132623792100       -0.906688787300        0.000000000000   -11.160    11.130  1.0
+ C        0.000000000000        1.316210566000        0.000000000000   -11.160    11.130  1.0
+ C       -0.700000000000        2.528646131300        0.000000000000   -11.160    11.130  1.0
+ C        0.700000000000        2.528646131300        0.000000000000   -11.160    11.130  1.0
  
     1    2  -2.274 single 1.40000
     1    5  -2.274 single 1.40000
@@ -25,10 +25,12 @@ molecule{
     7    8  -2.274 double 1.40000
 }
 
-general{method='cue-ccsd',jobtype='polarizability'}
-system{memory=2048,nproc=4,verbose=3,allow-restart,email-send,
-email-send-tared,email-reciver='abzakharov@karazin.ua'}
-coupled-cluster{t1-step=1,t2-step=1,t3-step=1,projection-type=2-1}
+general{method='hf+mp3+cue-ccsd+r-ccsd',jobtype='polarizability'}
+system{memory=2048,nproc=4}
+polariz{components=xyz,points=5,step=0.025}
+coupled-cluster{t1-step=1,t2-step=1,t3-step=1,projection-type=1,accuracy=14,max-iterations=400}
 scf{max-iterations=200,accuracy=14,iter-step=0.05d0}
 diis{enabled,steps=20, storage=ram}
 fci{steps=5,max-iterations=1000,accuracy=13}
+linear-responce{guess=cis,max-iterations=30000,accuracy=6,iter-step=0.03}
+states{excited-states-number=1}

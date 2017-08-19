@@ -1,7 +1,7 @@
 	module derivat
 
-	use glob     , only: true,false,rglu,rspu,iglu,lglu,i4kind,r8kind,find
-	use math     , only: LagrangeDerivative,factorial
+	use glob     , only: true,false,rglu,rspu,iglu,lglu,i4kind,r8kind,r16kind,find
+	use math     , only: LagrangeDerivative,factorial,sptred4
 	use txtParser, only: tpCount
 
 	character (len=*), parameter :: deVersion='1.000'
@@ -12,10 +12,10 @@
 
 	private
 
-	integer*4                         :: iounit=6
+	integer(kind=iglu)                :: iounit=6
 	integer(kind=i4kind)              :: dePnts
 	real   (kind=r8kind)              :: deStep,lsmCondit
-	real   (kind=r8kind), allocatable :: lsmReady(:,:)
+	real   (kind=rglu)  , allocatable :: lsmReady(:,:)
 
 
 	logical(kind=lglu)           :: lsmPrepared=false,parShared=false
@@ -35,7 +35,7 @@
 
 	integer(kind=iglu) :: nPoints
 	integer(kind=iglu) :: icart(3),lcart(3),icart2(2),lcart2(2)
-	integer(kind=iglu) :: sft,dPower,i,j,k,tp,aStart,aStop
+	integer(kind=iglu) :: i,j,k,tp,aStart,aStop
 
 	character (len=*)  :: str
 
@@ -106,8 +106,8 @@
 	function deLSMDeriv(str) result(ret)
 	implicit none
 
-	real(kind=rglu)    :: ret
-	character (len=*)  :: str
+	real   (kind=rglu) :: ret
+	character  (len=*) :: str
 	integer(kind=iglu) :: k,l,m,i,j,a,pshft
 
 
@@ -131,54 +131,73 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
-	integer(kind=iglu) function deLSMShareData(con,ind,dat) result(ret)
+	subroutine prepareLSM
 	implicit none
 
-	real(kind=r8kind)                 :: stafiel,stofiel,stefiel,a
-	real(kind=r8kind), allocatable    :: fielList(:),conditional(:,:)
+	integer(kind=iglu), parameter  :: maxpower=5 ! max power of polynomial (a1+a2*x+a3*x^2...)
 
-	integer(kind=i4kind)              :: stapnts,stopnts,stepnts,i
-	integer(kind=i4kind), allocatable :: indexMatrix(:,:),pntsList(:)
+	integer(kind=iglu)             :: points,i,j,k
+	real   (kind=rspu)             :: field,sum
 
-	integer(kind=iglu)                :: nPoints,con,ind,dat
-	integer(kind=iglu)                :: pshft,pntsCount,fielCount,curPnts,curFiel
-	integer(kind=iglu)                :: lenpnts,lenfiel,tostartwith
+	real   (kind=rspu), dimension (:,:), allocatable :: lsKof,lsWork,lsInv,lsEVec
+	real   (kind=rspu), dimension   (:), allocatable :: lsRez,lsEVal
 
 
-	if (.NOT.parShared) then; write (iounit,'(4X,A)') 'call deShareParams first.'; ret=0; return; endif
+	field=deStep; points=dePnts
 
-	allocate (lsmReady(0:4,dePnts))
-	if (eof(ind)) goto 101; read (ind,err=101) stapnts,stopnts,stepnts
-	if (eof(ind)) goto 101; read (ind,err=101) stafiel,stofiel,stefiel
+	allocate (lsKof(points,maxpower),lsWork(maxpower,maxpower),lsInv(maxpower,maxpower))
+	allocate (lsEVec(maxpower,maxpower),lsEVal(maxpower))
+	allocate (lsRez(maxpower))
+	lsKof=0; lsWork=0; lsInv=0; lsEVal=0; lsEVec=0; lsRez=0
 
-	lenpnts=   (stopnts-stapnts)/stepnts   +1
-	lenfiel=int((stofiel-stafiel)/stefiel) +1
+	do k = -(points-1)/2,(points-1)/2
+		lsKof(k+points/2+1,2)=k*field
+	enddo
+
+	lsKof(:,1)=1
+	do k = 3,maxpower
+		do i = 1,points
+			lsKof(i,k)=lsKof(i,2)**real(k-1,rspu) ! does matter
+		enddo
+	enddo
+
+	do i = 1,maxpower
+	do j = 1,maxpower
+		sum=0
+		do k = 1,points
+			sum=sum+lsKof(k,i)*lsKof(k,j)
+		enddo
+		lsWork(i,j)=sum
+	enddo
+	enddo
+
+	call sptred4(lsWork,lsEVec,lsEVal,maxpower,real(1.d-100,rspu),real(1.d-300,rspu))
+
+	lsmCondit=maxval(abs(lsEVal))/minval(abs(lsEVal))
+	do i = 1,maxpower
+	do j = 1,maxpower
+		sum=0
+		do k = 1,maxpower
+			sum=sum+lsEVec(i,k)*lsEVec(j,k)/lsEVal(k)
+		enddo
+		lsInv(i,j)=sum
+	enddo
+	enddo
 	
-	allocate ( pntsList(lenpnts),fielList(lenfiel) )
+	do i = 1,maxpower
+		do j = 1,points
+			sum=0
+			do k = 1,maxpower
+				sum=sum+lsInv(i,k)*lsKof(j,k)
+			enddo
+			lsmReady(i-1,j)=sum
+		enddo
+	enddo
+
+	deallocate (lsKof,lsWork,lsInv,lsEVec,lsEVal,lsRez)
 	
-	pntsCount=0; do i = stapnts,stopnts,stepnts; pntsCount=pntsCount+1; pntsList(pntsCount)=i; enddo
-	fielCount=0; do a = stafiel,stofiel,stefiel; fielCount=fielCount+1; fielList(fielCount)=a; enddo
-	curPnts=find(pntsList,dePnts); curFiel=find(fielList,deStep); deallocate (pntsList,fielList)
-	
-	if ((curPnts.LE.0).OR.(curFiel.LE.0)) goto 100
-
-	allocate ( indexMatrix(lenpnts,lenfiel),conditional(lenpnts,lenfiel) )
-		
-	if (eof(ind)) goto 101; read (ind,err=101) indexMatrix; close (ind)
-	if (eof(con)) goto 101; read (con,err=101) conditional; close (con)
-
-	tostartwith=indexMatrix(curPnts,curFiel); lsmCondit=conditional(curPnts,curFiel)
-	deallocate (indexMatrix,conditional)
-
-	if (eof(dat)) goto 101; read (dat,rec=tostartwith,err=101) lsmReady; close(dat)
-
-	lsmPrepared=true
-
-	ret=0 ; return
-100 ret=-1; return !combination not found.
-101 ret=-2; return !eof during read.
-
-	end function deLSMShareData
+	return
+	end subroutine prepareLSM
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -199,6 +218,10 @@
 	im3=valSet(aStart+sft:aStop+sft,aStart+sft:aStop+sft,aStart+sft:aStop+sft)
 
 	parShared=true
+
+	if (rspu.EQ.r16kind) then
+		allocate (lsmReady(0:4,dePnts)); call prepareLSM
+	endif
 
 	ret=0; return
 	end function deShareParams

@@ -613,13 +613,13 @@
 	integer*4, allocatable :: variables(:,:)
 
 
-!	if (uchGet(bdSet(bdPos)%name).EQ.'diis') then
-!	call system('CLS')
+	!if (uchGet(bdSet(bdPos)%name).EQ.'polariz') then
+	!call system('CLS')
 	!write (*,'(A)' ) uchGet( bdSet(bdPos)%name  )
 	!write (*,'(A)' ) uchGet( bdSet(bdPos)%bdStr )
 	!write (*,'(A)' ) '123456789012345678901234567890123456789012345678901234567890123456789012345678'
 	!write (*,'(A/)') '         1         2         3         4         5         6         7        '
-!	endif
+	!endif
 
 	rcode=0
 	if (bdSet(bdPos)%freeBlock) then
@@ -772,7 +772,7 @@
 		deallocate (variables)
 	endif
 
-	!if (uchGet(bdSet(bdPos)%name).EQ.'diis') stop
+	!if (uchGet(bdSet(bdPos)%name).EQ.'polariz') stop
 
 	return
 	end function bdSetValues

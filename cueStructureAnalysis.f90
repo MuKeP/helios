@@ -23,7 +23,7 @@
 	allocate (moDist(Nocc,Nocc)); modist=0
 	allocate (cueDistance(N,N)) ; cueDistance=mol%cueDist
 
-	write (ou,'(A/)') tpAdjustc('The start of CUE Analysis',ouWidth,'=')
+	write (ou,'(A/)') tpAdjustc('CUE analysis',ouWidth,'=')
 
 	write (ou,'(A/)') tpAdjustc('CUE-MO Centroids',73)
 
@@ -229,7 +229,7 @@
 		write (ou,'(4X,A,i<mid(Nocc)>,A,1X,i<mid(NLayers)>,1X,F10.5)') 'MO(',i,') ',absMOEmployment(i),absMOImportance(i)/absMOEmployment(i)
 	enddo
 
-	write (ou,'(/A/)') tpAdjustc('The end of CUE Analysis',ouWidth,'=')
+	!write (ou,'(/A/)') tpAdjustc('The end of CUE analysis',ouWidth,'=')
 
 	deallocate (idist,moDist,cueLayers,cueDistance)
 	deallocate (relLayerPos,relLayerPopulation,absLayerPopulation)

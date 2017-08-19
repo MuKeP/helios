@@ -16,15 +16,11 @@
 
 	addr(1)=bdShareVariable(generalbd%methods        ,'method'          ,opt=false,several=true,&
 	expect='list(huckel+hf+cue-ccs+r-ccd+u-ccd+mp2+mp3+cue-ccsd+r-ccsd+u-ccsd+r-ccsd(t)+cue-ccsdt+u-ccsdt+r-ccsdt+fci)')
-
 	addr(2)=bdShareVariable(generalbd%task           ,'jobtype'         ,opt=false,several=true,&
 	expect='list(polarizability+density+coulson+hypercharges+energy+wf-analize)')
-
 	addr(3)=bdShareVariable(generalbd%coulombType,'coulomb-integrals'   ,opt=true ,several=true,def='ohno-klopman',&
 	expect='list(ohno-klopman+mataga-nishimoto+hubbard)')
-
 	addr(4)=bdShareVariable(generalbd%alternation,'bond-alternation'    ,opt=true ,def=gluZero,expect='range(0,1)')
-
 	void=bdCollect('general',addr(1:4),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
 	addr(1)=bdShareVariable(systembd%memory,         'memory'          ,opt=true,def=real(1024,kind=rglu))
@@ -49,7 +45,7 @@
 	addr(2)=bdShareVariable(statesbd%spin   ,'spin'                 ,opt=true,def=0,expect='range(0,10)')
 	void=bdCollect('states',addr(1:2),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
-	addr(1)=bdShareVariable(polarizbd%scales,'components' ,opt=true,def='xyz',expect='list(x,y,z,xy,yx,xz,zx,yz,zy,xyz)')
+	addr(1)=bdShareVariable(polarizbd%scales,'components' ,opt=true,def='x',expect='list(x,y,z,xy,yx,xz,zx,yz,zy,xyz)')
 	addr(2)=bdShareVariable(polarizbd%nPoints,'points'    ,opt=true,def=5,expect='list(1,3,5,7,9)')
 	addr(3)=bdShareVariable(polarizbd%maxPower,'max-power',opt=true,def=4,expect='range(1,4)')
 	addr(4)=bdShareVariable(polarizbd%derivStep,'step'    ,opt=true,def=real(0.025d0,kind=rglu),expect='range(0,1)')
@@ -109,11 +105,12 @@
 	addr(7)=bdShareVariable(ccbd%forceSpin  ,'force-spin'  ,opt=true,def=false)
 	void=bdCollect('coupled-cluster',addr(1:7),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
-	addr(1)=bdShareVariable(lrbd%guess   ,'guess'         ,opt=true,def='cis',expect='list(cis,rpa)')
-	addr(2)=bdShareVariable(lrbd%maxiters,'max-iterations',opt=true,def=10000)
-	addr(3)=bdShareVariable(lrbd%accuracy,'accuracy'      ,opt=true,def=real(6,kind=rglu),expect='range(1,15)')
-	addr(4)=bdShareVariable(lrbd%iterStep,'iter-step'     ,opt=true,def=real(0.03d0,kind=rglu),expect='range(0,1)')
-	void=bdCollect('linear-responce',addr(1:4),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+	addr(1)=bdShareVariable(lrbd%guess        ,'guess'            ,opt=true,def='cis',expect='list(cis,rpa)')
+	addr(2)=bdShareVariable(lrbd%maxiters     ,'max-iterations'   ,opt=true,def=10000)
+	addr(3)=bdShareVariable(lrbd%accuracy     ,'accuracy'         ,opt=true,def=real(6,kind=rglu),expect='range(1,15)')
+	addr(4)=bdShareVariable(lrbd%iterStep     ,'iter-step'        ,opt=true,def=real(0.03d0,kind=rglu),expect='range(0,1)')
+	addr(5)=bdShareVariable(lrbd%orthogonalize,'orthogonalization',opt=true,def=true)
+	void=bdCollect('linear-responce',addr(1:5),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
 	addr(1)=bdShareVariable(diisbd%storage,'storage',opt=true,def='ram',expect='list(ram,hdd)')
 	addr(2)=bdShareVariable(diisbd%steps  ,'steps'    ,opt=true,def=20,expect='range(2,50)')

@@ -122,9 +122,13 @@
 			call getNewCoords(X,Y,Z)
 		endif
 
-		geometrybd%searchLinear(2)=true
-		polarizbd%scales     =uchSet('x')
-		hyperchargesbd%scales=uchSet('x')
+		if ((len_trim( uchGet(polarizbd%scales) ).EQ.2).OR.&
+		    (len_trim( uchGet(polarizbd%scales) ).EQ.3) ) then
+
+			geometrybd%searchLinear(2)=true
+			polarizbd%scales     =uchSet('x')
+			hyperchargesbd%scales=uchSet('x')
+		endif
 
 		deallocate (X,Y,Z)
 
@@ -151,9 +155,11 @@
 			call getNewCoords(X,Y,Z)
 		endif
 
-		geometrybd%searchPlanar(2)=true
-		polarizbd%scales     =uchSet('xy')
-		hyperchargesbd%scales=uchSet('xy')
+		if (len_trim( uchGet(polarizbd%scales) ).EQ.3) then
+			geometrybd%searchPlanar(2)=true
+			polarizbd%scales     =uchSet('xy')
+			hyperchargesbd%scales=uchSet('xy')
+		endif
 
 		deallocate (X,Y,Z)
 

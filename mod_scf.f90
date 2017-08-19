@@ -3,9 +3,10 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 	use glob      , only: iglu,rglu,rspu,void,true,false,uch,uchGet
-	use hdb       , only: mol,scfbd
+	use hdb       , only: mol,scfbd,ou,ouWidth
 	use txtParser , only: tpFill
-	use math      , only: tred4
+	use math      , only: gltred4
+	use printmod  , only: prEigenProblem
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -26,7 +27,8 @@
 
 	private
 
-	public :: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFResult,finalizeSCF
+	public :: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFResult,&
+	          finalizeSCF,printSCFSolution
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -79,13 +81,18 @@
 
 
 		call prepareFmin; eps=maxval(abs(Fmin))
+
+		!$omp parallel default(shared) private(mu,nu)
+		!$omp do
 		do mu = 1,N
 			do nu = 1,N
 				D(mu,nu)=D(mu,nu)-scfbd%iterStep*Fmin(mu,nu)
 			enddo
 		enddo
+		!$omp end parallel
+
 		call prepareFockian
-		call TRED4 (F,V,E,N,real(1.d-100,rspu),real(1.d-300,rspu))
+		call gltred4(F,V,E,N,real(1.d-100,rglu),real(1.d-300,rglu))
 		call prepareDensity(V)
 		call prepareFockian
 
@@ -105,21 +112,30 @@
 
 
 		Eel=0
+		!$omp parallel default(shared) private(mu,nu) reduction(+:Eel)
+		!$omp do
 		do mu = 1,N
 			do nu = 1,N
 				Eel=Eel+D(mu,nu)*(mol%core(mu,nu)+F(mu,nu))
 			enddo
 		enddo
+		!$omp end parallel
 
 		Enuc=0
+		!$omp parallel default(shared) private(mu,nu) reduction(+:Enuc)
+		!$omp do
 		do mu = 1,N
 			do nu = 1,N
 				if (mu.EQ.nu) cycle
 				Enuc=Enuc+mol%G(mu,nu)/2
 	 		enddo
 		enddo
+		!$omp end parallel
 
-		energy=0; energy(1)=Eel+Enuc
+		energy=0
+		energy(1)=Eel+Enuc
+		energy(2)=Eel
+		energy(3)=Enuc
 
 		return
 		end subroutine energySCF
@@ -166,6 +182,17 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
+		subroutine printSCFSolution
+		implicit none
+
+
+		call prEigenProblem(V,E,ou,'SCF procedure solution','^.0000',maxwidth=ouWidth)
+
+		return
+		end subroutine printSCFSolution
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
 		subroutine finalizeSCF
 		implicit none
 
@@ -192,7 +219,7 @@
 
 		select case (guess)
 			case ('huckel')
-				call tred4(mol%connect,V,E,N,real(1.d-100,rspu),real(1.d-300,rspu))
+				call gltred4(mol%connect,V,E,N,real(1.d-100,rglu),real(1.d-300,rglu))
 				call prepareDensity(V)
 
 			case ('unitmatrix')
@@ -219,6 +246,8 @@
 		integer(kind=iglu) :: i,mu,nu
 
 
+		!$omp parallel default(shared) private(mu,nu,sum,i)
+		!$omp do
 		do mu = 1,N
 			do nu = 1,N
 				sum=0
@@ -228,6 +257,7 @@
 				D(mu,nu)=sum
 			enddo
 		enddo
+		!$omp end parallel
 
 		return
 		end subroutine prepareDensity
@@ -241,6 +271,8 @@
 		integer(kind=iglu) :: mu,nu,i
 
 
+		!$omp parallel default(shared) private(mu,nu,sum,i)
+		!$omp do
 		do mu = 1,N
 			sum=0
 			do i = 1,N
@@ -252,7 +284,8 @@
 			enddo
 
 			F(mu,mu)=F(mu,mu)+2*sum
-		enddo 
+		enddo
+		!$omp end parallel
 
 		return
 		end subroutine prepareFockian
@@ -266,13 +299,18 @@
 		integer(kind=iglu) :: i,j,mu
 
 
+		!$omp parallel default(shared) private(i,j)
+		!$omp do
 		do i = 1,N
 			do j = 1,N
 				Refl(i,j)=2*D(i,j)
 			enddo
 			Refl(i,i)=Refl(i,i)-1
-		enddo 
+		enddo
+		!$omp end parallel
 
+		!$omp parallel default(shared) private(i,j,sum1,sum2)
+		!$omp do
 		do i = 1,N
 			do j = 1,N
 				sum1=0; sum2=0
@@ -282,8 +320,11 @@
 				enddo 
 				Comut(i,j)=sum1-sum2
 			enddo 
-		enddo 
+		enddo
+		!$omp end parallel
 
+		!$omp parallel default(shared) private(i,j,sum1)
+		!$omp do
 		do i = 1,N
 			do j = 1,N
 				sum1=0
@@ -292,7 +333,8 @@
 				enddo 
 				Fmin(i,j)=sum1
 			enddo 
-		enddo 
+		enddo
+		!$omp end parallel
 
 		return
 		end subroutine prepareFmin

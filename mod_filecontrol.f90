@@ -160,6 +160,7 @@
 		character (len=6), optional :: act
 		character (len=6)           :: dact
 		logical*1                   :: isOpened
+		character (len=128)         :: fnm
 
 
 		void=checkID()
@@ -174,6 +175,9 @@
 				dact=act
 			endif
 		endif
+
+		!inquire(ID,opened=isOpened,name=fnm)
+		!write (*,'(1X,L,1X,A,1X,i3,1X,A,1X,A)') isOpened,'CLOSED',ID,'NAME',trim(fnm)
 
 		iost=0
 		select case (fileList(ID))

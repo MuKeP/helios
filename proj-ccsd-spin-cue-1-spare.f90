@@ -1,6 +1,6 @@
 	subroutine projection_ccsd_singles_spin_cue_spare
 
-	use glob                , only: iglu,rglu
+	use glob                , only: iglu,rglu,timecontrol
 	use coupledCluster      , only: Nel,No,Ne,iapairs,notFitRadius,R=>spin_cue_int
 	use coupledClusterSparse
 
@@ -145,6 +145,7 @@
 	!$omp do
 	do i = 1,Nel ! only t1
 	do a = Nel+1,No
+		if (btest(i,0).NE.btest(a,0)) cycle
 
 		wint=0; woint=0
 

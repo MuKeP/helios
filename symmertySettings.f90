@@ -1,15 +1,17 @@
 	subroutine symmetrySettings
 
-	use hdb , only: rglu,rspu,iglu,lglu,true,false
-	use hdb , only: mol,geometrybd,polarizbd,generalbd,ou
-	use hdb , only: uchGet,uchSet,mid,prMatrix
-	use math, only: tred4
+	use glob     , only: rglu,rspu,iglu,lglu,true,false
+	use hdb      , only: mol,geometrybd,polarizbd,generalbd,ou,ouWidth
+	use hdb      , only: uchGet,uchSet,mid,prMatrix,GlEt,Et,MEt,MMEt
+	use hdb      , only: pointAccordance,pointSet,pointToPut,pointToCalc
+	use txtParser, only: tpAdjustc
+	use math     , only: gltred4
 
 	implicit none
 
 	real   (kind=rglu) :: symmetryTolerance,gridRange,sum,ul,dl,diff
 	integer(kind=iglu) :: N,M,Np,Ncue,dSize,i,j,k,l,a,b,c,sta,sto,cElements,ubndDistr,&
-	                      ipos,jpos,zpos,pointToPut,uniqueAtoms,writeMypnts
+	                      ipos,jpos,zpos,uniqueAtoms,writeMypnts
 
 	real   (kind=rglu), allocatable :: coords(:,:),distance(:,:),eigenVectors(:,:),eigenValues(:),&
 	                                   d1gridEquivalence(:),&
@@ -17,11 +19,15 @@
 									   d3gridEquivalence(:,:,:)
 
 	integer(kind=iglu), allocatable :: d1grid(:),d2grid(:,:),d3grid(:,:,:),pntDistribution(:)
-	integer(kind=iglu), allocatable :: pointAccordance(:,:,:),pointSet(:,:),atomEqu(:,:),bondEqu(:,:)
-	integer(kind=iglu)              :: pointToCalc
+	integer(kind=iglu), allocatable :: atomEqu(:,:),bondEqu(:,:)
 
+
+
+	write (ou,'(/A/)') tpAdjustc('Symmetry analysis',ouWidth,'=')
 
 	symmetryTolerance=geometrybd%symmetryTolerance; N=mol%nAtoms; M=mol%nBonds; Ncue=mol%nEls/2
+
+	write (ou,120) symmetryTolerance
 	Np=polarizbd%nPoints; sta=-(Np-1)/2; sto=-sta
 	select case( uchGet(generalbd%task) )
 		case ('polarizability')
@@ -61,6 +67,8 @@
 			              maxval(abs(mol%atm(:)%coords(2))),&
 						  maxval(abs(mol%atm(:)%coords(3))) )/(Np-1)
 
+			write (ou,121) gridRange
+
 			do i = sta,sto
 			do j = sta,sto
 			do k = sta,sto
@@ -95,7 +103,7 @@
 	enddo
 	enddo
 
-	call tred4(distance,eigenVectors,eigenValues,dSize,real(1d-100,rspu),real(1d-100,rspu))
+	call gltred4(distance,eigenVectors,eigenValues,dSize,real(1d-100,rglu),real(1d-100,rglu))
 
 !	do k = 1,dSize
 !		write (*,*) k,eigenVectors(k,dSize)
@@ -107,6 +115,9 @@
 			allocate (d1gridEquivalence(sta:sto),&
 			&         d2gridEquivalence(sta:sto,sta:sto),&
 			&         d3gridEquivalence(sta:sto,sta:sto,sta:sto))
+
+			allocate (GlEt(sta:sto,sta:sto,sta:sto))
+			allocate (Et(sta:sto),MEt(sta:sto,sta:sto),MMEt(sta:sto,sta:sto,sta:sto))
 
 			d3gridEquivalence=0
 			do i = dSize-Np**3+1,dSize
@@ -258,7 +269,9 @@
 							pointSet(jpos,pointToCalc)=j
 						endif
 					enddo
-					enddo					
+					enddo
+					
+					!write (70,*) pointSet; stop					
 
 				case ('xyz')
 
@@ -388,16 +401,14 @@
 
 	end select
 
-!	allocate (hIter(pointToCalc)); hIter=0; rPnts=0 !hIter(rPnts)
+	write (ou,'(/A/)') tpAdjustc('The start of computation',ouWidth,'=')
 
-	
-
-100	format (/4X,'Point accordance as a consequence of symmetry transformation.')
-110 format ( 4X,'Points to be calculated: ',i<mid(pointToCalc)>,' from ',i<mid(writeMypnts)>/)
+100	format ( 4X,'Point accordance as a consequence of symmetry transformation.')
+110 format ( 4X,'Points to be calculated: ',i<mid(pointToCalc)>,' from ',i<mid(writeMypnts)>)
 101 format ( 4X,'(',i2,',',i2,',',i2,')--->(',i2,',',i2,',',i2,')')
 120 format ( 4X,'Tollerance in grid symmetry definition:',1X,ES9.3)
 121 format ( 4X,'Range for grid points:',1X,ES9.3)
-130 format (/4X,'Combinations in 3d grid',1X,i6,'. Distribution:')
+130 format ( 4X,'Combinations in 3d grid',1X,i6,'. Distribution:')
 131 format ( 4X,ES9.3,1X,'<-->',1X,ES9.3,1X,i5,1X,'combinations')
 132 format ( 4X,'Atom-atom combinations ',1X,i6,'. Distribution:')
 133 format (/4X,'Unique atom-atom pairs:',1X,i5)
