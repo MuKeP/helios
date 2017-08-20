@@ -37,7 +37,7 @@
 	real   (kind=rglu)             :: estimatedIters
 	real   (kind=rglu)             :: timePerIter,estimatedTime,sTime(2),cTime(2),fTime(2)
 
-!	ou=6
+	ou=6
 
 	sTime(1)=timeControl(sTime(2))
 	iteration=0; successfulIterations=1

@@ -196,8 +196,10 @@
 		subroutine finalizeSCF
 		implicit none
 
+		integer(kind=iglu) :: err
 
-		deallocate (F,V,E,D,Fmin,Comut,Refl)
+
+		deallocate (F,V,E,D,Fmin,Comut,Refl, stat=err)
 
 		return
 		end subroutine finalizeSCF

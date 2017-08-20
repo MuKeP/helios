@@ -1,6 +1,6 @@
 	subroutine prepareSparseIndexInformation
 
-	use glob                , only: rglu,iglu
+	use glob                , only: iglu
 	use hdb                 , only: mol,cuebd
 	use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,iapairs,notFitRadius
 	use coupledClusterSparse
@@ -323,7 +323,7 @@
 
 	subroutine initSpareCC
 
-	use glob                , only: rglu,iglu
+	use glob                , only: iglu
 	use hdb                 , only: gluCompare
 	use coupledCluster      , only: Nel,No,F,NFnz
 	use coupledClusterSparse
@@ -401,13 +401,18 @@
 
 	subroutine finalizeSparseCC
 
+	use glob                , only: iglu
 	use coupledClusterSparse
 
 	implicit none
 
+	integer(kind=iglu) :: err
 
-	deallocate (Indexs,Indexsbv,intersectOrbitals,cIndex,t1erow,t1numcol,byExOrbbv,mrEx,t1,d1,occEx)
-	deallocate (ftfm,ferow,whOVf,numcolbv,erowbv,numcol,erow,vt,vd,pvd,t1cIndex,t1Indexs,t1mrEx,byExOrb)
+
+	deallocate (Indexs,Indexsbv,intersectOrbitals,cIndex,t1erow,&
+	            t1numcol,byExOrbbv,mrEx,t1,d1,occEx, stat=err)
+	deallocate (ftfm,ferow,whOVf,numcolbv,erowbv,numcol,erow,vt,&
+	            vd,pvd,t1cIndex,t1Indexs,t1mrEx,byExOrb, stat=err)
 
 	return
 	end subroutine finalizeSparseCC

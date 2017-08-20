@@ -42,7 +42,7 @@ RSC=rc.exe
 # PROP Intermediate_Dir "Release"
 # PROP Target_Dir ""
 # ADD BASE F90 /compile_only /nologo /warn:nofileopt
-# ADD F90 /compile_only /nologo /warn:nofileopt
+# ADD F90 /compile_only /debug:full /nologo /optimize:4 /warn:nofileopt
 # SUBTRACT F90 /warn:unused
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
 # ADD CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
@@ -68,7 +68,7 @@ LINK32=link.exe
 # PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
 # ADD BASE F90 /check:bounds /compile_only /dbglibs /debug:full /nologo /traceback /warn:argument_checking /warn:nofileopt
-# ADD F90 /check:bounds /compile_only /dbglibs /debug:full /nologo /traceback /warn:argument_checking /warn:nofileopt
+# ADD F90 /check:bounds /compile_only /dbglibs /debug:full /nologo /optimize:4 /traceback /warn:argument_checking /warn:nofileopt
 # SUBTRACT F90 /warn:unused
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
 # ADD CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
@@ -94,19 +94,19 @@ LINK32=link.exe
 
 SOURCE=.\mod_approximate.f90
 DEP_F90_MOD_A=\
-	".\Release\glob.mod"\
-	".\Release\math.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\math.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_blockdata.f90
 DEP_F90_MOD_B=\
-	".\Release\fcontrol.mod"\
-	".\Release\glob.mod"\
-	".\Release\printmod.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\fcontrol.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\txtParser.mod"\
 	
 
 !IF  "$(CFG)" == "helios - Win32 Release"
@@ -122,13 +122,13 @@ DEP_F90_MOD_B=\
 
 SOURCE=.\mod_cc.f90
 DEP_F90_MOD_C=\
-	".\Release\coupledClusterSparse.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\math.mod"\
-	".\Release\printmod.mod"\
-	".\Release\scf.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\coupledClusterSparse.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\math.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\scf.mod"\
+	".\Debug\txtParser.mod"\
 	
 
 !IF  "$(CFG)" == "helios - Win32 Release"
@@ -144,26 +144,30 @@ DEP_F90_MOD_C=\
 
 SOURCE=.\mod_cc_sparse.f90
 DEP_F90_MOD_CC=\
-	".\Release\glob.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_derivative.f90
-NODEP_F90_MOD_D=\
-	".\Release\glob.mod"\
-	".\Release\math.mod"\
-	".\Release\txtParser.mod"\
+DEP_F90_MOD_D=\
+	".\Debug\glob.mod"\
+	".\Debug\math.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
+SOURCE=.\mod_excited.f90
+# End Source File
+# Begin Source File
+
 SOURCE=.\mod_fci.f90
-NODEP_F90_MOD_F=\
-	".\Release\fcontrol.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\math.mod"\
+DEP_F90_MOD_F=\
+	".\Debug\fcontrol.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\math.mod"\
 	
 # End Source File
 # Begin Source File
@@ -174,89 +178,89 @@ SOURCE=.\mod_filecontrol.f90
 
 SOURCE=.\mod_global.f90
 NODEP_F90_MOD_G=\
-	".\Release\ifport.mod"\
-	".\Release\ifposix.mod"\
-	".\Release\omp_lib.h"\
+	".\Debug\ifport.mod"\
+	".\Debug\ifposix.mod"\
+	".\Debug\omp_lib.h"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_helios.f90
-NODEP_F90_MOD_H=\
-	".\Release\argsParser.mod"\
-	".\Release\datablock.mod"\
-	".\Release\fcontrol.mod"\
-	".\Release\glob.mod"\
-	".\Release\printmod.mod"\
-	".\Release\txtParser.mod"\
+DEP_F90_MOD_H=\
+	".\Debug\argsParser.mod"\
+	".\Debug\datablock.mod"\
+	".\Debug\fcontrol.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_huckel.f90
 DEP_F90_MOD_HU=\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\math.mod"\
-	".\Release\printmod.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\math.mod"\
+	".\Debug\printmod.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_lrccsd.f90
 DEP_F90_MOD_L=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\math.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\math.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_math.f90
 DEP_F90_MOD_M=\
-	".\Release\glob.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_mbpt.f90
-NODEP_F90_MOD_MB=\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\printmod.mod"\
-	".\Release\scf.mod"\
+DEP_F90_MOD_MB=\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\scf.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_orient.f90
 DEP_F90_MOD_O=\
-	".\Release\glob.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_painter.f90
 DEP_F90_MOD_P=\
-	".\Release\glob.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_parse.f90
 DEP_F90_MOD_PA=\
-	".\Release\glob.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_print.f90
 DEP_F90_MOD_PR=\
-	".\Release\fcontrol.mod"\
-	".\Release\glob.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\fcontrol.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\txtParser.mod"\
 	
 
 !IF  "$(CFG)" == "helios - Win32 Release"
@@ -271,34 +275,34 @@ DEP_F90_MOD_PR=\
 # Begin Source File
 
 SOURCE=.\mod_property.f90
-NODEP_F90_MOD_PRO=\
-	".\Release\coupledCluster.mod"\
-	".\Release\fci.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\huckel.mod"\
-	".\Release\mbpt.mod"\
-	".\Release\scf.mod"\
-	".\Release\txtParser.mod"\
+DEP_F90_MOD_PRO=\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\fci.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\huckel.mod"\
+	".\Debug\mbpt.mod"\
+	".\Debug\scf.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_scf.f90
 DEP_F90_MOD_S=\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\math.mod"\
-	".\Release\printmod.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\math.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\mod_txtParser.f90
 DEP_F90_MOD_T=\
-	".\Release\fcontrol.mod"\
-	".\Release\glob.mod"\
+	".\Debug\fcontrol.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # End Group
@@ -309,49 +313,52 @@ DEP_F90_MOD_T=\
 
 SOURCE=.\main.f90
 DEP_F90_MAIN_=\
-	".\Release\hdb.mod"\
-	".\Release\property.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\lrccsdModule.mod"\
+	".\Debug\property.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\primaryInformation.f90
 DEP_F90_PRIMA=\
-	".\Release\argsParser.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\printmod.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\argsParser.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\symmertySettings.f90
 DEP_F90_SYMME=\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\math.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\math.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\versionControl.f90
 DEP_F90_VERSI=\
-	".\Release\approx.mod"\
-	".\Release\argsParser.mod"\
-	".\Release\datablock.mod"\
-	".\Release\derivat.mod"\
-	".\Release\fci.mod"\
-	".\Release\fcontrol.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\lrccsdModule.mod"\
-	".\Release\math.mod"\
-	".\Release\orientation.mod"\
-	".\Release\painter.mod"\
-	".\Release\printmod.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\approx.mod"\
+	".\Debug\argsParser.mod"\
+	".\Debug\datablock.mod"\
+	".\Debug\derivat.mod"\
+	".\Debug\fci.mod"\
+	".\Debug\fcontrol.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\lrccsdModule.mod"\
+	".\Debug\math.mod"\
+	".\Debug\orientation.mod"\
+	".\Debug\painter.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # End Group
@@ -362,42 +369,42 @@ DEP_F90_VERSI=\
 
 SOURCE=.\defineArguments.f90
 DEP_F90_DEFIN=\
-	".\Release\argsParser.mod"\
-	".\Release\hdb.mod"\
+	".\Debug\argsParser.mod"\
+	".\Debug\hdb.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\definebd.f90
 DEP_F90_DEFINE=\
-	".\Release\datablock.mod"\
-	".\Release\hdb.mod"\
+	".\Debug\datablock.mod"\
+	".\Debug\hdb.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\parseInput.f90
 DEP_F90_PARSE=\
-	".\Release\argsParser.mod"\
-	".\Release\datablock.mod"\
-	".\Release\hdb.mod"\
-	".\Release\txtParser.mod"\
+	".\Debug\argsParser.mod"\
+	".\Debug\datablock.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\planarityCheck.f90
 DEP_F90_PLANA=\
-	".\Release\hdb.mod"\
-	".\Release\orientation.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\orientation.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\readMoleculeInformation.f90
 DEP_F90_READM=\
-	".\Release\hdb.mod"\
-	".\Release\printmod.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\printmod.mod"\
 	
 # End Source File
 # End Group
@@ -407,30 +414,30 @@ DEP_F90_READM=\
 # Begin Source File
 
 SOURCE=.\gIterator.f90
-NODEP_F90_GITER=\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\printmod.mod"\
-	".\Release\txtParser.mod"\
+DEP_F90_GITER=\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\putPoint.f90
 DEP_F90_PUTPO=\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\showPolarizability.f90
-NODEP_F90_SHOWP=\
-	".\Release\derivat.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
-	".\Release\printmod.mod"\
-	".\Release\txtParser.mod"\
+DEP_F90_SHOWP=\
+	".\Debug\derivat.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
+	".\Debug\printmod.mod"\
+	".\Debug\txtParser.mod"\
 	
 # End Source File
 # End Group
@@ -441,14 +448,14 @@ NODEP_F90_SHOWP=\
 
 SOURCE=.\cueOrbitals.f90
 DEP_F90_CUEOR=\
-	".\Release\hdb.mod"\
+	".\Debug\hdb.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=.\cueStructureAnalysis.f90
 DEP_F90_CUEST=\
-	".\Release\hdb.mod"\
+	".\Debug\hdb.mod"\
 	
 # End Source File
 # End Group
@@ -462,16 +469,16 @@ DEP_F90_CUEST=\
 
 SOURCE=".\proj-ccs-spat-cue-1.f90"
 DEP_F90_PROJ_=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccs-spin-cue-1.f90"
 DEP_F90_PROJ_C=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # End Group
@@ -482,16 +489,16 @@ DEP_F90_PROJ_C=\
 
 SOURCE=".\proj-ccd-spat-hf-2.f90"
 DEP_F90_PROJ_CC=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccd-spin-hf-2.f90"
 DEP_F90_PROJ_CCD=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # End Group
@@ -502,82 +509,82 @@ DEP_F90_PROJ_CCD=\
 
 SOURCE=".\proj-ccsd-spat-cue-1.f90"
 DEP_F90_PROJ_CCS=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spat-cue-2.f90"
 DEP_F90_PROJ_CCSD=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spat-hf-1.f90"
 DEP_F90_PROJ_CCSD_=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spat-hf-2.f90"
 DEP_F90_PROJ_CCSD_S=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spin-cue-1-spare.f90"
 DEP_F90_PROJ_CCSD_SP=\
-	".\Release\coupledCluster.mod"\
-	".\Release\coupledClusterSparse.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\coupledClusterSparse.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spin-cue-1.f90"
 DEP_F90_PROJ_CCSD_SPI=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spin-cue-2-spare.f90"
 DEP_F90_PROJ_CCSD_SPIN=\
-	".\Release\coupledCluster.mod"\
-	".\Release\coupledClusterSparse.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\coupledClusterSparse.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spin-cue-2.f90"
 DEP_F90_PROJ_CCSD_SPIN_=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spin-hf-1.f90"
 DEP_F90_PROJ_CCSD_SPIN_H=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsd-spin-hf-2.f90"
 DEP_F90_PROJ_CCSD_SPIN_HF=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # End Group
@@ -588,48 +595,84 @@ DEP_F90_PROJ_CCSD_SPIN_HF=\
 
 SOURCE=".\proj-ccsdt-spin-cue-1.f90"
 DEP_F90_PROJ_CCSDT=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsdt-spin-cue-2.f90"
 DEP_F90_PROJ_CCSDT_=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsdt-spin-cue-3.f90"
 DEP_F90_PROJ_CCSDT_S=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsdt-spin-hf-1.f90"
 DEP_F90_PROJ_CCSDT_SP=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsdt-spin-hf-2.f90"
 DEP_F90_PROJ_CCSDT_SPI=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
 	
 # End Source File
 # Begin Source File
 
 SOURCE=".\proj-ccsdt-spin-hf-3.f90"
 DEP_F90_PROJ_CCSDT_SPIN=\
-	".\Release\coupledCluster.mod"\
-	".\Release\glob.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\glob.mod"\
+	
+# End Source File
+# End Group
+# Begin Group "lrccsd"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=".\proj-lrccsd-spin-cue-1.f90"
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-lrccsd-spin-cue-2.f90"
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-lrccsd-spin-hf-1.f90"
+DEP_F90_PROJ_L=\
+	".\Debug\glob.mod"\
+	".\Debug\lrccsdModule.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-lrccsd-spin-hf-2.f90"
+DEP_F90_PROJ_LR=\
+	".\Debug\glob.mod"\
+	".\Debug\lrccsdModule.mod"\
+	
+# End Source File
+# Begin Source File
+
+SOURCE=".\proj-lrccsd-spin-hf-intermediates.f90"
+DEP_F90_PROJ_LRC=\
+	".\Debug\glob.mod"\
+	".\Debug\lrccsdModule.mod"\
 	
 # End Source File
 # End Group
@@ -637,10 +680,10 @@ DEP_F90_PROJ_CCSDT_SPIN=\
 
 SOURCE=".\sparse-cue-ccsd.f90"
 DEP_F90_SPARS=\
-	".\Release\coupledCluster.mod"\
-	".\Release\coupledClusterSparse.mod"\
-	".\Release\glob.mod"\
-	".\Release\hdb.mod"\
+	".\Debug\coupledCluster.mod"\
+	".\Debug\coupledClusterSparse.mod"\
+	".\Debug\glob.mod"\
+	".\Debug\hdb.mod"\
 	
 # End Source File
 # End Group

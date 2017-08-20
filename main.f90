@@ -6,10 +6,13 @@
 
 	program HELIOS
 
-	use hdb
-	use property
-!	use coupledCluster
-!	use lrccsdModule, only: setLRParameters,initLR
+	use glob    , only: uchGet,void,signal,true,false
+	use hdb     , only: onLoad,trapSignals,generalbd,setParams,onTrap,Null
+	use hdb     , only: sighup,sigabrt,sigint,sigterm,sigcont,sigstop
+	use hdb     , only: ccbd
+	use property, only: getPolarizability
+	use coupledCluster
+	use lrccsdModule, only: setLRParameters,initLR
 
 	implicit none
 
@@ -26,12 +29,14 @@
 	call setParams
 	call readMoleculeInformation
 
-	!call setCCParameters('spin-cue-ccsd')
-	!call initCC
-	!call iterator(iterationCC,energyCC,ccbd%maxiters,ccbd%accuracy,false)
+	call setCCParameters('spin-cue-ccsd')
+	call initCC
+	call iterator(iterationCC,energyCC,ccbd%maxiters,ccbd%accuracy,false)
 
-	!call setLRParameters('spin-cue-ccsd')
-	!call initLR
+	call setLRParameters('spin-cue-ccsd')
+	call initLR
+
+	stop
 
 
 	select case( uchGet(generalbd%task) )

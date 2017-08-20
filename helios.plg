@@ -3,110 +3,19 @@
 <pre>
 <h1>Build Log</h1>
 <h3>
---------------------Configuration: helios - Win32 Release--------------------
+--------------------Configuration: helios - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP3F34.tmp" with contents
+Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSPB1F.tmp" with contents
 [
-/compile_only /nologo /warn:nofileopt /module:"Release/" /object:"Release/" 
-"E:\Programming\Fortran\original\helios\mod_global.f90"
-"E:\Programming\Fortran\original\helios\mod_derivative.f90"
-"E:\Programming\Fortran\original\helios\mod_cc_sparse.f90"
-"E:\Programming\Fortran\original\helios\mod_blockdata.f90"
+/check:bounds /compile_only /dbglibs /debug:full /nologo /optimize:4 /traceback /warn:argument_checking /warn:nofileopt /module:"Debug/" /object:"Debug/" /pdbfile:"Debug/DF60.PDB" 
 "E:\Programming\Fortran\original\helios\mod_helios.f90"
-"E:\Programming\Fortran\original\helios\mod_fci.f90"
-]
-Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP3F35.tmp" with contents
-[
-/compile_only /nologo /warn:nofileopt /warn:unused /module:"Release/" /object:"Release/" 
-"E:\Programming\Fortran\original\helios\mod_cc.f90"
-]
-Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP3F36.tmp" with contents
-[
-/compile_only /nologo /warn:nofileopt /module:"Release/" /object:"Release/" 
-"E:\Programming\Fortran\original\helios\mod_approximate.f90"
-]
-Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP3F47.tmp" with contents
-[
-kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /incremental:no /pdb:"Release/helios.pdb" /machine:I386 /out:"Release/helios.exe" 
-.\Release\mod_approximate.obj
-.\Release\mod_blockdata.obj
-.\Release\mod_cc.obj
-.\Release\mod_cc_sparse.obj
-.\Release\mod_derivative.obj
-.\Release\mod_fci.obj
-.\Release\mod_filecontrol.obj
-.\Release\mod_global.obj
-.\Release\mod_helios.obj
-.\Release\mod_huckel.obj
-.\Release\mod_lrccsd.obj
-.\Release\mod_math.obj
-.\Release\mod_mbpt.obj
-.\Release\mod_orient.obj
-.\Release\mod_painter.obj
-.\Release\mod_parse.obj
-.\Release\mod_print.obj
-.\Release\mod_property.obj
-.\Release\mod_scf.obj
-.\Release\mod_txtParser.obj
-.\Release\main.obj
-.\Release\primaryInformation.obj
-.\Release\symmertySettings.obj
-.\Release\versionControl.obj
-.\Release\defineArguments.obj
-.\Release\definebd.obj
-.\Release\parseInput.obj
-.\Release\planarityCheck.obj
-.\Release\readMoleculeInformation.obj
-.\Release\gIterator.obj
-.\Release\putPoint.obj
-.\Release\showPolarizability.obj
-.\Release\cueOrbitals.obj
-.\Release\cueStructureAnalysis.obj
-".\Release\proj-ccs-spat-cue-1.obj"
-".\Release\proj-ccs-spin-cue-1.obj"
-".\Release\proj-ccd-spat-hf-2.obj"
-".\Release\proj-ccd-spin-hf-2.obj"
-".\Release\proj-ccsd-spat-cue-1.obj"
-".\Release\proj-ccsd-spat-cue-2.obj"
-".\Release\proj-ccsd-spat-hf-1.obj"
-".\Release\proj-ccsd-spat-hf-2.obj"
-".\Release\proj-ccsd-spin-cue-1-spare.obj"
-".\Release\proj-ccsd-spin-cue-1.obj"
-".\Release\proj-ccsd-spin-cue-2-spare.obj"
-".\Release\proj-ccsd-spin-cue-2.obj"
-".\Release\proj-ccsd-spin-hf-1.obj"
-".\Release\proj-ccsd-spin-hf-2.obj"
-".\Release\proj-ccsdt-spin-cue-1.obj"
-".\Release\proj-ccsdt-spin-cue-2.obj"
-".\Release\proj-ccsdt-spin-cue-3.obj"
-".\Release\proj-ccsdt-spin-hf-1.obj"
-".\Release\proj-ccsdt-spin-hf-2.obj"
-".\Release\proj-ccsdt-spin-hf-3.obj"
-".\Release\sparse-cue-ccsd.obj"
-]
-Creating command line "link.exe @C:\Users\MuKeP\AppData\Local\Temp\RSP3F47.tmp"
-<h3>Output Window</h3>
-Compiling Fortran...
-E:\Programming\Fortran\original\helios\mod_global.f90
-E:\Programming\Fortran\original\helios\mod_derivative.f90
-E:\Programming\Fortran\original\helios\mod_cc_sparse.f90
-E:\Programming\Fortran\original\helios\mod_blockdata.f90
-E:\Programming\Fortran\original\helios\mod_helios.f90
-E:\Programming\Fortran\original\helios\mod_fci.f90
-Compiling Fortran...
-E:\Programming\Fortran\original\helios\mod_cc.f90
-Compiling Fortran...
-E:\Programming\Fortran\original\helios\mod_approximate.f90
-Linking...
-Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP57C7.tmp" with contents
-[
-/compile_only /nologo /warn:nofileopt /module:"Release/" /object:"Release/" 
-"E:\Programming\Fortran\original\helios\mod_txtParser.f90"
-"E:\Programming\Fortran\original\helios\mod_print.f90"
-"E:\Programming\Fortran\original\helios\mod_parse.f90"
-"E:\Programming\Fortran\original\helios\mod_math.f90"
 "E:\Programming\Fortran\original\helios\mod_scf.f90"
+"E:\Programming\Fortran\original\helios\mod_cc.f90"
+"E:\Programming\Fortran\original\helios\mod_lrccsd.f90"
+"E:\Programming\Fortran\original\helios\proj-lrccsd-spin-hf-intermediates.f90"
+"E:\Programming\Fortran\original\helios\proj-lrccsd-spin-hf-2.f90"
+"E:\Programming\Fortran\original\helios\proj-lrccsd-spin-hf-1.f90"
 "E:\Programming\Fortran\original\helios\sparse-cue-ccsd.f90"
 "E:\Programming\Fortran\original\helios\proj-ccsdt-spin-hf-3.f90"
 "E:\Programming\Fortran\original\helios\proj-ccsdt-spin-hf-2.f90"
@@ -134,13 +43,11 @@ Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP57C7.tmp" with con
 "E:\Programming\Fortran\original\helios\putPoint.f90"
 "E:\Programming\Fortran\original\helios\gIterator.f90"
 "E:\Programming\Fortran\original\helios\readMoleculeInformation.f90"
-"E:\Programming\Fortran\original\helios\mod_orient.f90"
 "E:\Programming\Fortran\original\helios\planarityCheck.f90"
 "E:\Programming\Fortran\original\helios\parseInput.f90"
 "E:\Programming\Fortran\original\helios\definebd.f90"
 "E:\Programming\Fortran\original\helios\defineArguments.f90"
-"E:\Programming\Fortran\original\helios\mod_lrccsd.f90"
-"E:\Programming\Fortran\original\helios\mod_painter.f90"
+"E:\Programming\Fortran\original\helios\mod_fci.f90"
 "E:\Programming\Fortran\original\helios\versionControl.f90"
 "E:\Programming\Fortran\original\helios\symmertySettings.f90"
 "E:\Programming\Fortran\original\helios\primaryInformation.f90"
@@ -149,13 +56,81 @@ Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSP57C7.tmp" with con
 "E:\Programming\Fortran\original\helios\mod_property.f90"
 "E:\Programming\Fortran\original\helios\main.f90"
 ]
+Creating temporary file "C:\Users\MuKeP\AppData\Local\Temp\RSPB20.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /incremental:no /pdb:"Debug/helios.pdb" /debug /machine:I386 /out:"Debug/helios.exe" /pdbtype:sept 
+.\Debug\mod_approximate.obj
+.\Debug\mod_blockdata.obj
+.\Debug\mod_cc.obj
+.\Debug\mod_cc_sparse.obj
+.\Debug\mod_derivative.obj
+.\Debug\mod_fci.obj
+.\Debug\mod_filecontrol.obj
+.\Debug\mod_global.obj
+.\Debug\mod_helios.obj
+.\Debug\mod_huckel.obj
+.\Debug\mod_lrccsd.obj
+.\Debug\mod_math.obj
+.\Debug\mod_mbpt.obj
+.\Debug\mod_orient.obj
+.\Debug\mod_painter.obj
+.\Debug\mod_parse.obj
+.\Debug\mod_print.obj
+.\Debug\mod_property.obj
+.\Debug\mod_scf.obj
+.\Debug\mod_txtParser.obj
+.\Debug\main.obj
+.\Debug\primaryInformation.obj
+.\Debug\symmertySettings.obj
+.\Debug\versionControl.obj
+.\Debug\defineArguments.obj
+.\Debug\definebd.obj
+.\Debug\parseInput.obj
+.\Debug\planarityCheck.obj
+.\Debug\readMoleculeInformation.obj
+.\Debug\gIterator.obj
+.\Debug\putPoint.obj
+.\Debug\showPolarizability.obj
+.\Debug\cueOrbitals.obj
+.\Debug\cueStructureAnalysis.obj
+".\Debug\proj-ccs-spat-cue-1.obj"
+".\Debug\proj-ccs-spin-cue-1.obj"
+".\Debug\proj-ccd-spat-hf-2.obj"
+".\Debug\proj-ccd-spin-hf-2.obj"
+".\Debug\proj-ccsd-spat-cue-1.obj"
+".\Debug\proj-ccsd-spat-cue-2.obj"
+".\Debug\proj-ccsd-spat-hf-1.obj"
+".\Debug\proj-ccsd-spat-hf-2.obj"
+".\Debug\proj-ccsd-spin-cue-1-spare.obj"
+".\Debug\proj-ccsd-spin-cue-1.obj"
+".\Debug\proj-ccsd-spin-cue-2-spare.obj"
+".\Debug\proj-ccsd-spin-cue-2.obj"
+".\Debug\proj-ccsd-spin-hf-1.obj"
+".\Debug\proj-ccsd-spin-hf-2.obj"
+".\Debug\proj-ccsdt-spin-cue-1.obj"
+".\Debug\proj-ccsdt-spin-cue-2.obj"
+".\Debug\proj-ccsdt-spin-cue-3.obj"
+".\Debug\proj-ccsdt-spin-hf-1.obj"
+".\Debug\proj-ccsdt-spin-hf-2.obj"
+".\Debug\proj-ccsdt-spin-hf-3.obj"
+.\Debug\mod_excited.obj
+".\Debug\sparse-cue-ccsd.obj"
+".\Debug\proj-lrccsd-spin-hf-1.obj"
+".\Debug\proj-lrccsd-spin-hf-2.obj"
+".\Debug\proj-lrccsd-spin-hf-intermediates.obj"
+".\Debug\proj-lrccsd-spin-cue-1.obj"
+".\Debug\proj-lrccsd-spin-cue-2.obj"
+]
+Creating command line "link.exe @C:\Users\MuKeP\AppData\Local\Temp\RSPB20.tmp"
 <h3>Output Window</h3>
 Compiling Fortran...
-E:\Programming\Fortran\original\helios\mod_txtParser.f90
-E:\Programming\Fortran\original\helios\mod_print.f90
-E:\Programming\Fortran\original\helios\mod_parse.f90
-E:\Programming\Fortran\original\helios\mod_math.f90
+E:\Programming\Fortran\original\helios\mod_helios.f90
 E:\Programming\Fortran\original\helios\mod_scf.f90
+E:\Programming\Fortran\original\helios\mod_cc.f90
+E:\Programming\Fortran\original\helios\mod_lrccsd.f90
+E:\Programming\Fortran\original\helios\proj-lrccsd-spin-hf-intermediates.f90
+E:\Programming\Fortran\original\helios\proj-lrccsd-spin-hf-2.f90
+E:\Programming\Fortran\original\helios\proj-lrccsd-spin-hf-1.f90
 E:\Programming\Fortran\original\helios\sparse-cue-ccsd.f90
 E:\Programming\Fortran\original\helios\proj-ccsdt-spin-hf-3.f90
 E:\Programming\Fortran\original\helios\proj-ccsdt-spin-hf-2.f90
@@ -183,13 +158,11 @@ E:\Programming\Fortran\original\helios\showPolarizability.f90
 E:\Programming\Fortran\original\helios\putPoint.f90
 E:\Programming\Fortran\original\helios\gIterator.f90
 E:\Programming\Fortran\original\helios\readMoleculeInformation.f90
-E:\Programming\Fortran\original\helios\mod_orient.f90
 E:\Programming\Fortran\original\helios\planarityCheck.f90
 E:\Programming\Fortran\original\helios\parseInput.f90
 E:\Programming\Fortran\original\helios\definebd.f90
 E:\Programming\Fortran\original\helios\defineArguments.f90
-E:\Programming\Fortran\original\helios\mod_lrccsd.f90
-E:\Programming\Fortran\original\helios\mod_painter.f90
+E:\Programming\Fortran\original\helios\mod_fci.f90
 E:\Programming\Fortran\original\helios\versionControl.f90
 E:\Programming\Fortran\original\helios\symmertySettings.f90
 E:\Programming\Fortran\original\helios\primaryInformation.f90
@@ -197,11 +170,30 @@ E:\Programming\Fortran\original\helios\mod_huckel.f90
 E:\Programming\Fortran\original\helios\mod_mbpt.f90
 E:\Programming\Fortran\original\helios\mod_property.f90
 E:\Programming\Fortran\original\helios\main.f90
+E:\Programming\Fortran\original\helios\main.f90(21) : Warning: In the call to SIGNAL, actual argument #2 does not match the type and kind of the corresponding dummy argument.
+ void=signal(SIGHUP , ontrap, -1)
+-----------------------------^
+E:\Programming\Fortran\original\helios\main.f90(22) : Warning: In the call to SIGNAL, actual argument #2 does not match the type and kind of the corresponding dummy argument.
+ void=signal(SIGABRT, ontrap, -1)
+-----------------------------^
+E:\Programming\Fortran\original\helios\main.f90(23) : Warning: In the call to SIGNAL, actual argument #2 does not match the type and kind of the corresponding dummy argument.
+ void=signal(SIGINT , ontrap, -1)
+-----------------------------^
+E:\Programming\Fortran\original\helios\main.f90(24) : Warning: In the call to SIGNAL, actual argument #2 does not match the type and kind of the corresponding dummy argument.
+ void=signal(SIGTERM, ontrap, -1)
+-----------------------------^
+E:\Programming\Fortran\original\helios\main.f90(25) : Warning: In the call to SIGNAL, actual argument #2 does not match the type and kind of the corresponding dummy argument.
+ void=signal(SIGCONT, ontrap, -1)
+-----------------------------^
+E:\Programming\Fortran\original\helios\main.f90(26) : Warning: In the call to SIGNAL, actual argument #2 does not match the type and kind of the corresponding dummy argument.
+ void=signal(SIGSTOP, ontrap, -1)
+-----------------------------^
+Linking...
 
 
 
 <h3>Results</h3>
-helios.exe - 0 error(s), 0 warning(s)
+helios.exe - 0 error(s), 6 warning(s)
 </pre>
 </body>
 </html>

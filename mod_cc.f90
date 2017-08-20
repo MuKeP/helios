@@ -2,13 +2,13 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-	use glob     , only: uch,uchGet,uchSet,iglu,rglu,lglu,rspu,true,false,gluCompare
-	use glob     , only: timecontrol
-	use txtParser, only: operator(.in.)
-	use printmod , only: prMatrix,prStrByVal
-	use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
-	use scf      , only: energySCF,finalizeSCF,printSCFSolution
-	use hdb      , only: mol,ccbd,diisbd,cuebd,systembd,scfbd,ou,ouWidth
+	use glob                , only: iglu,rglu,lglu,rspu,true,false,gluCompare
+	use glob                , only: uch,uchGet,uchSet,timecontrol
+	use txtParser           , only: operator(.in.)
+	use printmod            , only: prMatrix,prStrByVal
+	use scf                 , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
+	use scf                 , only: energySCF,finalizeSCF,printSCFSolution
+	use hdb                 , only: mol,ccbd,diisbd,cuebd,systembd,scfbd,ou,ouWidth
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -54,8 +54,8 @@
 	private :: diisVectors,diisValues,diisMatrix,diisCoefficients
 	private :: st1,st2,st3,sd1,sd2,sd3
 	private :: V,hV,hVs,cueIndex,density,G
-	private :: guessCC,referenceEnergy,pushCCVectors,newCCVectors,prepareDIIS 
-	private :: diisDotProduct,prepareDensity,prepareFock,prepareFockCUE,stepCC
+	private :: guessCC,referenceEnergy,pushCCVectors,newCCVectors,stepCC
+	private :: diisDotProduct,prepareDensity,prepareFock,prepareFockCUE
 
 	private :: uch,uchGet,uchSet,iglu,rglu,lglu,rspu,true,false,ou,gluCompare
 	private :: operator(.in.),prMatrix,mol,ccbd,diisbd,cuebd,systembd,scfbd
@@ -131,8 +131,7 @@
 	select case (uchGet(umethod))
 		case ('spare-cue-ccsd')
 			No=2*N; Nocc=Nel/2
-			allocate (cueIndex(2,No),V(0:N,No),iapairs(No))
-			cueIndex=0; V=0; iapairs=0
+			call controlMemoryCC('general','allocate')
 			do k = 1,Nocc
 				i=mol%orb(k)%atoms(1)
 				j=mol%orb(k)%atoms(2)
@@ -162,7 +161,7 @@
 				iapairs(2*l-1)=2*k-1; iapairs(2*l)=2*k
 			enddo
 
-			allocate (G(N,N),density(N,N)); G=mol%G; density=0
+			G=mol%G
 
 			do k = 1,Nocc
 				i=mol%orb(k)%atoms(1)
@@ -176,10 +175,6 @@
 				density(i,j)=real(0.5,rglu); density(j,i)=real(0.5,rglu)
 				density(i,i)=real(0.5,rglu); density(j,j)=real(0.5,rglu)
 			enddo
-			
-			allocate ( F(No,No) ); F=0
-
-			allocate (cueDistance(No,No)); cueDistance=0
 
 			do i = 1,N
 				do j = i,N
@@ -199,9 +194,7 @@
 
 		case ('cue-ccs','cue-ccsd')
 			No=N; Nocc=Nel/2; Ne=(N-Nocc)*Nocc
-
-			allocate (cueIndex(2,N),V(N,N),iapairs(N))
-			cueIndex=0; V=0; iapairs=0
+			call controlMemoryCC('general','allocate')
 
 			! index information
 			do k = 1,Nocc
@@ -225,7 +218,6 @@
 				iapairs(k)=l   ; iapairs(l)=k
 			enddo
 
-			allocate ( excSet(Ne,2) )
 			k=0
 			do i = 1,Nocc
 			do j = Nocc+1,N
@@ -233,7 +225,7 @@
 			enddo
 			enddo
 
-			allocate (G(N,N),density(N,N)); G=mol%G; density=0
+			G=mol%G
 
 			do k = 1,Nocc
 				i=mol%orb(k)%atoms(1)
@@ -265,16 +257,12 @@
 			enddo
 			enddo
 
-			allocate (cueDistance(N,N)); cueDistance=0
-
 			do i = 1,N
 				do j = i,N
 					cueDistance(i,j)=mol%cuedist(i,j)
 					cueDistance(j,i)=mol%cuedist(j,i)
 				enddo
 			enddo
-
-			allocate ( R(N,N,N,N),F(N,N) )
 
 			!$omp parallel default(shared) private(i,j,k,l)
 			!$omp do
@@ -289,24 +277,9 @@
 			enddo
 			!$omp end parallel
 
-			select case (uchGet(umethod))
-				case ('cue-ccs')
-					allocate (t1(Nocc,Nocc+1:N),&
-							  d1(Nocc,Nocc+1:N) )
-
-					t1=0; d1=0
-				case ('cue-ccsd')
-					allocate (t1(Nocc,Nocc+1:N),t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),&
-							  d1(Nocc,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N) )
-
-					t1=0; t2=0; d1=0; d2=0
-
-			end select
-
 		case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
 			No=2*N; Nocc=Nel/2; Ne=(N-Nocc)*Nocc
-			allocate (cueIndex(2,No),V(0:N,No),iapairs(No))
-			cueIndex=0; V=0; iapairs=0
+			call controlMemoryCC('general','allocate')
 			do k = 1,Nocc
 				i=mol%orb(k)%atoms(1)
 				j=mol%orb(k)%atoms(2)
@@ -336,7 +309,7 @@
 				iapairs(2*l-1)=2*k-1; iapairs(2*l)=2*k
 			enddo
 
-			allocate (G(N,N),density(N,N)); G=mol%G; density=0
+			G=mol%G
 
 			do k = 1,Nocc
 				i=mol%orb(k)%atoms(1)
@@ -366,8 +339,6 @@
 			enddo
 			enddo
 
-			allocate (cueDistance(No,No)); cueDistance=0
-
 			do i = 1,N
 				do j = i,N
 					cueDistance(2*i-1,2*j-1)=mol%cuedist(i,j)
@@ -382,8 +353,6 @@
 				enddo
 			enddo
 
-			allocate ( R(No,No,No,No), F(No,No) )
-
 			!$omp parallel default(shared) private(i,j,k,l)
 			!$omp do
 			do i = 1,No
@@ -397,33 +366,10 @@
 			enddo
 			!$omp end parallel
 
-			select case (uchGet(umethod))
-				case ('spin-cue-ccs')
-					allocate (t1(Nel,Nel+1:No),&
-							  d1(Nel,Nel+1:No) )
-
-					t1=0; d1=0
-				case ('spin-cue-ccsd')
-					allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),&
-							  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No) )
-
-					t1=0; t2=0; d1=0; d2=0
-
-				case ('spin-cue-ccsdt')
-					allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),t3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No),&
-							  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No),d3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No) )
-
-					t1=0; t2=0; t3=0; d1=0; d2=0; d3=0
-
-			end select
-
 		case ('u-ccd','u-ccsd')
 			No=N; Nocc=Nel/2; Ne=(N-Nocc)*Nocc
+			call controlMemoryCC('general','allocate')
 
-			allocate (hV(N,N))
-			hV=0
-
-			allocate ( excSet(Ne,2) )
 			k=0
 			do i = 1,Nocc
 			do j = Nocc+1,N
@@ -431,14 +377,13 @@
 			enddo
 			enddo
 
-			allocate (G(N,N),density(N,N)); G=mol%G; density=0
-			
-			allocate ( R(N,N,N,N),F(N,N) )
+			G=mol%G
 
 			call setSCFParameters
 			call initSCF
 			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
 			call getSCFResult(vectors=hV)
+			call prepareDensity(hV)
 
 			!$omp parallel default(shared) private(i,j,k,l)
 			!$omp do
@@ -453,27 +398,10 @@
 			enddo
 			!$omp end parallel
 
-			select case (uchGet(umethod))
-				case ('u-ccd')
-					allocate (t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),&
-							  d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N) )
-
-					t2=0; d2=0
-				case ('u-ccsd')
-					allocate (t1(Nocc,Nocc+1:N),t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),&
-							  d1(Nocc,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N) )
-
-					t1=0; t2=0; d1=0; d2=0
-
-			end select
-
 		case ('r-ccd','r-ccsd')
 			No=N; Nocc=Nel/2; Ne=(N-Nocc)*Nocc
+			call controlMemoryCC('general','allocate')
 
-			allocate (hV(N,N))
-			hV=0
-
-			allocate ( excSet(Ne,2) )
 			k=0
 			do i = 1,Nocc
 			do j = Nocc+1,N
@@ -481,37 +409,21 @@
 			enddo
 			enddo
 
-			allocate (G(N,N),density(N,N)); G=mol%G; density=0
-			
-			allocate ( R(N,N,N,N),F(N,N) )
+			G=mol%G
+
 			call setSCFParameters
-
-			select case (uchGet(umethod))
-				case ('r-ccd')
-					allocate (t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),&
-							  d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N) )
-
-					t2=0; d2=0
-				case ('r-ccsd')
-					allocate (t1(Nocc,Nocc+1:N),t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),&
-							  d1(Nocc,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N) )
-
-					t1=0; t2=0; d1=0; d2=0
-
-			end select
 
 		case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt')
 			No=2*N; Nocc=Nel/2; Ne=(N-Nocc)*Nocc
-			allocate (hV(N,N),hVs(N,No))
+			call controlMemoryCC('general','allocate')
 
-			allocate (G(N,N),density(N,N)); G=mol%G; density=0
-				
-			allocate ( R(No,No,No,No), F(No,No) )
+			G=mol%G
 
 			call setSCFParameters
 			call initSCF
 			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
 			call getSCFResult(vectors=hV)
+			call prepareDensity(hV)
 
 			do i = 1,N
 			do j = 1,N
@@ -533,56 +445,13 @@
 			enddo
 			!$omp end parallel
 
-			select case (uchGet(umethod))
-				case ('spin-u-ccd')
-					allocate (t2(Nel,Nel,Nel+1:No,Nel+1:No),&
-							  d2(Nel,Nel,Nel+1:No,Nel+1:No) )
-
-					t2=0; d2=0
-				case ('spin-u-ccsd')
-					allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),&
-							  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No) )
-
-					t1=0; t2=0; d1=0; d2=0
-
-				case ('spin-u-ccsdt')
-					allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),t3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No),&
-							  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No),d3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No) )
-
-					t1=0; t2=0; t3=0; d1=0; d2=0; d3=0
-
-			end select
-
-
 		case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
 			No=2*N; Nocc=Nel/2; Ne=(N-Nocc)*Nocc
-			allocate (hVs(N,No),hV(N,N))
+			call controlMemoryCC('general','allocate')
 
-			allocate (G(N,N),density(N,N)); G=mol%G; density=0
-				
-			allocate ( R(No,No,No,No), F(No,No) )
+			G=mol%G
 
 			call setSCFParameters
-
-			select case (uchGet(umethod))
-				case ('spin-r-ccd')
-					allocate (t2(Nel,Nel,Nel+1:No,Nel+1:No),&
-							  d2(Nel,Nel,Nel+1:No,Nel+1:No) )
-
-					t2=0; d2=0
-				case ('spin-r-ccsd','spin-r-ccsd(t)')
-					allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),&
-							  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No) )
-
-					t1=0; t2=0; d1=0; d2=0
-
-				case ('spin-r-ccsdt')
-					allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),t3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No),&
-							  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No),d3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No) )
-
-					t1=0; t2=0; t3=0; d1=0; d2=0; d3=0
-
-			end select
 
 	end select
 
@@ -597,42 +466,24 @@
 	integer (kind=iglu) :: i,j,a,b
 
 
-	call finalizeDIIS
+	call controlMemoryCC('diis','deallocate')
 
 	select case (uchGet(umethod))
 		case ('spare-cue-ccsd')
 			call prepareFockCUE('spin')
 
-			NFnz=0
-			do i = 1,No; do j = 1,No
-				if (abs(F(i,j)).GT.gluCompare) NFnz=NFnz+1
-			enddo; enddo
-
-			if (allocated(Fnz)) deallocate (Fnz)
-			allocate (Fnz(2,NFnz)); Fnz=0
-
-			NFnz=0
+			Fnz=0; NFnz=0
 			do i = 1,No; do j = 1,No
 				if (abs(F(i,j)).GT.gluCompare) then
 					NFnz=NFnz+1; Fnz(1,NFnz)=i; Fnz(2,NFnz)=j
 				endif
-			enddo
-			enddo
-
+			enddo; enddo
 			call initSpareCC
 
 		case ('cue-ccs','cue-ccsd')
 			call prepareFockCUE('spatial')
 
-			NFnz=0
-			do i = 1,Nocc; do j = Nocc+1,N
-				if (abs(F(i,j)).GT.gluCompare) NFnz=NFnz+1
-			enddo; enddo
-
-			if (allocated(Fnz)) deallocate (Fnz)
-			allocate (Fnz(2,NFnz)); Fnz=0
-
-			NFnz=0
+			Fnz=0; NFnz=0
 			do i = 1,Nocc; 	do j = Nocc+1,N
 				if (abs(F(i,j)).GT.gluCompare) then
 					NFnz=NFnz+1; Fnz(1,NFnz)=i; Fnz(2,NFnz)=j
@@ -642,27 +493,18 @@
 		case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
 			call prepareFockCUE('spin')
 
-			NFnz=0
-			do i = 1,Nel; do j = Nel+1,No
-				if (abs(F(i,j)).GT.gluCompare) NFnz=NFnz+1
-			enddo; enddo
-
-			if (allocated(Fnz)) deallocate (Fnz)
-			allocate (Fnz(2,NFnz)); Fnz=0
-
-			NFnz=0
+			Fnz=0; NFnz=0
 			do i = 1,Nel; do j = Nel+1,No
 				if (abs(F(i,j)).GT.gluCompare) then
 					NFnz=NFnz+1; Fnz(1,NFnz)=i; Fnz(2,NFnz)=j
 				endif
-			enddo
-			enddo
+			enddo; enddo
 
 		case ('u-ccd','u-ccsd')
-			call initSCF(hV)
-			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
-			call getSCFResult(vectors=hV)
-			call prepareDensity(hV)
+			!call initSCF(hV)
+			!call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
+			!call getSCFResult(vectors=hV)
+			!call prepareDensity(hV)
 			call prepareFock('spatial')
 
 		case ('r-ccd','r-ccsd')
@@ -687,10 +529,10 @@
 			!$omp end parallel
 
 		case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt')
-			call initSCF(hV)
-			call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
-			call getSCFResult(vectors=hV)
-			call prepareDensity(hV)
+			!call initSCF(hV)
+			!call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
+			!call getSCFResult(vectors=hV)
+			!call prepareDensity(hV)
 			call prepareFock('spin')
 
 		case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
@@ -735,7 +577,7 @@
 		onceEnergyPrinted=true
 	endif
 
-	if (diisbd%enabled) call prepareDIIS
+	if (diisbd%enabled) call controlMemoryCC('diis','allocate')
 	call guessCC
 
 	return
@@ -943,6 +785,7 @@
 	integer(kind=iglu), intent(in)  :: iteration
 	real   (kind=rglu), intent(in)  :: epsilon
 	real   (kind=rglu), intent(out) :: saccuracy(5)
+	real   (kind=rglu)              :: sta,sto
 
  
 	select case (uchGet(umethod))
@@ -2108,239 +1951,13 @@
 	implicit none
 
 
-	select case (uchGet(umethod))
-		case ('spare-cue-ccsd')
-			deallocate (cueIndex,V,iapairs,G,density,cueDistance,F)
-			call finalizeSparseCC
-
-		case ('cue-ccs','cue-ccsd')
-			deallocate (cueIndex,V,iapairs,excSet,G,density,cueDistance,R,F)
-			select case (uchGet(umethod))
-				case ('cue-ccs' ); deallocate (t1,d1)
-				case ('cue-ccsd'); deallocate (t1,t2,d1,d2)
-			end select
-
-		case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
-			deallocate (cueIndex,V,iapairs,R,F,G,density,cueDistance)
-			select case (uchGet(umethod))
-				case ('spin-cue-ccs' ) ; deallocate (t1,d1)
-				case ('spin-cue-ccsd') ; deallocate (t1,t2,d1,d2)
-				case ('spin-cue-ccsdt'); deallocate (t1,t2,t3,d1,d2,d3)
-			end select
-
-		case ('u-ccd','u-ccsd')
-			deallocate (hV,R,F,excSet,G,density)
-			select case (uchGet(umethod))
-				case ('u-ccd' ); deallocate (t2,d2)
-				case ('u-ccsd'); deallocate (t1,t2,d1,d2)
-			end select
-			call finalizeSCF
-
-		case ('r-ccd','r-ccsd')
-			deallocate (hV,R,F,excSet,G,density)
-			select case (uchGet(umethod))
-				case ('r-ccd' ); deallocate (t2,d2)
-				case ('r-ccsd'); deallocate (t1,t2,d1,d2)
-			end select
-			call finalizeSCF
-
-		case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt')
-			deallocate (hV,hVs,R,F,G,density)
-			select case (uchGet(umethod))
-				case ('spin-u-ccd'  ); deallocate (t2,d2)
-				case ('spin-u-ccsd' ); deallocate (t1,t2,d1,d2)
-				case ('spin-u-ccsdt'); deallocate (t1,t2,t3,d1,d2,d3)
-			end select
-			call finalizeSCF
-
-		case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
-			deallocate (hVs,hV,R,F,G,density)
-			select case (uchGet(umethod))
-				case ('spin-r-ccd')                  ; deallocate (t2,d2)
-				case ('spin-r-ccsd','spin-r-ccsd(t)'); deallocate (t1,t2,d1,d2)
-				case ('spin-r-ccsdt')                ; deallocate (t1,t2,t3,d1,d2,d3)
-
-			end select
-			call finalizeSCF
-
-	end select
-
-	call finalizeDIIS
+	call controlMemoryCC('general','deallocate')
+	call controlMemoryCC('diis','deallocate')
+	call finalizeSCF
+	call finalizeSparseCC
 
 	return
 	end subroutine finalizeCC
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
-
-	subroutine finalizeDIIS
-	implicit none
-
-
-	if (allocated(diisVectors)) deallocate(diisVectors)
-	if (allocated(diisValues)) deallocate(diisValues)
-	if (allocated(diisMatrix)) deallocate(diisMatrix)
-	if (allocated(diisCoefficients)) deallocate(diisCoefficients)
-
-	if (allocated(st1)) deallocate(st1)
-	if (allocated(st2)) deallocate(st2)
-	if (allocated(st3)) deallocate(st3)
-	if (allocated(sd1)) deallocate(sd1)
-	if (allocated(sd2)) deallocate(sd2)
-	if (allocated(sd3)) deallocate(sd3)
-
-	return
-	end subroutine finalizeDIIS
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
-
-	subroutine prepareDIIS
-
-	use coupledClusterSparse, only: vt,vd
-
-	implicit none
-
-	integer(kind=iglu) :: i,j,k,a,b,c,mm,nn,vv
-	
-
-	allocate (diisVectors(Nd+1,Nd+1),diisValues(Nd+1))
-	allocate (diisMatrix (Nd+1,Nd+1),diisCoefficients(Nd))
-
-	diisVectors=0; diisValues=0
-	diisMatrix=0 ; diisCoefficients=0
-
-	select case (uchGet(umethod))
-		case ('spare-cue-ccsd')
-			vv=0
-			do i = 1,Nel
-			do a = Nel+1,No
-				if (btest(i,0).NE.btest(a,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-
-			nn=UBound(vd,1)
-
-			allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0	
-			allocate ( sd2(nn,Nd),st2(nn,Nd) ); sd2=0; st2=0
-
-		case ('cue-ccs')
-			allocate ( sd1(Ne,Nd),st1(Ne,Nd) ); sd1=0; st1=0
-
-		case ('spin-cue-ccs')
-			vv=0
-			do i = 1,Nel
-			do a = Nel+1,No
-				if (btest(i,0).NE.btest(a,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-
-			allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
-
-		case ('r-ccd','u-ccd')
-			vv=0
-			do mm = 1,Ne
-			do nn = mm,Ne
-				vv=vv+1
-			enddo
-			enddo
-
-			allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
-
-		case ('spin-r-ccd','spin-u-ccd')
-			vv=0
-			do i = 1,Nel-1
-			do j = i+1,Nel
-			do a = Nel+1,No-1
-			do b = a+1,No
-				if (btest(i+j,0).NE.btest(a+b,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-			enddo
-			enddo
-
-			allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
-
-		case ('cue-ccsd','r-ccsd','u-ccsd')
-			vv=0
-			do mm = 1,Ne
-			do nn = mm,Ne
-				vv=vv+1
-			enddo
-			enddo
-
-			allocate ( sd1(Ne,Nd), st1(Ne,Nd) ); sd1=0; st1=0
-			allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
-
-		case ('spin-cue-ccsd','spin-r-ccsd','spin-u-ccsd','spin-r-ccsd(t)')
-			vv=0
-			do i = 1,Nel
-			do a = Nel+1,No
-				if (btest(i,0).NE.btest(a,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-			allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
-
-			vv=0
-			do i = 1,Nel-1
-			do j = i+1,Nel
-			do a = Nel+1,No-1
-			do b = a+1,No
-				if (btest(i+j,0).NE.btest(a+b,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-			enddo
-			enddo
-			allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
-
-		case ('spin-cue-ccsdt','spin-r-ccsdt','spin-u-ccsdt')
-			vv=0
-			do i = 1,Nel
-			do a = Nel+1,No
-				if (btest(i,0).NE.btest(a,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-			allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
-
-			vv=0
-			do i = 1,Nel-1
-			do j = i+1,Nel
-			do a = Nel+1,No-1
-			do b = a+1,No
-				if (btest(i+j,0).NE.btest(a+b,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-			enddo
-			enddo
-			allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
-
-			vv=0
-			do i = 1,Nel-2
-			do j = i+1,Nel-1
-			do k = j+1,Nel
-			do a = Nel+1,No-2
-			do b = a+1,No-1
-			do c = b+1,No
-				if (btest(i+j+k,0).NE.btest(a+b+c,0)) cycle
-				vv=vv+1
-			enddo
-			enddo
-			enddo
-			enddo
-			enddo
-			enddo
-
-			allocate ( sd3(vv,Nd), st3(vv,Nd) ); sd3=0; st3=0
-
-	end select
-
-	return
-	end subroutine prepareDIIS
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -2758,6 +2375,258 @@
 
 	return
 	end function notFitRadius
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	subroutine controlMemoryCC(section,action)
+
+	use coupledClusterSparse, only: vd
+
+	implicit none
+
+	character (len=*)  :: section,action
+	integer(kind=iglu) :: i,j,k,a,b,c,mm,nn,vv,err
+
+
+	select case (section)
+		case ('general')
+			select case (action)
+				case ('allocate')
+					select case (uchGet(umethod))
+						case ('spare-cue-ccsd')
+							allocate (cueIndex(2,No),V(0:N,No),iapairs(No),G(N,N),density(N,N),&
+							          F(No,No),cueDistance(No,No),Fnz(2,Nel*(No-Nel)))
+							cueIndex=0; V=0; iapairs=0; G=0; density=0; F=0; cueDistance=0; Fnz=0
+
+						case ('cue-ccs','cue-ccsd')
+							allocate (cueIndex(2,N),V(N,N),iapairs(N),excSet(Ne,2),G(N,N),&
+							          density(N,N),cueDistance(N,N),R(N,N,N,N),F(N,N),Fnz(2,Nocc*(N-Nocc)))
+							cueIndex=0; V=0; iapairs=0; excSet=0; G=0; density=0; cueDistance=0; R=0; F=0; Fnz=0
+
+							select case (uchGet(umethod))
+								case ('cue-ccs')
+									allocate (t1(Nocc,Nocc+1:N),d1(Nocc,Nocc+1:N))
+									t1=0; d1=0
+
+								case ('cue-ccsd')
+									allocate (t1(Nocc,Nocc+1:N),t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),d1(Nocc,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N))
+									t1=0; t2=0; d1=0; d2=0
+
+							end select
+
+						case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
+							allocate (cueIndex(2,No),V(0:N,No),iapairs(No),G(N,N),density(N,N),&
+							          cueDistance(No,No),R(No,No,No,No),F(No,No),Fnz(2,Nel*(No-Nel)))
+							cueIndex=0; V=0; iapairs=0; G=0; density=0; cueDistance=0; R=0; F=0; Fnz=0
+
+							select case (uchGet(umethod))
+								case ('spin-cue-ccs')
+									allocate (t1(Nel,Nel+1:No),d1(Nel,Nel+1:No))
+									t1=0; d1=0
+
+								case ('spin-cue-ccsd')
+									allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No))
+									t1=0; t2=0; d1=0; d2=0
+
+								case ('spin-cue-ccsdt')
+									allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),t3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No),&
+											  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No),d3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No) )
+									t1=0; t2=0; t3=0; d1=0; d2=0; d3=0
+
+							end select
+
+						case ('u-ccd','u-ccsd','r-ccd','r-ccsd')
+							allocate (hV(N,N),excSet(Ne,2),G(N,N),density(N,N),R(N,N,N,N),F(N,N))
+							hV=0; excSet=0; G=0; density=0; R=0; F=0
+
+							select case (uchGet(umethod))
+								case ('u-ccd','r-ccd')
+									allocate (t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N))
+									t2=0; d2=0
+
+								case ('u-ccsd','r-ccsd')
+									allocate (t1(Nocc,Nocc+1:N),t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),d1(Nocc,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N))
+									t1=0; t2=0; d1=0; d2=0
+
+							end select
+
+						case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt','spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
+							allocate (hV(N,N),hVs(N,No),G(N,N),density(N,N),R(No,No,No,No),F(No,No))
+							hV=0; hVs=0; G=0; density=0; R=0; F=0
+
+							select case (uchGet(umethod))
+								case ('spin-u-ccd','spin-r-ccd')
+									allocate (t2(Nel,Nel,Nel+1:No,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No))
+									t2=0; d2=0
+
+								case ('spin-u-ccsd','spin-r-ccsd','spin-r-ccsd(t)')
+									allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No))
+									t1=0; t2=0; d1=0; d2=0
+
+								case ('spin-u-ccsdt','spin-r-ccsdt')
+									allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),t3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No),&
+											  d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No),d3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No) )
+									t1=0; t2=0; t3=0; d1=0; d2=0; d3=0
+
+							end select
+
+					end select
+
+				case ('deallocate')
+					select case (uchGet(umethod))
+						case ('spare-cue-ccsd')
+							deallocate (cueIndex,V,iapairs,G,density,F,cueDistance,Fnz)
+
+						case ('cue-ccs','cue-ccsd')
+							deallocate (cueIndex,V,iapairs,excSet,G,density,cueDistance,R,F,Fnz)
+							select case (uchGet(umethod))
+								case ('cue-ccs') ; deallocate (t1,d1)
+								case ('cue-ccsd'); deallocate (t1,t2,d1,d2)
+							end select
+
+						case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
+							deallocate (cueIndex,V,iapairs,G,density,cueDistance,R,F,Fnz)
+							select case (uchGet(umethod))
+								case ('spin-cue-ccs')  ; deallocate (t1,d1)
+								case ('spin-cue-ccsd') ; deallocate (t1,t2,d1,d2)
+								case ('spin-cue-ccsdt'); deallocate (t1,t2,t3,d1,d2,d3)
+							end select
+
+						case ('u-ccd','u-ccsd','r-ccd','r-ccsd')
+							deallocate (hV,excSet,G,density,R,F)
+							select case (uchGet(umethod))
+								case ('u-ccd','r-ccd')  ; deallocate (t2,d2)
+								case ('u-ccsd','r-ccsd'); deallocate (t1,t2,d1,d2)
+							end select
+
+						case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt','spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
+							deallocate (hV,hVs,G,density,R,F)
+							select case (uchGet(umethod))
+								case ('spin-u-ccd','spin-r-ccd')                   ; deallocate (t2,d2)
+								case ('spin-u-ccsd','spin-r-ccsd','spin-r-ccsd(t)'); deallocate (t1,t2,d1,d2)
+								case ('spin-u-ccsdt','spin-r-ccsdt')               ; deallocate (t1,t2,t3,d1,d2,d3)
+							end select
+
+					end select
+
+			end select
+
+		case ('diis')
+			select case (action)
+				case ('allocate')
+
+					select case (uchGet(umethod))
+						case ('spare-cue-ccsd')
+							vv=0
+							do i = 1,Nel; do a = Nel+1,No
+								if (btest(i,0).NE.btest(a,0)) cycle
+								vv=vv+1
+							enddo; enddo
+
+							nn=UBound(vd,1)
+
+							allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0	
+							allocate ( sd2(nn,Nd),st2(nn,Nd) ); sd2=0; st2=0
+
+						case ('cue-ccs')
+							allocate ( sd1(Ne,Nd),st1(Ne,Nd) ); sd1=0; st1=0
+
+						case ('spin-cue-ccs')
+							vv=0
+							do i = 1,Nel; do a = Nel+1,No
+								if (btest(i,0).NE.btest(a,0)) cycle
+								vv=vv+1
+							enddo; enddo
+							allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
+
+						case ('r-ccd','u-ccd')
+							vv=0
+							do mm = 1,Ne; do nn = mm,Ne
+								vv=vv+1
+							enddo; enddo
+							allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
+
+						case ('spin-r-ccd','spin-u-ccd')
+							vv=0
+							do i = 1,Nel-1;    do j = i+1,Nel
+							do a = Nel+1,No-1; do b = a+1,No
+								if (btest(i+j,0).NE.btest(a+b,0)) cycle
+								vv=vv+1
+							enddo; enddo
+							enddo; enddo
+							allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
+
+						case ('cue-ccsd','r-ccsd','u-ccsd')
+							vv=0
+							do mm = 1,Ne; do nn = mm,Ne
+								vv=vv+1
+							enddo; enddo
+							allocate ( sd1(Ne,Nd), st1(Ne,Nd) ); sd1=0; st1=0
+							allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
+
+						case ('spin-cue-ccsd','spin-r-ccsd','spin-u-ccsd','spin-r-ccsd(t)')
+							vv=0
+							do i = 1,Nel; do a = Nel+1,No
+								if (btest(i,0).NE.btest(a,0)) cycle
+								vv=vv+1
+							enddo; enddo
+							allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
+
+							vv=0
+							do i = 1,Nel-1;    do j = i+1,Nel
+							do a = Nel+1,No-1; do b = a+1,No
+								if (btest(i+j,0).NE.btest(a+b,0)) cycle
+								vv=vv+1
+							enddo; enddo
+							enddo; enddo
+							allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
+
+						case ('spin-cue-ccsdt','spin-r-ccsdt','spin-u-ccsdt')
+							vv=0
+							do i = 1,Nel; do a = Nel+1,No
+								if (btest(i,0).NE.btest(a,0)) cycle
+								vv=vv+1
+							enddo; enddo
+							allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
+
+							vv=0
+							do i = 1,Nel-1;    do j = i+1,Nel
+							do a = Nel+1,No-1; do b = a+1,No
+								if (btest(i+j,0).NE.btest(a+b,0)) cycle
+								vv=vv+1
+							enddo; enddo
+							enddo; enddo
+							allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
+
+							vv=0
+							do i = 1,Nel-2 ; do j = i+1,Nel-1
+							do k = j+1,Nel ; do a = Nel+1,No-2
+							do b = a+1,No-1; do c = b+1,No
+								if (btest(i+j+k,0).NE.btest(a+b+c,0)) cycle
+								vv=vv+1
+							enddo; enddo
+							enddo; enddo
+							enddo; enddo
+							allocate ( sd3(vv,Nd), st3(vv,Nd) ); sd3=0; st3=0
+
+					end select
+
+					allocate (diisVectors(Nd+1,Nd+1),diisValues(Nd+1))
+					allocate (diisMatrix (Nd+1,Nd+1),diisCoefficients(Nd))
+					diisVectors=0; diisValues=0; diisMatrix=0 ; diisCoefficients=0
+
+				case ('deallocate')
+					deallocate (diisVectors,diisValues,diisMatrix,diisCoefficients,stat=err)
+					deallocate (st1,sd1,stat=err)
+					deallocate (st2,sd2,stat=err)
+					deallocate (st3,sd3,stat=err)
+
+			end select
+
+	end select
+
+	return
+	end subroutine controlMemoryCC
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
