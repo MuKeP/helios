@@ -3,10 +3,8 @@
 *.bat
 *.out
 *.txt
+*.obj
+*.mod
 *.bak*
 fort.*
-Debug/
-Release/
-bak/
-tmp/
-wait/
+_tmp/
