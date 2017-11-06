@@ -1,0 +1,1136 @@
+	subroutine normAnalize(Nsel,Nsor,t1,t2,distMOs,Fc,cMO,twoeintegr,mmult,tdlist)
+
+	use db, only: mid,adjustc,setfLineLen,cueD,normt,N,Nzan,maxNei,fu,ou,su,isZero,printer,true
+
+	implicit none
+
+	! ~~~~~~~~~~~~~~~~~~~~~~~~~ Arguments ~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	integer*4        :: Nsel,Nsor,tdlist
+	real*8           :: t1(1:Nsel,Nsel+1:Nsor)
+	real*8           :: t2(1:Nsel,1:Nsel,Nsel+1:Nsor,Nsel+1:Nsor)
+	real*8           :: distMOs(Nsor,Nsor),Fc(Nsor,Nsor),cMO(Nsor,3)
+	real*8, external :: twoeintegr
+	real*8           :: mmult
+
+	! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+	
+	integer*4, parameter :: chapsLen=32
+	real*8   , parameter :: prBar=5D-2
+
+	! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	integer*4, allocatable :: spinInds(:,:),spatInds(:,:)
+	integer*4, allocatable :: countt(:,:)
+
+	real*8,    allocatable :: holdContributions(:,:,:)
+	real*8,    allocatable :: holdValues(:,:)
+
+	character (len=1)      :: sh(4)
+
+	integer*4 :: Nse,Ne,N1eExc,N2eExc
+
+	integer*4 :: ilen,ulen,zlen,t1plen,t2plen
+
+	integer*4 :: dlayer,cou,vvv,cChap
+	integer*4 :: i,j,a,b,k,l,c,d,ui,ua,uj,ub,mm,nn,pp,vv
+	integer*4 :: count1,mcountt1,mcountt2,currl1,currl2
+
+	logical*1 :: condit(4),dCUE,chaps(chapsLen)
+
+	real*8    :: Ax,Bx,Cx,Dx,Ex,Fx,Gx,Hx,Ix,Jx,cvalue,holdDist(28),hold8(8),cmv(4),sumw(4),sss(4)
+	real*8    :: cval(2),sumc(2),cont(3),cor(6),gsum,avl
+	real*8    :: fullt(2),dist12,energyContrib(2),divisor,hnew(2,2)
+	real*8    :: birad(4),lav,rav,birav,birav2
+
+	real*8,  allocatable                :: mean(:),sd(:),minv(:),maxv(:)
+
+	real*8,  allocatable, dimension (:) :: sumt1,sumt2,maxt1,&
+	&                                      maxt2,inteContr,inteAmp,&
+	&                                      efft1,efft2
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	! ~~~~~~~~~~~~~~~~~~~~~~~~~~ pars todolist ~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	! 2#111111
+	!   654321
+
+	! 1 | print t1/t2 by layers       | 1
+	! 2 | contribution to energy      | 2
+	! 3 | structure analize by layers | 4
+	! 4 | C1,C2,C3,C4 estimation      | 8
+	! 5 | statistics on t1/t2         | 16
+	! 6 | configurational compound    | 32
+	!          1&2&3&4&5&6 = 63 = 2#00111111
+
+	do i = 1,chapsLen
+		chaps(i)=btest(tdlist,i-1) !ibits(tdlist,i-1,1).EQ.1
+	enddo
+
+	! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	Nse=Nsel*(Nsor-Nsel); Ne=Nzan*(N-Nzan); N1eExc=Nse; N2eExc=(Nse*(Nse-1))/2
+	
+	allocate ( spinInds(Nse,2),spatInds(Ne,2) )
+	allocate ( holdValues(maxNei+1,5) ); holdValues=0.d0
+
+	allocate ( sumt1(maxNei),sumt2(maxNei),maxt1(maxNei),maxt2(maxNei),&
+	&          inteContr(maxNei),inteAmp(maxNei),efft1(maxNei),efft2(maxNei) )
+	allocate ( countt(maxNei,2),mean(maxNei),sd(maxNei),minv(maxNei),maxv(maxNei) )
+
+	allocate ( holdContributions(Nsel,maxNei,2) ); holdContributions=0.d0
+
+	mm=0
+	do i = 1,Nsel; do a = Nsel+1,Nsor
+		mm=mm+1
+		spinInds(mm,1)=i
+		spinInds(mm,2)=a
+	enddo; enddo
+
+	mm=0
+	do i = 1,Nzan; do a = Nzan+1,N
+		mm=mm+1
+		spatInds(mm,1)=i
+		spatInds(mm,2)=a
+	enddo; enddo
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	if (tdlist.NE.0) then
+		write (fu,'(A/)') adjustc('Wave-function analize',setfLineLen,'=')
+		write (ou,'(A/)') adjustc('Wave-function analize',setfLineLen,'=')
+	endif
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=1 ! print t1 by layers
+	if (chaps(cChap)) then
+
+	write (fu,100) N1eExc
+	do k = 1,maxNei
+		count1=0
+		write (fu,107) k
+
+		do i = 1,Nsel
+		do a = Nsel+1,Nsor
+			cmv(1)=distMOs(i,a)
+			if ((cmv(1).GT.cueD(k-1)).AND.(cmv(1).LT.cueD(k))) then
+				if (.NOT.btest(i+a,0)) then
+					if (btest(i,0)) then; sh(1)='a'; else; sh(1)='b'; endif
+					ui=i/2+mod(i,2); ua=(a-Nsel)/2+mod(a-Nsel,2)
+
+					if (abs(t1(i,a)).LT.isZero) then
+						  write (fu,105) sh(1),ui,ua,     0.d0
+					else; write (fu,105) sh(1),ui,ua,t1(i,a)
+					endif
+					count1=count1+1
+				endif
+			end if
+		enddo
+		enddo
+
+		write (fu,108) count1
+	enddo
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=1 ! print t2 by layers
+	if (chaps(cChap)) then
+
+	write (fu,101) N2eExc
+	do l = 1,maxNei
+		count1=0
+
+		write (fu,107) l
+
+		do mm = 1,Nse
+			i=spinInds(mm,1)
+			a=spinInds(mm,2)
+			do nn = 1,Nse
+				j=spinInds(nn,1)
+				b=spinInds(nn,2)
+
+				holdDist(1)=distMOs(i,j)
+				holdDist(2)=distMOs(i,a)
+				holdDist(3)=distMOs(i,b)
+				holdDist(4)=distMOs(j,a)
+				holdDist(5)=distMOs(j,b)
+				holdDist(6)=distMOs(a,b)
+
+				cmv(1)=distMOs(i,a); cmv(2)=distMOs(j,b); cmv(3)=maxval(holdDist(1:6))
+
+				do k = 1,maxNei
+					if (cmv(1).LT.cueD(k)) then
+						currl1=k
+						exit
+					end if
+				enddo
+				do k = 1,maxNei
+					if (cmv(2).LT.cueD(k)) then
+						currl2=k
+						exit
+					end if
+				enddo
+
+				cor(1)=(cMO(i,1)+cMO(a,1))/2.0d0
+				cor(2)=(cMO(i,2)+cMO(a,2))/2.0d0
+				cor(3)=(cMO(i,3)+cMO(a,3))/2.0d0
+
+				cor(4)=(cMO(j,1)+cMO(b,1))/2.0d0
+				cor(5)=(cMO(j,2)+cMO(b,2))/2.0d0
+				cor(6)=(cMO(j,3)+cMO(b,3))/2.0d0
+
+				dist12=sqrt( (cor(1)-cor(4))**2 + (cor(2)-cor(5))**2 + (cor(3)-cor(6))**2 )
+
+				do k = 1,maxNei
+					if (dist12.LT.cueD(k)) then
+						vvv=k
+						exit
+					end if
+				enddo
+
+				cont(1)=dble(currl1)
+				cont(2)=dble(currl2)
+				cont(3)=dble(vvv   )
+
+				if ((cmv(3).GT.cueD(l-1)).AND.(cmv(3).LT.cueD(l))) then
+					if (.NOT.btest(i+a+j+b,0)) then
+						if (btest(i,0)) then; sh(1)='a'; else; sh(1)='b'; endif
+						if (btest(a,0)) then; sh(2)='a'; else; sh(2)='b'; endif
+						if (btest(j,0)) then; sh(3)='a'; else; sh(3)='b'; endif
+						if (btest(b,0)) then; sh(4)='a'; else; sh(4)='b'; endif
+
+						ui=i/2+mod(i,2); ua=(a-Nsel)/2+mod(a-Nsel,2)
+						uj=j/2+mod(j,2); ub=(b-Nsel)/2+mod(b-Nsel,2)
+
+						cval(1)=t2(i,j,a,b)
+						cval(2)=twoeintegr(i,j,a,b)*mmult
+						if (abs(cval(1)*cval(2)).GT.isZero) then
+							if (abs(cval(1)).LT.isZero) then
+								  write (fu,106) sh(1),sh(2),sh(3),sh(4),ui,ua,uj,ub,   0.d0,cval(2),           0.d0,currl1,currl2,vvv
+							else; write (fu,106) sh(1),sh(2),sh(3),sh(4),ui,ua,uj,ub,cval(1),cval(2),cval(1)*cval(2),currl1,currl2,vvv
+							endif
+							count1=count1+1
+						endif
+					endif
+				end if
+			enddo
+		enddo
+
+		write (fu,109) count1
+	enddo
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=2 ! contribution to the correlation energy by layers
+	if (chaps(cChap)) then
+
+	energyContrib=0.d0
+	write (fu,103); write (ou,103)
+	do k = 1,maxNei
+
+		sumc(1)=0.d0; sumc(2)=0.d0
+		do mm = 1,Nse
+			i=spinInds(mm,1)
+			a=spinInds(mm,2)
+
+			cmv(2)=distMOs(i,a)
+			if ((cmv(2).GT.cueD(k-1)).AND.(cmv(2).LT.cueD(k))) then
+				sumc(1)=sumc(1)+Fc(i,a)*t1(i,a)
+			endif
+			do nn = 1,Nse
+				j=spinInds(nn,1)
+				b=spinInds(nn,2)
+
+				holdDist(1)=distMOs(i,j)
+				holdDist(2)=distMOs(i,a)
+				holdDist(3)=distMOs(i,b)
+				holdDist(4)=distMOs(j,a)
+				holdDist(5)=distMOs(j,b)
+				holdDist(6)=distMOs(a,b)
+				cmv(3)=maxval(holdDist(1:6))
+
+				if ((cmv(3).GT.cueD(k-1)).AND.(cmv(3).LT.cueD(k))) then
+					sumc(2)=sumc(2)+twoeintegr(a,i,b,j)*(t2(i,j,a,b)+t1(i,a)*t1(j,b)-t1(j,a)*t1(i,b))
+				endif
+			enddo
+		enddo
+		if (abs(sumc(1)).LT.isZero) sumc(1)=0.d0
+		if (abs(sumc(2)).LT.isZero) sumc(2)=0.d0
+		write (fu,104) k,sumc(1),0.25d0*sumc(2)*mmult; write (ou,104) k,sumc(1),0.25d0*sumc(2)*mmult
+		energyContrib(1)=energyContrib(1)+sumc(1); energyContrib(2)=energyContrib(2)+0.25d0*sumc(2)*mmult
+	enddo
+	write (fu,114) energyContrib; write (ou,114) energyContrib
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=3 ! t1 structure analize by layers
+	if (chaps(cChap)) then
+
+	fullt(1)=0.d0; sumt1=0.d0; maxt1=0.d0; countt=0; mcountt1=0
+	do mm = 1,Ne
+		ui=spatInds(mm,1)
+		ua=spatInds(mm,2)
+
+		i=ui*2-1; a=ua*2-1
+
+		cmv(1)=distMOs(i,a)
+		do k = 1,maxNei
+			if (cmv(1).LT.cueD(k)) then
+				if (abs( t1(i,a) ).GT.abs( maxt1(k) )) maxt1(k)=t1(i,a)
+				countt(k,1)=countt(k,1)+1
+				sumt1(k)=sumt1(k)+t1(i,a)**2
+				exit
+			end if
+		enddo
+		fullt(1)=fullt(1)+t1(i,a)**2
+		mcountt1=mcountt1+1
+	enddo
+
+	countt(:,1)=countt(:,1); mcountt1=mcountt1
+	sumt1      =sumt1      ; fullt(1)=fullt(1)
+
+	sss=0.d0
+	do k = 1,maxNei
+		if (abs(maxt1(k)).LT.isZero) maxt1(k)=0.d0
+		sss(1)=sss(1)+100.0d0*sumt1(k)   /fullt(1)
+		sss(2)=sss(2)+100.0d0*countt(k,1)/mcountt1
+		inteContr(k)=sss(1); inteAmp(k)=sss(2)
+	enddo
+
+	do k = 1,maxNei
+		efft1(k)=inteContr(k)/inteAmp(k)
+		Normt(k,1,1)=k;       Normt(k,2,1)=sumt1(k);  Normt(k,3,1)=100.0d0*sumt1(k)/fullt(1)
+		Normt(k,4,1)=maxt1(k);Normt(k,5,1)=countt(k,1);Normt(k,6,1)=efft1(k)
+	enddo
+
+	write (fu,198); write (ou,198)
+	write (fu,200); write (ou,200)
+	do k = 1,maxNei
+		write (fu,201) k,sumt1(k),100.0d0*sumt1(k)/fullt(1),maxt1(k),countt(k,1),efft1(k)
+		write (ou,201) k,sumt1(k),100.0d0*sumt1(k)/fullt(1),maxt1(k),countt(k,1),efft1(k)
+	enddo
+	write (fu,202); write (ou,202)
+	write (fu,203) fullt(1),100.0d0,maxval(abs(maxt1)),mcountt1,1.0d0
+	write (ou,203) fullt(1),100.0d0,maxval(abs(maxt1)),mcountt1,1.0d0
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !	
+
+	cChap=3 ! t2 structure analize by layers
+	if (chaps(cChap)) then
+
+	fullt(2)=0.d0; sumt2=0.d0; maxt2=0.d0; countt=0; mcountt2=0
+	do mm = 1,Ne
+		ui=spatInds(mm,1)
+		ua=spatInds(mm,2)
+		do nn = mm,Ne
+			uj=spatInds(nn,1)
+			ub=spatInds(nn,2)
+
+			i=ui*2-1; a=ua*2-1
+			j=uj*2  ; b=ub*2
+
+			holdDist(1)=distMOs(i,j)
+			holdDist(2)=distMOs(i,a)
+			holdDist(3)=distMOs(i,b)
+			holdDist(4)=distMOs(j,a)
+			holdDist(5)=distMOs(j,b)
+			holdDist(6)=distMOs(a,b)
+
+			cmv(1) = maxval(holdDist(1:6))
+			do k = 1,maxNei
+				if (cmv(1).LT.cueD(k)) then
+					if ( abs( t2(i,j,a,b) ).GT.abs( maxt2(k) )) maxt2(k)=t2(i,j,a,b)
+					countt(k,2)=countt(k,2)+1
+					sumt2(k)=sumt2(k)+t2(i,j,a,b)**2
+					exit
+				end if
+			enddo
+			fullt(2)=fullt(2)+t2(i,j,a,b)**2
+			mcountt2=mcountt2+1
+		enddo
+	enddo
+
+	sss=0.d0
+	do k = 1,maxNei
+		if (abs(maxt2(k)).LT.isZero) maxt2(k)=0.d0
+		sss(1)=sss(1)+100.0d0*sumt2(k)   /fullt(2)
+		sss(2)=sss(2)+100.0d0*countt(k,2)/mcountt2
+		inteContr(k)=sss(1); inteAmp(k)=sss(2)
+	enddo
+
+	do k = 1,maxNei
+		efft2(k)=inteContr(k)/inteAmp(k)
+		Normt(k,1,2)=k;       Normt(k,2,2)=sumt2(k);  Normt(k,3,2)=100.0d0*sumt2(k)/fullt(2)
+		Normt(k,4,2)=maxt2(k);Normt(k,5,2)=countt(k,2);Normt(k,6,2)=efft2(k)
+	enddo
+
+	write (fu,199); write (ou,199)
+	write (fu,200); write (ou,200)
+	do k = 1,maxNei
+		write (fu,201) k,sumt2(k),100.0d0*sumt2(k)/fullt(2),maxt2(k),countt(k,2),efft2(k)
+		write (ou,201) k,sumt2(k),100.0d0*sumt2(k)/fullt(2),maxt2(k),countt(k,2),efft2(k)
+	enddo
+	write (fu,202); write (ou,202)
+	write (fu,203) fullt(2),100.0d0,maxval(abs(maxt2)),mcountt2,1.0d0
+	write (ou,203) fullt(2),100.0d0,maxval(abs(maxt2)),mcountt2,1.0d0
+
+	write (fu,204) sqrt(fullt(1))/sqrt(dble(N)),sqrt(fullt(2))/sqrt(dble(N)) ! t1,t2-diagnostics
+	write (ou,204) sqrt(fullt(1))/sqrt(dble(N)),sqrt(fullt(2))/sqrt(dble(N)) ! t1,t2-diagnostics
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=4 ! C1, C2, C3 and C4 estimation
+!	chaps(4)=.FALSE.
+	if (chaps(cChap)) then
+
+	hnew=0.d0
+	sumw(1)=0.d0; sumw(2)=0.d0; sumw(3)=0.d0; sumw(4)=0.d0; hold8=0.d0
+	do dlayer = 1,maxNei
+!		dlayer=1
+		write (*,'(/A,2X,i2,A,i2\)') 'Layer',dlayer,'/',maxNei
+
+		sss=0.d0; cou=5
+		do mm = 1,Nse
+			vvv=int( 100.d0*dble(mm)/dble(Nse) )
+			if (vvv.EQ.cou) then
+				cou=cou+5; write (*,'(1X,i<mid(vvv)>\)') vvv
+			endif
+			i=spinInds(mm,1)
+			a=spinInds(mm,2)
+
+			holdDist(1)=distMOs(i,a)
+			cmv(1)     =maxval(holdDist(1:1))
+			condit(1)  =(cmv(1).GT.cueD(dlayer-1)).AND.(cmv(1).LT.cueD(dlayer))
+
+			if (condit(1)) then
+				Ax=t1(i,a); hold8(1)=hold8(1)+Ax*Ax; cvalue=Ax
+				sss(1)=sss(1)+cvalue*cvalue
+
+				holdContributions(i     ,dLayer,1)=holdContributions(i     ,dLayer,1)+cvalue*cvalue
+				holdContributions(a-Nsel,dLayer,2)=holdContributions(a-Nsel,dLayer,2)+cvalue*cvalue
+			endif !condit(1)
+
+			do nn = 1,Nse
+				j=spinInds(nn,1)
+				b=spinInds(nn,2)
+
+				if ((j.LE.i).OR.(b.LE.a)) cycle
+
+				holdDist(2)=distMOs(i,j)
+				holdDist(3)=distMOs(i,b)
+				holdDist(4)=distMOs(a,j)
+				holdDist(5)=distMOs(a,b)
+				holdDist(6)=distMOs(j,b)
+
+				cmv(2)     =maxval(holdDist(1:6))
+				condit(2)  =(cmv(2).GT.cueD(dlayer-1)).AND.(cmv(2).LT.cueD(dlayer))
+
+				if (condit(2)) then
+					Bx=t2(i,j,a,b); Cx=t1(i,a)*t1(j,b)-t1(i,b)*t1(j,a)
+					hold8(2)=hold8(2)+Bx*Bx; hold8(3)=hold8(3)+Cx*Cx; cvalue=Bx+Cx
+					sss(2)=sss(2)+cvalue*cvalue
+
+					holdContributions(i     ,dLayer,1)=holdContributions(i     ,dLayer,1)+cvalue*cvalue
+					holdContributions(j     ,dLayer,1)=holdContributions(j     ,dLayer,1)+cvalue*cvalue
+					holdContributions(a-Nsel,dLayer,2)=holdContributions(a-Nsel,dLayer,2)+cvalue*cvalue
+					holdContributions(b-Nsel,dLayer,2)=holdContributions(b-Nsel,dLayer,2)+cvalue*cvalue
+				endif !condit(2)
+
+				do pp = 1,Nse
+					k=spinInds(pp,1)
+					c=spinInds(pp,2)
+
+					if ((k.LE.j).OR.(c.LE.b)) cycle
+
+					holdDist( 7)=distMOs(i,k)
+					holdDist( 8)=distMOs(i,c)
+					holdDist( 9)=distMOs(j,k)
+					holdDist(10)=distMOs(j,c)
+					holdDist(11)=distMOs(a,k)
+					holdDist(12)=distMOs(a,c)
+					holdDist(13)=distMOs(b,k)
+					holdDist(14)=distMOs(b,c)
+					holdDist(15)=distMOs(k,c)
+
+					cmv(3)      =maxval(holdDist(1:15))
+					condit(3)   =(cmv(3).GT.cueD(dlayer-1)).AND.(cmv(3).LT.cueD(dlayer))
+
+					if (condit(3)) then
+						Dx  =+t1(i,a)*t2(j,k,b,c)&
+						&    -t1(j,a)*t2(i,k,b,c)&
+						&    +t1(k,a)*t2(i,j,b,c)&
+						&    -t1(i,b)*t2(j,k,a,c)&
+						&    +t1(j,b)*t2(i,k,a,c)&
+						&    -t1(k,b)*t2(i,j,a,c)&
+						&    +t1(i,c)*t2(j,k,a,b)&
+						&    -t1(j,c)*t2(i,k,a,b)&
+						&    +t1(k,c)*t2(i,j,a,b)
+
+						Ex  =+t1(i,a)*t1(j,b)*t1(k,c)&
+						&    -t1(j,a)*t1(i,b)*t1(k,c)&
+						&    -t1(i,a)*t1(k,b)*t1(j,c)&
+						&    +t1(k,a)*t1(i,b)*t1(j,c)&
+						&    -t1(k,a)*t1(j,b)*t1(i,c)&
+						&    +t1(j,a)*t1(k,b)*t1(i,c)
+
+						hold8(4)=hold8(4)+Dx*Dx; hold8(5)=hold8(5)+Ex*Ex; cvalue=Dx+Ex
+
+						sss(3)=sss(3)+cvalue*cvalue
+						holdContributions(i     ,dLayer,1)=holdContributions(i     ,dLayer,1)+cvalue*cvalue
+						holdContributions(j     ,dLayer,1)=holdContributions(j     ,dLayer,1)+cvalue*cvalue
+						holdContributions(k     ,dLayer,1)=holdContributions(k     ,dLayer,1)+cvalue*cvalue
+						holdContributions(a-Nsel,dLayer,2)=holdContributions(a-Nsel,dLayer,2)+cvalue*cvalue
+						holdContributions(b-Nsel,dLayer,2)=holdContributions(b-Nsel,dLayer,2)+cvalue*cvalue
+						holdContributions(c-Nsel,dLayer,2)=holdContributions(c-Nsel,dLayer,2)+cvalue*cvalue
+					endif !condit(3)
+
+					do vv = 1,Nse
+						l=spinInds(vv,1)
+						d=spinInds(vv,2)
+
+						if ((l.LE.k).OR.(d.LE.c)) cycle
+
+						holdDist(16)=distMOs(i,l)
+						holdDist(17)=distMOs(i,d)
+						holdDist(18)=distMOs(j,l)
+						holdDist(19)=distMOs(j,d)
+						holdDist(20)=distMOs(k,l)
+						holdDist(21)=distMOs(k,d)
+						holdDist(22)=distMOs(a,l)
+						holdDist(23)=distMOs(a,d)
+						holdDist(24)=distMOs(b,l)
+						holdDist(25)=distMOs(b,d)
+						holdDist(26)=distMOs(c,l)
+						holdDist(27)=distMOs(c,d)
+						holdDist(28)=distMOs(l,d)
+
+						cmv(4)      =maxval(holdDist(1:28))
+						condit(4)   =(cmv(4).GT.cueD(dlayer-1)).AND.(cmv(4).LT.cueD(dlayer))
+
+						if (condit(4)) then
+
+							Fx=      +t2(i,j,a,b)*t2(k,l,c,d)&
+							&        -t2(i,k,a,b)*t2(j,l,c,d)&
+							&        -t2(k,j,a,b)*t2(i,l,c,d)&
+							&        +t2(i,l,a,b)*t2(j,k,c,d)&
+							&        +t2(l,j,a,b)*t2(i,k,c,d)&
+							&        +t2(k,l,a,b)*t2(i,j,c,d)&
+							&        -t2(i,j,a,c)*t2(k,l,b,d)&
+							&        +t2(i,k,a,c)*t2(j,l,b,d)&
+							&        +t2(k,j,a,c)*t2(i,l,b,d)&
+							&        -t2(i,l,a,c)*t2(j,k,b,d)&
+							&        -t2(l,j,a,c)*t2(i,k,b,d)&
+							&        -t2(k,l,a,c)*t2(i,j,b,d)&
+							&        -t2(i,j,c,b)*t2(k,l,a,d)&
+							&        +t2(i,k,c,b)*t2(j,l,a,d)&
+							&        +t2(k,j,c,b)*t2(i,l,a,d)&
+							&        -t2(i,l,c,b)*t2(j,k,a,d)&
+							&        -t2(l,j,c,b)*t2(i,k,a,d)&
+							&        -t2(k,l,c,b)*t2(i,j,a,d)
+ 
+							Gx=      +t1(i,a)*t1(j,b)*t2(k,l,c,d)&
+							&        -t1(i,a)*t1(j,c)*t2(k,l,b,d)&
+							&        +t1(i,a)*t1(j,d)*t2(k,l,b,c)&
+							&        -t1(i,a)*t1(k,b)*t2(j,l,c,d)&
+							&        -t1(i,a)*t1(k,d)*t2(j,l,b,c)&
+							&        +t1(i,a)*t1(k,c)*t2(j,l,b,d)&
+							&        +t1(i,a)*t1(l,b)*t2(j,k,c,d)&
+							&        -t1(i,a)*t1(l,c)*t2(j,k,b,d)&
+							&        +t1(i,a)*t1(l,d)*t2(j,k,b,c)&
+
+							&        -t1(i,c)*t1(j,b)*t2(k,l,a,d)&
+							&        +t1(i,c)*t1(k,b)*t2(j,l,a,d)&
+							&        -t1(i,c)*t1(l,b)*t2(j,k,a,d)&
+							&        +t1(i,c)*t1(j,d)*t2(k,l,a,b)&
+							&        -t1(i,c)*t1(k,d)*t2(j,l,a,b)&
+							&        +t1(i,c)*t1(l,d)*t2(j,k,a,b)&
+
+							&        +t1(i,d)*t1(j,b)*t2(k,l,a,c)&
+							&        +t1(i,d)*t1(l,b)*t2(j,k,a,c)&
+							&        -t1(i,d)*t1(k,b)*t2(j,l,a,c)&
+
+							&        -t1(j,a)*t1(i,b)*t2(k,l,c,d)&
+							&        +t1(j,a)*t1(i,c)*t2(k,l,b,d)&
+							&        -t1(j,a)*t1(i,d)*t2(k,l,b,c)&
+							&        +t1(j,a)*t1(k,b)*t2(i,l,c,d)&
+							&        -t1(j,a)*t1(k,c)*t2(i,l,b,d)&
+							&        +t1(j,a)*t1(k,d)*t2(i,l,b,c)&
+							&        -t1(j,a)*t1(l,b)*t2(i,k,c,d)&
+							&        +t1(j,a)*t1(l,c)*t2(i,k,b,d)&
+							&        -t1(j,a)*t1(l,d)*t2(i,k,b,c)&
+
+							&        +t1(j,c)*t1(i,b)*t2(k,l,a,d)&
+							&        -t1(j,c)*t1(k,b)*t2(i,l,a,d)&
+							&        +t1(j,c)*t1(l,b)*t2(i,k,a,d)&
+							&        -t1(j,c)*t1(i,d)*t2(k,l,a,b)&
+							&        +t1(j,c)*t1(k,d)*t2(i,l,a,b)&
+							&        -t1(j,c)*t1(l,d)*t2(i,k,a,b)&
+
+							&        -t1(j,d)*t1(i,b)*t2(k,l,a,c)&
+							&        +t1(j,d)*t1(k,b)*t2(i,l,a,c)&
+							&        -t1(j,d)*t1(l,b)*t2(i,k,a,c)&
+
+							&        +t1(k,a)*t1(i,b)*t2(j,l,c,d)&
+							&        -t1(k,a)*t1(i,c)*t2(j,l,b,d)&
+							&        +t1(k,a)*t1(i,d)*t2(j,l,b,c)&
+							&        -t1(k,a)*t1(j,b)*t2(i,l,c,d)&
+							&        +t1(k,a)*t1(j,c)*t2(i,l,b,d)&
+							&        -t1(k,a)*t1(j,d)*t2(i,l,b,c)&
+							&        +t1(k,a)*t1(l,b)*t2(i,j,c,d)&
+							&        -t1(k,a)*t1(l,c)*t2(i,j,b,d)&
+							&        +t1(k,a)*t1(l,d)*t2(i,j,b,c)&
+
+							&        -t1(k,c)*t1(i,b)*t2(j,l,a,d)&
+							&        +t1(k,c)*t1(j,b)*t2(i,l,a,d)&
+							&        -t1(k,c)*t1(l,b)*t2(i,j,a,d)&
+							&        +t1(k,c)*t1(i,d)*t2(j,l,a,b)&
+							&        -t1(k,c)*t1(j,d)*t2(i,l,a,b)&
+							&        +t1(k,c)*t1(l,d)*t2(i,j,a,b)&
+
+							&        +t1(k,d)*t1(i,b)*t2(j,l,a,c)&
+							&        -t1(k,d)*t1(j,b)*t2(i,l,a,c)&
+							&        +t1(k,d)*t1(l,b)*t2(i,j,a,c)&
+
+							&        -t1(l,a)*t1(i,b)*t2(j,k,c,d)&
+							&        +t1(l,a)*t1(i,c)*t2(j,k,b,d)&
+							&        -t1(l,a)*t1(i,d)*t2(j,k,b,c)&
+							&        +t1(l,a)*t1(j,b)*t2(i,k,c,d)&
+							&        -t1(l,a)*t1(j,c)*t2(i,k,b,d)&
+							&        +t1(l,a)*t1(j,d)*t2(i,k,b,c)&
+							&        -t1(l,a)*t1(k,b)*t2(i,j,c,d)&
+							&        +t1(l,a)*t1(k,c)*t2(i,j,b,d)&
+							&        -t1(l,a)*t1(k,d)*t2(i,j,b,c)&
+
+							&        +t1(l,c)*t1(i,b)*t2(j,k,a,d)&
+							&        -t1(l,c)*t1(j,b)*t2(i,k,a,d)&
+							&        +t1(l,c)*t1(k,b)*t2(i,j,a,d)&
+							&        -t1(l,c)*t1(i,d)*t2(j,k,a,b)&
+							&        +t1(l,c)*t1(j,d)*t2(i,k,a,b)&
+							&        -t1(l,c)*t1(k,d)*t2(i,j,a,b)&
+
+							&        -t1(l,d)*t1(i,b)*t2(j,k,a,c)&
+							&        +t1(l,d)*t1(j,b)*t2(i,k,a,c)&
+							&        -t1(l,d)*t1(k,b)*t2(i,j,a,c)
+
+							Hx=      +t1(i,a)*t1(j,b)*t1(k,c)*t1(l,d)&
+							&        -t1(j,a)*t1(i,b)*t1(k,c)*t1(l,d)&
+							&        -t1(i,a)*t1(k,b)*t1(j,c)*t1(l,d)&
+							&        +t1(k,a)*t1(i,b)*t1(j,c)*t1(l,d)&
+							&        -t1(k,a)*t1(j,b)*t1(i,c)*t1(l,d)&
+							&        +t1(j,a)*t1(k,b)*t1(i,c)*t1(l,d)&
+							&        -t1(i,a)*t1(j,b)*t1(l,c)*t1(k,d)&
+							&        +t1(j,a)*t1(i,b)*t1(l,c)*t1(k,d)&
+							&        +t1(i,a)*t1(l,b)*t1(j,c)*t1(k,d)&
+							&        -t1(l,a)*t1(i,b)*t1(j,c)*t1(k,d)&
+							&        +t1(l,a)*t1(j,b)*t1(i,c)*t1(k,d)&
+							&        -t1(j,a)*t1(l,b)*t1(i,c)*t1(k,d)&
+							&        -t1(i,a)*t1(l,b)*t1(k,c)*t1(j,d)&
+							&        +t1(l,a)*t1(i,b)*t1(k,c)*t1(j,d)&
+							&        +t1(i,a)*t1(k,b)*t1(l,c)*t1(j,d)&
+							&        -t1(k,a)*t1(i,b)*t1(l,c)*t1(j,d)&
+							&        +t1(k,a)*t1(l,b)*t1(i,c)*t1(j,d)&
+							&        -t1(l,a)*t1(k,b)*t1(i,c)*t1(j,d)&
+							&        -t1(l,a)*t1(j,b)*t1(k,c)*t1(i,d)&
+							&        +t1(j,a)*t1(l,b)*t1(k,c)*t1(i,d)&
+							&        +t1(l,a)*t1(k,b)*t1(j,c)*t1(i,d)&
+							&        -t1(k,a)*t1(l,b)*t1(j,c)*t1(i,d)&
+							&        +t1(k,a)*t1(j,b)*t1(l,c)*t1(i,d)&
+							&        -t1(j,a)*t1(k,b)*t1(l,c)*t1(i,d)
+
+							hold8(6)=hold8(6)+Fx*Fx
+							hold8(7)=hold8(7)+Gx*Gx
+							hold8(8)=hold8(8)+Hx*Hx
+							cvalue=Fx+Gx+Hx
+
+							hnew(1,1)=hnew(1,1)+Ax*Ax        *rmeanval(holdDist(1:1))&
+							&                  +(Bx+Cx)**2   *rmeanval(holdDist(1:6))&
+							&                  +(Dx+Ex)**2   *rmeanval(holdDist(1:15))&
+							&                  +(Fx+Gx+Hx)**2*rmeanval(holdDist(1:28))
+
+							hnew(1,2)=hnew(1,2)+( Ax*Ax+(Bx+Cx)**2+(Dx+Ex)**2+(Fx+Gx+Hx)**2 )
+
+							hnew(2,1)=hnew(2,1)+Ax*Ax        *maxval(holdDist(1:1))&
+							&                  +(Bx+Cx)**2   *maxval(holdDist(1:6))&
+							&                  +(Dx+Ex)**2   *maxval(holdDist(1:15))&
+							&                  +(Fx+Gx+Hx)**2*maxval(holdDist(1:28))
+							hnew(2,2)=hnew(2,2)+( Ax*Ax+(Bx+Cx)**2+(Dx+Ex)**2+(Fx+Gx+Hx)**2 )
+							
+							sss(4)=sss(4)+cvalue*cvalue
+							holdContributions(i     ,dLayer,1)=holdContributions(i     ,dLayer,1)+cvalue*cvalue
+							holdContributions(j     ,dLayer,1)=holdContributions(j     ,dLayer,1)+cvalue*cvalue
+							holdContributions(k     ,dLayer,1)=holdContributions(k     ,dLayer,1)+cvalue*cvalue
+							holdContributions(l     ,dLayer,1)=holdContributions(l     ,dLayer,1)+cvalue*cvalue
+							holdContributions(a-Nsel,dLayer,2)=holdContributions(a-Nsel,dLayer,2)+cvalue*cvalue
+							holdContributions(b-Nsel,dLayer,2)=holdContributions(b-Nsel,dLayer,2)+cvalue*cvalue
+							holdContributions(c-Nsel,dLayer,2)=holdContributions(c-Nsel,dLayer,2)+cvalue*cvalue
+							holdContributions(d-Nsel,dLayer,2)=holdContributions(d-Nsel,dLayer,2)+cvalue*cvalue
+						endif !condit(4)
+
+					enddo !vv
+				enddo !pp
+			enddo !nn
+		enddo !mm
+
+		holdValues(dlayer,1)=sss(1); holdValues(dlayer,2)=sss(2)
+		holdValues(dlayer,3)=sss(3); holdValues(dlayer,4)=sss(4)
+		holdValues(dlayer,5)=sum(sss)
+
+		sumw(1)=sumw(1)+sss(1); sumw(2)=sumw(2)+sss(2)
+		sumw(3)=sumw(3)+sss(3); sumw(4)=sumw(4)+sss(4)
+	enddo; write (su,*) !dlayer
+
+	!write (*,*) sumw(1:4)
+
+	holdValues(maxNei+1,1)=sumw(1); holdValues(maxNei+1,2)=sumw(2)
+	holdValues(maxNei+1,3)=sumw(3); holdValues(maxNei+1,4)=sumw(4)
+	holdValues(maxNei+1,5)=sum(sumw)
+
+	birav =(holdValues(maxNei+1,5)-holdValues(maxNei+1,1))/(1.d0+holdValues(maxNei+1,5))
+	birav2= holdValues(maxNei+1,2)/(1+holdValues(maxNei+1,1)+holdValues(maxNei+1,2))
+
+	sss(1)=holdValues(maxNei+1,5)
+	holdValues=holdValues/sss(1)
+	holdValues(maxNei+1,5)=sss(1)
+
+	lav=0.d0
+	do dlayer = 1,maxNei
+		lav=lav+dlayer*holdValues(dlayer,5)
+	enddo
+	write (fu,'(4X,"Average L:",2X,F7.4)') lav   ; write (ou,'(4X,"Average L:",2X,F7.4)') lav
+	write (fu,'(4X,"Nodd (WF):",2X,F7.4)') birav ; write (ou,'(4X,"Nodd (WF):",2X,F7.4)') birav
+	write (fu,'(4X,"Nodd2(WF):",2X,F7.4)') birav2; write (ou,'(4X,"Nodd2(WF):",2X,F7.4)') birav2
+
+	write (fu,300); write (ou,300)
+	do dlayer = 1,maxNei
+		write (fu,301) dlayer,holdValues(dlayer,:); write (ou,301) dlayer,holdValues(dlayer,:)
+	enddo
+	write (fu,302) holdValues(maxNei+1,:); write (ou,302) holdValues(maxNei+1,:)
+	write (fu,303) (1.d0-holdValues(1,5))/holdValues(1,5)
+
+	divisor=1.d0
+	divisor=sum(hold8)
+	!divisor=sum(sumw)
+
+	write (fu,304) 'Contribution by type:'
+	write (fu,305) '                  t1:',100.d0*hold8(1)/divisor
+	write (fu,305) '                  t2:',100.d0*hold8(2)/divisor
+	write (fu,305) '               t1*t1:',100.d0*hold8(3)/divisor
+	write (fu,305) '               t1*t2:',100.d0*hold8(4)/divisor
+	write (fu,305) '            t1*t1*t1:',100.d0*hold8(5)/divisor
+	write (fu,305) '               t2*t2:',100.d0*hold8(6)/divisor
+	write (fu,305) '            t2*t1*t1:',100.d0*hold8(7)/divisor
+	write (fu,305) '         t1*t1*t1*t1:',100.d0*hold8(8)/divisor
+	write (fu,304) repeat('_',28)
+	write (fu,305) '             pure t1:',100.d0*(hold8(1)+hold8(3)+hold8(5)+hold8(8))/divisor
+	write (fu,305) '             pure t2:',100.d0*(hold8(2)+hold8(6))/divisor
+	write (fu,305) '               mixed:',100.d0*(hold8(4)+hold8(7))/divisor
+	write (fu,304) repeat('_',28)
+	write (fu,305) ' overall uncertainty:',100.d0*abs( sum(sumw)-sum(hold8) )              /sum(sumw)
+	write (fu,305) '   uncertainty in C1:',100.d0*abs( sumw(1)-hold8(1) )                  /sumw(1)
+	write (fu,305) '   uncertainty in C2:',100.d0*abs( sumw(2)-hold8(2)-hold8(3) )         /sumw(2)
+	write (fu,305) '   uncertainty in C3:',100.d0*abs( sumw(3)-hold8(4)-hold8(5) )         /sumw(3)
+	write (fu,305) '   uncertainty in C4:',100.d0*abs( sumw(4)-hold8(6)-hold8(7)-hold8(8) )/sumw(4)	
+
+	write (ou,304) 'Contribution by type:'
+	write (ou,305) '                  t1:',100.d0*hold8(1)/divisor
+	write (ou,305) '                  t2:',100.d0*hold8(2)/divisor
+	write (ou,305) '               t1*t1:',100.d0*hold8(3)/divisor
+	write (ou,305) '               t1*t2:',100.d0*hold8(4)/divisor
+	write (ou,305) '            t1*t1*t1:',100.d0*hold8(5)/divisor
+	write (ou,305) '               t2*t2:',100.d0*hold8(6)/divisor
+	write (ou,305) '            t2*t1*t1:',100.d0*hold8(7)/divisor
+	write (ou,305) '         t1*t1*t1*t1:',100.d0*hold8(8)/divisor
+	write (ou,304) repeat('_',28)
+	write (ou,305) '             pure t1:',100.d0*(hold8(1)+hold8(3)+hold8(5)+hold8(8))/divisor
+	write (ou,305) '             pure t2:',100.d0*(hold8(2)+hold8(6))/divisor
+	write (ou,305) '               mixed:',100.d0*(hold8(4)+hold8(7))/divisor
+	write (ou,304) repeat('_',28)
+	write (ou,305) ' overall uncertainty:',100.d0*abs( sum(sumw)-sum(hold8) )              /sum(sumw)
+	write (ou,305) '   uncertainty in C1:',100.d0*abs( sumw(1)-hold8(1) )                  /sumw(1)
+	write (ou,305) '   uncertainty in C2:',100.d0*abs( sumw(2)-hold8(2)-hold8(3) )         /sumw(2)
+	write (ou,305) '   uncertainty in C3:',100.d0*abs( sumw(3)-hold8(4)-hold8(5) )         /sumw(3)
+	write (ou,305) '   uncertainty in C4:',100.d0*abs( sumw(4)-hold8(6)-hold8(7)-hold8(8) )/sumw(4)
+
+	gsum=0.d0
+	do dLayer = 1,maxNei
+		gsum=gsum+rsum(holdContributions(:,dLayer,1))
+		gsum=gsum+rsum(holdContributions(:,dLayer,2))
+	enddo
+
+	do i = 2,Nsel,2
+!		write (*,*) i/2,' <==',i,' +',i-1
+		holdContributions(i/2,:,:)=holdContributions(i,:,:)+holdContributions(i-1,:,:)
+	enddo
+
+	!write (*,*) gsum,
+
+	holdContributions=100.d0*holdContributions/gsum
+
+	call printer(holdContributions(1:Nsel/2,:,1),fu,'Donate','00.00',transpose=true)
+	call printer(holdContributions(1:Nsel/2,:,2),fu,'Accept','00.00',transpose=true)
+	call printer(holdContributions(1:Nsel/2,:,1)+holdContributions(:,:,2),fu,'Total','00.00',transpose=true)
+
+	write (fu,'(6X,<Nsel/2>(1X,F6.2))') ( rsum(holdContributions(i,:,1))+rsum(holdContributions(i,:,2)), i=1,Nsel/2)
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!
+	birad=0.d0; rav=0.d0
+	do mm = 1,Nse
+		i=spinInds(mm,1)
+		a=spinInds(mm,2)
+
+		do nn = 1,Nse
+			j=spinInds(nn,1)
+			b=spinInds(nn,2)
+
+			if ((j.LE.i).OR.(b.LE.a)) cycle
+
+			Bx=t2(i,j,a,b); Cx=t1(i,a)*t1(j,b)-t1(i,b)*t1(j,a)
+			cvalue=(Bx+Cx)*(Bx+Cx)
+
+			rav=rav+abs(distMOs(i,j)-distMOs(a,b))*cvalue
+
+			ui=i/2+mod(i,2); ua=(a-Nsel)/2+mod(a-Nsel,2)
+			uj=j/2+mod(j,2); ub=(b-Nsel)/2+mod(b-Nsel,2)
+
+			if ((ui.EQ.uj).AND.(ua.NE.ub)) then
+				birad(1)=birad(1)+cvalue
+			elseif ((ui.NE.uj).AND.(ua.EQ.ub)) then
+				birad(2)=birad(2)+cvalue
+			elseif ((ui.EQ.uj).AND.(ua.EQ.ub)) then
+				birad(3)=birad(3)+cvalue
+			elseif ((ui.NE.uj).AND.(ua.NE.ub)) then
+				birad(4)=birad(4)+cvalue
+			endif
+
+		enddo
+	enddo
+
+	cvalue=sum(birad)
+
+	rav=rav/cvalue
+	write (ou,500) ( birad(i),100.d0*birad(i)/cvalue, i=1,4 ),cvalue,rav
+	write (fu,500) ( birad(i),100.d0*birad(i)/cvalue, i=1,4 ),cvalue,rav
+500 format (/'C(iiab):  ',F8.4,1X,F6.2,'%'&
+			/'C(ijaa):  ',F8.4,1X,F6.2,'%'&
+			/'C(iiaa):  ',F8.4,1X,F6.2,'%'&
+			/'C(ijab):  ',F8.4,1X,F6.2,'%'&
+			/'sum:      ',F8.4            &
+			/'Average R:',F8.4/)
+!	stop
+!
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=5 ! statistics for t1
+	if (chaps(cChap)) then
+
+	do k = 1,maxNei
+
+		mean(k)=0.d0; count1=0; minv(k)=1.d0; maxv(k)=0.d0
+		do mm = 1,Ne
+			ui=spatInds(mm,1)
+			ua=spatInds(mm,2)
+
+			i=ui*2-1; a=ua*2-1
+
+			cmv(1)=distMOs(i,a)
+			if ((cmv(1).GT.cueD(k-1)).AND.(cmv(1).LT.cueD(k))) then
+				if (abs(t1(i,a)).GT.maxv(k)) maxv(k)=abs(t1(i,a))
+				if (abs(t1(i,a)).LT.minv(k)) minv(k)=abs(t1(i,a))
+				mean(k)=mean(k)+abs(t1(i,a))
+				count1=count1+1
+			end if
+		enddo
+
+		if (count1.EQ.0) count1=1
+
+		mean(k)=mean(k)/dble(count1)
+	enddo	
+
+	write (fu,'(/4X,A)'          ) ' Statistics for t1'
+	write (fu,'(4X,A,4(3X,A,3X),1X,A)') ' k',' maxval','minval',' mean ','  sd  ','  number  '
+	do k = 1,maxNei
+
+		sd(k)=0.d0; count1=0
+
+		do mm = 1,Ne
+			ui=spatInds(mm,1)
+			ua=spatInds(mm,2)
+
+			i=ui*2-1; a=ua*2-1
+			cmv(1)=distMOs(i,a)
+			if ((cmv(1).GT.cueD(k-1)).AND.(cmv(1).LT.cueD(k))) then
+				sd(k)=sd(k)+(abs(t1(i,a))-mean(k))**2
+				count1=count1+1
+			end if
+		enddo
+
+		if (count1.EQ.0) count1=1
+
+		sd(k)=sqrt(sd(k)/dble(count1))
+		write (fu,'(4X,i2,4(1X,ES11.4),1X,i10)') k,maxv(k),minv(k),mean(k),sd(k),count1
+	enddo
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=5 ! statistics for t2
+	if (chaps(cChap)) then
+
+	do k = 1,maxNei
+
+		mean(k)=0.d0; minv(k)=1.d0; maxv(k)=0.d0; count1=0
+		do mm = 1,Ne
+			ui=spatInds(mm,1)
+			ua=spatInds(mm,2)
+			do nn = mm,Ne
+				uj=spatInds(nn,1)
+				ub=spatInds(nn,2)
+
+				i=ui*2-1; a=ua*2-1
+				j=uj*2  ; b=ub*2
+
+				holdDist(1)=distMOs(i,j)
+				holdDist(2)=distMOs(i,a)
+				holdDist(3)=distMOs(i,b)
+				holdDist(4)=distMOs(j,a)
+				holdDist(5)=distMOs(j,b)
+				holdDist(6)=distMOs(a,b)
+
+				cmv(1)=maxval(holdDist(1:6))
+
+				if ((cmv(1).GT.cueD(k-1)).AND.(cmv(1).LT.cueD(k))) then
+					if (abs(t2(i,j,a,b)).GT.maxv(k)) maxv(k)=abs(t2(i,j,a,b))
+					if (abs(t2(i,j,a,b)).LT.minv(k)) minv(k)=abs(t2(i,j,a,b))
+					mean(k)=mean(k)+abs(t2(i,j,a,b))
+					count1=count1+1
+				end if
+			enddo
+		enddo
+
+		if (count1.EQ.0) count1=1
+
+		mean(k)=mean(k)/dble(count1)
+	enddo
+
+	write (fu,'(/4X,A)'          ) ' Statistics for t2'
+	write (fu,'(4X,A,4(3X,A,3X),1X,A)') ' k',' maxval','minval',' mean ','  sd  ','  number  '
+	do k = 1,maxNei
+
+		sd(k)=0.d0; count1=0
+		do mm = 1,Ne
+			ui=spatInds(mm,1)
+			ua=spatInds(mm,2)
+			do nn = mm,Ne
+				uj=spatInds(nn,1)
+				ub=spatInds(nn,2)
+
+				i=ui*2-1; a=ua*2-1
+				j=uj*2  ; b=ub*2
+
+				holdDist(1)=distMOs(i,j)
+				holdDist(2)=distMOs(i,a)
+				holdDist(3)=distMOs(i,b)
+				holdDist(4)=distMOs(j,a)
+				holdDist(5)=distMOs(j,b)
+				holdDist(6)=distMOs(a,b)
+
+				cmv(1)=maxval(holdDist(1:6))
+
+				if ((cmv(1).GT.cueD(k-1)).AND.(cmv(1).LT.cueD(k))) then
+					sd(k)=sd(k)+(abs(t2(i,j,a,b))-mean(k))**2
+					count1=count1+1
+				end if
+			enddo
+		enddo
+
+		if (count1.EQ.0) count1=1
+
+		sd(k)=sqrt(sd(k)/dble(count1))
+		write (fu,'(4X,i2,4(1X,ES11.4),1X,i10)') k,maxv(k),minv(k),mean(k),sd(k),count1
+	enddo
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	cChap=6 ! configurational compound
+	if (chaps(cChap)) then
+
+	ilen=mid(Nsel/2)
+	zlen=7
+	t1plen=15+2*ilen
+	t2plen=19+4*ilen
+
+	dCUE=int(mmult).NE.1
+
+	write (fu,497)
+	if (dCUE) then
+		write (fu,498)
+	else
+		write (fu,499)
+	endif
+
+	write (fu,400); ulen=zlen
+
+	do i = 1,Nsel,2
+	do a = 1,Nsel,2
+		if (abs(t1(i,a+Nsel)).GT.prBar) then
+			if (dCUE) then
+				ui=(i+1)/2;          ua=(a+1)/2
+			else
+				ui=Nsel/2-(i+1)/2+1; ua=(a+1)/2
+			endif
+
+			if (ulen+t1plen.GT.setfLineLen) then
+				write (fu,401) t1(i,a+Nsel),ui,ua; ulen=zlen+t1plen
+			else
+				write (fu,402) t1(i,a+Nsel),ui,ua; ulen=ulen+t1plen
+			endif
+		endif
+	enddo
+	enddo
+
+	write (fu,*); ulen=setfLineLen
+
+	do i = 1,Nsel,2; do a = 1,Nsel,2
+	do j = i,Nsel  ; do b = a,Nsel
+
+		if (abs(t2(i,j,a+Nsel,b+Nsel)).GT.prBar) then
+			if (dCUE) then
+				ui=(i+1)/2;          ua=(a+1)/2; uj=(j+1)/2;          ub=(b+1)/2
+			else
+				ui=Nsel/2-(i+1)/2+1; ua=(a+1)/2; uj=Nsel/2-(j+1)/2+1; ub=(b+1)/2
+			endif
+
+			if (ulen+t2plen.GT.setfLineLen) then
+				write (fu,411) t2(i,j,a+Nsel,b+Nsel),ui,ua,uj,ub; ulen=zlen+t2plen
+			else
+				write (fu,412) t2(i,j,a+Nsel,b+Nsel),ui,ua,uj,ub; ulen=ulen+t2plen
+			endif
+		endif
+
+	enddo; enddo
+	enddo; enddo
+
+	write (fu,*)
+
+	endif !cChap
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+	deallocate (sumt1,sumt2,maxt1,maxt2,inteContr,inteAmp,efft1,efft2,countt)
+	deallocate (spinInds,spatInds,holdValues,holdContributions,mean,sd,minv,maxv)
+
+	if (tdlist.NE.0) then
+		write (fu,'(/A/)') adjustc('End of analize',setfLineLen,'=')
+		write (ou,'(/A/)') adjustc('End of analize',setfLineLen,'=')
+	endif
+
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+100 format (/4X,'Number of unique one-electron excitations:',1X,1i12)
+105 format ( 2X,A1,2(1X,i4),2X,ES16.9)
+108 format ( 31('_')/&
+&			 22X,i9)
+
+107 format (/4X,'Excitations in l=',1X,i3,1X,'ethylenes:'/)
+
+101 format (/4X,'Number of unique two-electron excitations:',1X,1i12/&
+&			 4X,'Only non-zero contribution to correlation energy is shown.'//&
+&			 4X,'In case of CUE, indexes correspond to ethylenes.'//&
+
+&			 7X,'i',4X,'a',4X,'j',4X,'b',9X,'t2',14X,'integral',7X,'contribution',5X,'ia',2X,'jb',1X,'exc')
+
+106 format (4A1,4(i4,1X),1X,ES16.9,2X,ES16.9,2X,ES16.9,1X,3(1X,i3))
+
+109 format ( 90('_')/&
+&			 81X,i9)
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+103 format (/4X,'Contribution to correlation energy from C1 and C2 by layers:'/)
+104 format ( 8X,i<mid(maxNei)>,2X,ES16.9,2X,ES16.9)
+114 format ( 8X,<mid(maxNei)+2*18>('_')/&
+&            8X,<mid(maxNei)>X,2X,ES16.9,2X,ES16.9)
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+198 format (/4X,13X,'-------------t1 NormAnalize-------------')
+199 format (/4X,13X,'-------------t2 NormAnalize-------------') 
+200 format ( 2X,14X,                             '|',4X,'||T||',4X,'|',1X,'Contrib. %',1X,'|',3X,'max(T)',3X,'|',3X,'N(T)',3X,'|',2X,'Efficacy')
+201 format ( 3X,'||cue(',i<mid(maxNei)>,')||',<4-mid(maxNei)>X,'|', 2X,F10.5,1X, '|',   1X,F10.5,1X,    '|', 1X,ES10.3,1X, '|',  1X,i8,1X,  '|',1X,F9.3)
+202 format ( 2X,76('_'))
+203 format ( 2X,14X,                             '|', 2X,F10.5,1X, '|',   1X,F10.5,1X,    '|', 1X,ES10.3,1X, '|',  1X,i8,1X,  '|',1X,F9.3)
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+204 format (/4X,'t1-diagnostics:',1X,F9.6/&
+&			 4X,'t2-diagnostics:',1X,F9.6)
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+300 format (/2X,'All values (except the last) are normalized on {W[1]+W[2]+W[3]+W[4]}.'/&
+&            2X,'L',5X,'Vl[1]',7X,'Vl[2]',7X,'Vl[3]',7X,'Vl[4]',9X,'Vl')
+301 format ( 1X,i2,1X,F11.7,1X,F11.7,1X,F11.7,1X,F11.7,1X,F11.7)
+302 format ( 2X,61('-')/&
+&			 2X,'W',1X,F11.7,1X,F11.7,1X,F11.7,1X,F11.7,1X,F11.7/)
+
+303 format (/4X,'Theta:',1X,F8.3/)
+304 format (4X,A)
+305 format (4X,A,1X,F6.3)
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+497 format (//4X,'Configurational compound of wave-function')
+498 format (  4X,"Orbitals correspond to ethylenes (i): i = occupied, i' = vacant.")
+499 format (  4X,"Occupied orbitals: 1=HOMO, 2=HOMO-1, etc. Vacant orbitals: 1'=LUMO, 2'=LUMO+1, etc.")
+
+400 format ('|PSI> ='\)
+
+401 format (/<zlen>X,1X,sp,ES9.2,ss,"|",i<ilen>,'->',i<ilen>,"'>"\)
+402 format (         1X,sp,ES9.2,ss,"|",i<ilen>,'->',i<ilen>,"'>"\)
+
+411 format (/<zlen>X,1X,sp,ES9.2,ss,"|",i<ilen>,'->',i<ilen>,"',",i<ilen>,'->',i<ilen>,"'>"\)
+412 format (         1X,sp,ES9.2,ss,"|",i<ilen>,'->',i<ilen>,"',",i<ilen>,'->',i<ilen>,"'>"\)
+! ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+
+	return
+
+	contains
+
+		real*8 function rmeanval(arr) result(ret)
+		implicit none
+
+		real*8    :: arr(:)
+		integer*4 :: i
+
+
+		ret=0.d0
+		do i = 1,UBound(arr,1)
+			ret=ret+arr(i)
+		enddo
+		ret=ret/UBound(arr,1)
+
+		return
+		end function rmeanval
+
+		real*8 function rsum(arr) result(ret)
+		implicit none
+
+		real*8    :: arr(:)
+		integer*4 :: i
+
+
+		ret=0.d0
+		do i = 1,UBound(arr,1)
+			ret=ret+arr(i)
+		enddo
+
+		return
+		end function rsum
+
+	end subroutine normAnalize

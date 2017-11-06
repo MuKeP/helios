@@ -1,9 +1,9 @@
-	subroutine projection_lrccsd_doubles_spin_cue
+    subroutine projection_lrccsd_doubles_spin_cue
 
-	implicit none
-
-
+    implicit none
 
 
-	return
-	end subroutine projection_lrccsd_doubles_spin_cue
+
+
+    return
+    end subroutine projection_lrccsd_doubles_spin_cue
