@@ -1,10 +1,12 @@
     program HELIOS
 
     use glob    , only: timecontrol
-    use glob    , only: void,signal,false,rglu,iglu,nullSub,pi,uch
+    use glob    , only: void,signal,false,true,rglu,iglu,nullSub,pi,uch
     use hdb     , only: onLoad,trapSignals,generalbd,setParams,onTrap,ccbd,ou,finalizeHelios
     use hdb     , only: sighup,sigabrt,sigint,sigterm,sigcont,sigstop,sigusr1
     use property, only: getPolarizability,getEnergy,getRDM
+
+    use sorts
 
     use hdb, only: mol,polarizbd,perturbate
     use printmod, only: prMatrix
@@ -16,7 +18,7 @@
 
     real(kind=rglu) :: Ax,Bx,Eref,field
 
-    integer(kind=iglu) :: mu,pX,pY,pZ
+    integer(kind=iglu) :: mu,pX,pY,pZ,k
     real(kind=rglu) :: sta,sto
 
 
@@ -70,9 +72,9 @@
     Ax=getEnergy('u-ccsd')   ; write (*,*) 'u-ccsd   ',Ax
     Ax=getEnergy('r-ccsd(t)'); write (*,*) 'r-ccsd(t)',Ax
     Ax=getEnergy('cue-ccsdt'); write (*,*) 'cue-ccsdt',Ax
-    Ax=getEnergy('u-ccsdt')  ; write (*,*) 'u-ccsdt  ',Ax
-    Ax=getEnergy('r-ccsdt')  ; write (*,*) 'r-ccsdt  ',Ax
-    Ax=getEnergy('fci')      ; write (*,*) 'fci      ',Ax
+    !Ax=getEnergy('u-ccsdt')  ; write (*,*) 'u-ccsdt  ',Ax
+    !Ax=getEnergy('r-ccsdt')  ; write (*,*) 'r-ccsdt  ',Ax
+    !Ax=getEnergy('fci')      ; write (*,*) 'fci      ',Ax
     sto=timecontrol()
     write (*,*) 'Time spent', sto-sta
     stop

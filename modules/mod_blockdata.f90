@@ -842,10 +842,10 @@
                     cycle
                 endif
             endif
-            
+
             pStart=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%accordCh%get()   , start=fnd)+1
             pEnd  =tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%separatorCh%get(), start=fnd)-1
-            
+
             !write (*,*) 'Accord ',bdSet(bdPos)%accordCh%get()
             !write (*,*) 'Separator ',bdSet(bdPos)%separatorCh%get()
             !write (*,*) 'Bounds ',pStart,pEnd,bdSet(bdPos)%bdStr%ln

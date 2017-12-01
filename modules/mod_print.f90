@@ -3,8 +3,9 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 !    use glob     , only: assignment (=)
-    use glob     , only: mid,sort,void,true,false,collectArray,lenTrimArray,uch_set
+    use glob     , only: mid,void,true,false,collectArray,lenTrimArray,uch_set
     use glob     , only: uch
+    use sorts    , only: qsort
     use fcontrol , only: fcNewID,fcNullID
     use txtParser, only: tpFill,tpIsStrInList,tpCount,tpNewLine,tpIndex,tpReduce,tpReplace
     use txtParser, only: tpInsert,tpLowerCase,tpSplit,tpSplitLen,tpRetSplit,operator(.in.)
@@ -1736,8 +1737,8 @@
             ulines=int(N/ucolumns)+1
             if (mod(N,ucolumns).EQ.0) ulines=ulines-1
             allocate (colLength(ucolumns),grid(ulines,ucolumns)); colLength=0; grid=0
-            void=sort(strLength,rev=true)
-            void=sort(hold     ,rev=true,attribute='length')
+            void=qsort(strLength,rev=true)
+            void=qsort(hold     ,rev=true,attribute='length')
             c=0
             do k = 1,N,ulines
                 c=c+1; colLength(c)=strLength(k)
@@ -1841,8 +1842,8 @@
             enddo
 
         case ('000') ! NOT ucolumns defined | NOT save order | NOT equal width
-            void=sort(strLength,rev=true)
-            void=sort(hold     ,rev=true,attribute='length')
+            void=qsort(strLength,rev=true)
+            void=qsort(hold     ,rev=true,attribute='length')
             ucolumns=0
 
             allocate (lgrid(0:N,N),ngrid(N,N))

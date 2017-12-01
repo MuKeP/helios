@@ -28,7 +28,7 @@
 
     !DEC$if (compiler.EQ.1) ! Intel Fortran Compiler
         use ifport , only: signal,system,getpid,splitpathqq
-        use ifport , only: SRT$REAL8,SRT$REAL4
+        use ifport , only: SRT$REAL16,SRT$REAL8,SRT$REAL4
         use ifport , only: SRT$INTEGER8,SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
         use ifport , only: SIGABRT,SIGINT,SIGTERM
         use ifposix, only: PXFSTRUCTCREATE
@@ -306,7 +306,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    elemental subroutine assign_uchGet(str,this)
+    subroutine assign_uchGet(str,this)
     implicit none
 
     character (len=:), allocatable, intent(out) :: str
@@ -1749,18 +1749,48 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SORT FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    integer(kind=iglu) function sort_r16(vector,rev) result(ret)
+    implicit none
+    real   (kind=r16kind)          :: vector(:),swap
+    logical(kind=iglu)  , optional :: rev
+    logical(kind=lglu)             :: urev
+    integer(kind=iglu)             :: send,k,vlen
+    integer(kind=i8kind)           :: address
+    integer(kind=i4kind)           :: vtype
+
+
+    urev=false; if (present(rev)) urev=rev
+
+    send=ubound(vector,1); address=loc(vector); vtype=SRT$REAL16
+    call sortqq(address,send,vtype)
+    ret=send
+
+    if (urev) then
+        vlen=ubound(vector,1)
+        do k = 1,vlen/2
+            swap=vector(k); vector(k)=vector(vlen-k+1); vector(vlen-k+1)=swap
+        enddo
+    endif
+
+    return
+    end function sort_r16
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     integer(kind=iglu) function sort_r8(vector,rev) result(ret)
     implicit none
     real   (kind=r8kind)           :: vector(:),swap
     logical(kind=iglu)  , optional :: rev
     logical(kind=lglu)             :: urev
     integer(kind=iglu)             :: send,k,vlen
+    integer(kind=i8kind)           :: address
+    integer(kind=i4kind)           :: vtype
 
 
     urev=false; if (present(rev)) urev=rev
 
-    send=ubound(vector,1)
-    call sortqq(loc(vector),send,SRT$REAL8)
+    send=ubound(vector,1); address=loc(vector); vtype=SRT$REAL8
+    call sortqq(address,send,vtype)
     ret=send
 
     if (urev) then
@@ -1781,12 +1811,14 @@
     logical(kind=iglu)  , optional :: rev
     logical(kind=lglu)             :: urev
     integer(kind=iglu)             :: send,k,vlen
+    integer(kind=i8kind)           :: address
+    integer(kind=i4kind)           :: vtype
 
 
     urev=false; if (present(rev)) urev=rev
 
-    send=UBound(vector,1)
-    call sortqq(loc(vector),send,SRT$REAL4)
+    send=UBound(vector,1); address=loc(vector); vtype=SRT$REAL4
+    call sortqq(address,send,vtype)
     ret=send
 
     if (urev) then
@@ -1801,18 +1833,55 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    integer(kind=iglu) function sort_i8(vector,rev) result(ret)
+    implicit none
+    integer(kind=i8kind)           :: vector(:),swap
+    logical(kind=lglu)  , optional :: rev
+    logical(kind=lglu)             :: urev
+    integer(kind=iglu)             :: send,k,vlen
+    integer(kind=i8kind)           :: address
+    integer(kind=i4kind)           :: vtype
+
+
+    urev=false; if (present(rev)) urev=rev
+
+    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER8
+    call sortqq(address,send,vtype)
+    ret=send
+
+    if (urev) then
+        vlen=UBound(vector,1)
+        do k = 1,vlen/2
+            swap=vector(k)
+            vector(k)=vector(vlen-k+1)
+            vector(vlen-k+1)=swap
+        enddo
+    endif
+
+    return
+    end function sort_i8
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     integer(kind=iglu) function sort_i4(vector,rev) result(ret)
     implicit none
     integer(kind=i4kind)           :: vector(:),swap
     logical(kind=lglu)  , optional :: rev
     logical(kind=lglu)             :: urev
     integer(kind=iglu)             :: send,k,vlen
+    integer(kind=i8kind)           :: address
+    integer(kind=i4kind)           :: vtype
 
+
+    integer(4) ln
+    integer(8) sz
 
     urev=false; if (present(rev)) urev=rev
 
-    send=UBound(vector,1)
-    call sortqq(loc(vector),send,SRT$INTEGER4)
+    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER4
+    !call sortqq(address,send,vtype)
+    ln=size(vector); sz=sizeof(vector(1))
+    call qsort(vector,ln,sz,compar)
     ret=send
 
     if (urev) then
@@ -1829,18 +1898,27 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    integer(2) function compar(a1,a2)
+    integer(4) a1,a2
+    compar=a1-a2
+    end function
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     integer(kind=iglu) function sort_i2(vector,rev) result(ret)
     implicit none
     integer(kind=i2kind)           :: vector(:),swap
     logical(kind=lglu)  , optional :: rev
     logical(kind=lglu)             :: urev
     integer(kind=iglu)             :: send,k,vlen
+    integer(kind=i8kind)           :: address
+    integer(kind=i4kind)           :: vtype
 
 
     urev=false; if (present(rev)) urev=rev
 
-    send=UBound(vector,1)
-    call sortqq(loc(vector),send,SRT$INTEGER2)
+    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER4
+    call sortqq(address,send,vtype)
     ret=send
 
     if (urev) then
@@ -1863,12 +1941,14 @@
     logical(kind=lglu)  , optional :: rev
     logical(kind=lglu)             :: urev
     integer(kind=iglu)             :: send,k,vlen
+    integer(kind=i8kind)           :: address
+    integer(kind=i4kind)           :: vtype
 
 
     urev=false; if (present(rev)) urev=rev
 
-    send=UBound(vector,1)
-    call sortqq(loc(vector),send,SRT$INTEGER1)
+    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER4
+    call sortqq(address,send,vtype)
     ret=send
 
     if (urev) then
@@ -1889,7 +1969,7 @@
     implicit none
     type(uch)                       :: vector(:),swap
     character (len=*), optional     :: attribute
-    character (len=len(attribute))  :: uattribute
+    character (len=8)               :: uattribute
     logical(kind=lglu), optional    :: rev
     logical(kind=lglu)              :: urev,cnd
     integer(kind=iglu)              :: N,k,cnt
@@ -1906,7 +1986,7 @@
     endif
 
     ret=0
-    select case (uattribute) ! assume that vector is small, bubble sort.
+    select case (trim(uattribute)) ! assume that vector is small, bubble sort.
         case ('length')
             do
                 cnt=0
