@@ -1,6 +1,6 @@
     program HELIOS
 
-    use glob    , only: timecontrol
+    use glob    , only: timecontrol,glMemoryLeft,timeControlCheckpoint,timestamp
     use glob    , only: void,signal,false,true,rglu,iglu,nullSub,pi,uch
     use hdb     , only: onLoad,trapSignals,generalbd,setParams,onTrap,ccbd,ou,finalizeHelios
     use hdb     , only: sighup,sigabrt,sigint,sigterm,sigcont,sigstop,sigusr1
@@ -9,7 +9,7 @@
     use sorts
 
     use hdb, only: mol,polarizbd,perturbate
-    use printmod, only: prMatrix
+    use printmod, only: prMatrix,prStrByVal
 
     use coupledCluster
     use lrccsdmodule
@@ -19,7 +19,7 @@
     real(kind=rglu) :: Ax,Bx,Eref,field
 
     integer(kind=iglu) :: mu,pX,pY,pZ,k
-    real(kind=rglu) :: sta,sto
+    real(kind=rglu)    :: sta,sto
 
 
     call onLoad; call trapSignals
@@ -59,26 +59,49 @@
 
 
     !call prMatrix(mol%core,6,'Perturbated core (outside)','^.00000',maxwidth=79)
-    sta=timecontrol()
-    Ax=getEnergy('huckel')   ; write (*,*) 'huckel   ',Ax
-    Ax=getEnergy('cue-ccs')  ; write (*,*) 'cue-ccs  ',Ax
-    Ax=getEnergy('hf')       ; write (*,*) 'hf       ',Ax
-    Ax=getEnergy('mp2')      ; write (*,*) 'mp2      ',Ax
-    Ax=getEnergy('mp3')      ; write (*,*) 'mp3      ',Ax
-    Ax=getEnergy('r-ccd')    ; write (*,*) 'r-ccd    ',Ax
-    Ax=getEnergy('u-ccd')    ; write (*,*) 'u-ccd    ',Ax
-    Ax=getEnergy('cue-ccsd') ; write (*,*) 'cue-ccsd ',Ax
-    Ax=getEnergy('r-ccsd')   ; write (*,*) 'r-ccsd   ',Ax
-    Ax=getEnergy('u-ccsd')   ; write (*,*) 'u-ccsd   ',Ax
-    Ax=getEnergy('r-ccsd(t)'); write (*,*) 'r-ccsd(t)',Ax
-    Ax=getEnergy('cue-ccsdt'); write (*,*) 'cue-ccsdt',Ax
+
+    void=timeControlCheckpoint('Started at',drop=true)
+    void=timeControlCheckpoint('',raw=true)
+    void=timeControlCheckpoint('Huckel    '//prStrByVal(getEnergy('huckel'   ),4,12),raw=true)
+    void=timeControlCheckpoint('cue-ccs   '//prStrByVal(getEnergy('cue-ccs'  ),4,12),raw=true)
+    void=timeControlCheckpoint('hf        '//prStrByVal(getEnergy('hf'       ),4,12),raw=true)
+    void=timeControlCheckpoint('mp2       '//prStrByVal(getEnergy('mp2'      ),4,12),raw=true)
+    void=timeControlCheckpoint('mp3       '//prStrByVal(getEnergy('mp3'      ),4,12),raw=true)
+    void=timeControlCheckpoint('r-ccd     '//prStrByVal(getEnergy('r-ccd'    ),4,12),raw=true)
+    void=timeControlCheckpoint('u-ccd     '//prStrByVal(getEnergy('u-ccd'    ),4,12),raw=true)
+    void=timeControlCheckpoint('cue-ccsd  '//prStrByVal(getEnergy('cue-ccsd' ),4,12),raw=true)
+    void=timeControlCheckpoint('r-ccsd    '//prStrByVal(getEnergy('r-ccsd'   ),4,12),raw=true)
+    void=timeControlCheckpoint('u-ccsd    '//prStrByVal(getEnergy('u-ccsd'   ),4,12),raw=true)
+    void=timeControlCheckpoint('r-ccsd(t) '//prStrByVal(getEnergy('r-ccsd(t)'),4,12),raw=true)
+    !void=timeControlCheckpoint('Starting CCSDT part'//' (Dropped '//timestamp()//')',drop=true,raw=true)
+    void=timeControlCheckpoint('cue-ccsdt '//prStrByVal(getEnergy('cue-ccsdt'),4,12),raw=true)
+    void=timeControlCheckpoint('u-ccsdt   '//prStrByVal(getEnergy('u-ccsdt'  ),4,12),raw=true)
+    void=timeControlCheckpoint('r-ccsdt   '//prStrByVal(getEnergy('r-ccsdt'  ),4,12),raw=true)
+    void=timeControlCheckpoint('fci       '//prStrByVal(getEnergy('fci'      ),4,12),raw=true)
+    void=timeControlCheckpoint('',raw=true)
+    void=timeControlCheckpoint('Finished at',drop=true)
+    stop
+
+
+
+    !Ax=getEnergy('huckel')   ; write (*,*) 'huckel   ',Ax
+    !Ax=getEnergy('cue-ccs')  ; write (*,*) 'cue-ccs  ',Ax
+    !Ax=getEnergy('hf')       ; write (*,*) 'hf       ',Ax
+    !Ax=getEnergy('mp2')      ; write (*,*) 'mp2      ',Ax
+    !Ax=getEnergy('mp3')      ; write (*,*) 'mp3      ',Ax
+    !Ax=getEnergy('r-ccd')    ; write (*,*) 'r-ccd    ',Ax
+    !Ax=getEnergy('u-ccd')    ; write (*,*) 'u-ccd    ',Ax
+    !Ax=getEnergy('cue-ccsd') ; write (*,*) 'cue-ccsd ',Ax
+    !Ax=getEnergy('r-ccsd')   ; write (*,*) 'r-ccsd   ',Ax
+    !Ax=getEnergy('u-ccsd')   ; write (*,*) 'u-ccsd   ',Ax
+    !Ax=getEnergy('r-ccsd(t)'); write (*,*) 'r-ccsd(t)',Ax
+    !Ax=getEnergy('cue-ccsdt'); write (*,*) 'cue-ccsdt',Ax
     !Ax=getEnergy('u-ccsdt')  ; write (*,*) 'u-ccsdt  ',Ax
     !Ax=getEnergy('r-ccsdt')  ; write (*,*) 'r-ccsdt  ',Ax
     !Ax=getEnergy('fci')      ; write (*,*) 'fci      ',Ax
-    sto=timecontrol()
-    write (*,*) 'Time spent', sto-sta
-    stop
+    !stop
 
+    sta=timecontrol()
     Ax=getEnergy('hf')         ; write (*,*) '0 hf       ',Ax; Bx=Ax
     Ax=getEnergy('hf',1)       ; write (*,*) '1 hf       ',Ax !+Bx
     Ax=getEnergy('hf',2)       ; write (*,*) '2 hf       ',Ax !+Bx

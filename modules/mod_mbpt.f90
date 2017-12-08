@@ -2,8 +2,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-!    use glob     , only: assignment(=)
-    use glob     , only: uch,uch_set,iglu,rglu,lglu,true,false
+    use glob     , only: assignment(=)
+    use glob     , only: uch,iglu,rglu,lglu,true,false,void,i8kind,glControlMemory
     use printmod , only: prMatrix,prEigenProblem
     use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
     use scf      , only: energySCF,finalizeSCF,printSCFSolution
@@ -46,7 +46,7 @@
 
     select case (method)
         case ('mp2','mp3')
-            umethod=uch_set(method)
+            umethod=method
 
         case default
             stop 'MBPT: Unknown method'
@@ -366,12 +366,12 @@
         case ('general')
             select case (action)
                 case ('allocate')
-                    allocate (Vs(N,No),V(N,N))
-                    allocate (density(N,N))
-                    allocate (R(No,No,No,No),F(No,No))
+                    void=glControlMemory(int( rglu*(N*No+N*N+No*No*No*No+No*No) ,kind=i8kind),'MBPT module')
+                    allocate (Vs(N,No),V(N,N),density(N,N),R(No,No,No,No),F(No,No))
                     Vs=0; V=0; density=0; R=0; F=0
                 case ('deallocate')
                     deallocate (Vs,V,density,R,F, stat=err)
+                    void=glControlMemory(int( rglu*(N*No+N*N+No*No*No*No+No*No) ,kind=i8kind),'MBPT module','free')
             end select
     end select
 

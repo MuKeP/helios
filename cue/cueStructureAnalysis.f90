@@ -1,6 +1,6 @@
     subroutine cueStructureAnalysis
 
-    use glob     , only: iglu,rglu,lglu,true,mid
+    use glob     , only: iglu,rglu,lglu,true,mid,void,i8kind,glControlMemory
     use hdb      , only: mol,cuebd,ou,su,ouWidth,ouIndent
     use txtParser, only: tpFill,tpShowRuler,tpAdjustc
     use printmod , only: prMatrix
@@ -20,6 +20,8 @@
 
 
     N=mol%nAtoms; Nocc=mol%nEls/2; M=mol%nBonds
+
+    void=glControlMemory(int( iglu*(N*N+Nocc*Nocc)+rglu*(N*N) ,kind=i8kind),'tmp. cue-structure analysis')
     allocate (idist(N,N))       ; idist=N**2
     allocate (moDist(Nocc,Nocc)); modist=0
     allocate (cueDistance(N,N)) ; cueDistance=mol%cueDist
@@ -49,9 +51,11 @@
 
     ! shortest path problem. Floyd-Warshall method.
     do k = 1,N
-        do i = 1,N; do j = 1,N
+        do i = 1,N
+        do j = 1,N
             idist(i,j)=min(idist(i,j),idist(i,k)+idist(k,j))
-        enddo; enddo
+        enddo
+        enddo
     enddo
 
     !$omp parallel default(shared) private(p,i,j,r,k,l)
@@ -69,7 +73,10 @@
         enddo
     enddo
     !$omp end parallel
-    NLayers=maxval(moDist)+1; allocate (cueLayers(0:NLayers))
+
+    NLayers=maxval(moDist)+1
+    void=glControlMemory(int( rglu*(NLayers+1) ,kind=i8kind),'tmp. cue-structure analysis')
+    allocate (cueLayers(0:NLayers))
 
     cueLayers=0
     do p = 1,Nocc-1
@@ -107,6 +114,7 @@
     enddo
 
     mol%nCUELayers=NLayers
+    void=glControlMemory(int( rglu*(NLayers+1) ,kind=i8kind),'tmp. cue-structure analysis')
     allocate (mol%cueLayers(0:NLayers)); mol%cueLayers=cueLayers(0:NLayers)
 
     do k = 0,3
@@ -160,6 +168,7 @@
         write (ou,*)
     enddo
 
+    void=glControlMemory(int( iglu*(Nocc*Nocc) ,kind=i8kind),'tmp. cue-structure analysis')
     allocate (relLayerPos(Nocc,Nocc)) !layer affiliation of "i-j" pairs
     !$omp parallel default(shared) private(i,j,k,condit)
     !$omp do
@@ -177,6 +186,7 @@
     enddo
     !$omp end parallel
 
+    void=glControlMemory(int( iglu*(N*NLayers+NLayers*2) ,kind=i8kind),'tmp. cue-structure analysis')
     allocate (relLayerPopulation(Nocc,NLayers),absLayerPopulation(NLayers,2))
 
     !$omp parallel default(shared) private(k,i,l,j,condit)
@@ -196,6 +206,7 @@
     !$omp end parallel
 
 
+    void=glControlMemory(int( iglu*(Nocc) ,kind=i8kind),'tmp. cue-structure analysis')
     allocate (absMOEmployment(Nocc)) !number of layers, where does ethylene employ.
 
     !$omp parallel default(shared) private(i,k,j,condit)
@@ -214,6 +225,7 @@
     !$omp end parallel
 
     !importance of current ethylene.
+    void=glControlMemory(int( iglu*(Nocc*NLayers+Nocc) ,kind=i8kind),'tmp. cue-structure analysis')
     allocate (relMOImportance(Nocc,NLayers),absMOImportance(Nocc))
 
     !$omp parallel default(shared) private(i,k,j,sum,condit)
@@ -253,6 +265,12 @@
     deallocate (idist,moDist,cueLayers,cueDistance)
     deallocate (relLayerPos,relLayerPopulation,absLayerPopulation)
     deallocate (absMOEmployment,relMOImportance,absMOImportance)
+
+    void=glControlMemory(int(&
+                             sizeof(idist)+sizeof(moDist)+sizeof(cueLayers)+sizeof(cueDistance)+&
+                             sizeof(relLayerPos)+sizeof(relLayerPopulation)+sizeof(absLayerPopulation)+&
+                             sizeof(absMOEmployment)+sizeof(relMOImportance)+sizeof(absMOImportance)&
+                             ,kind=i8kind),'tmp. cue-structure analysis','free')
 
     return
     end subroutine cueStructureAnalysis

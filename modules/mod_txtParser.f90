@@ -2,8 +2,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-!    use glob    , only: assignment (=)
-    use glob    , only: r8kind,void,voidl,true,false,NaN,uch,uch_set
+    use glob    , only: assignment (=)
+    use glob    , only: r8kind,void,voidl,true,false,NaN,uch
     use fcontrol, only: fcNewID,fcBanID,fcUnBanID,fcNullID
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -944,13 +944,13 @@
     sta=1
     do k = 1,ln-1
         sto=tpIndex(str,delim,cnt=k)
-        tpSplitHold(k)=uch_set(str(sta:sto-1))
+        tpSplitHold(k)=str(sta:sto-1)
 
 !        write (*,*) '#'//str(sta:sto-1)//'#'
 
         sta=sto+len(delim)
     enddo
-    tpSplitHold(ln)=uch_set(str(sta:))
+    tpSplitHold(ln)=str(sta:)
 
     if (present(arr)) then
         if (allocated(arr)) then
@@ -993,11 +993,11 @@
     sta=1
     do k = 1,ln-1
         sto=tpIndex(str%get(),delim%get(),cnt=k)
-        tpSplitHold(k)=uch_set(str%get(sta,sto-1))
+        tpSplitHold(k)=str%get(sta,sto-1)
 
         sta=sto+delim%ln
     enddo
-    tpSplitHold(ln)=uch_set(str%get(sta))
+    tpSplitHold(ln)=str%get(sta)
 
     if (present(arr)) then
         if (allocated(arr)) then

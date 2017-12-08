@@ -1,6 +1,6 @@
     subroutine prepareSparseIndexInformation
 
-    use glob                , only: iglu
+    use glob                , only: iglu,rglu,i8kind,void,glControlMemory
     use hdb                 , only: mol,cuebd
     use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,iapairs,notFitRadius
     use coupledClusterSparse
@@ -18,9 +18,11 @@
     enddo
     enddo
 
+    void=glControlMemory(int(2*iglu*Ne*2,kind=i8kind),'Spare coupled-cluster')
     allocate ( Indexs(Ne,2), Indexsbv(Ne,2) )
     Indexs=0; Indexsbv=0
 
+    void=glControlMemory(int(iglu*Nel*Nth,kind=i8kind),'Spare coupled-cluster')
     allocate ( intersectOrbitals(Nel,Nth) ); intersectOrbitals=0
 
 !    Indexs contains orbital pairs by excitation.
@@ -51,6 +53,8 @@
 
 !    cIndex contains number of excitations by orbitals.
 !    unexistent excitations will get 0 number.
+
+    void=glControlMemory(int(iglu*No*No,kind=i8kind),'Spare coupled-cluster')
     allocate ( cIndex(No,No) )
     cIndex=0
 
@@ -70,6 +74,7 @@
         enddo
     enddo
 
+    void=glControlMemory(int(iglu*(Nel+1+t1Ne+1+Nel*(No-Nel)+2*t1Ne),kind=i8kind),'Spare coupled-cluster')
     allocate ( t1erow(Nel+1),t1numcol(0:t1Ne),t1cIndex(1:Nel,Nel+1:No), t1Indexs(t1Ne,2) )
     t1erow=0; t1numcol=0; t1cIndex=0; t1Indexs=0
 
@@ -89,6 +94,8 @@
     enddo
     t1erow(Nel+1)=mm
 !   ~~~~~~~~~ List of suitable excitations ~~~~~~~~~   !
+
+    void=glControlMemory(int(iglu*No*(No+1),kind=i8kind),'Spare coupled-cluster')
     allocate ( t1mrEx(No,0:No) )
     ! t1mrEx = in case l!=maxnei
     ! t1mrEx(i,:) - list of excitations, that fits "i" by mol%cueLevel(0).
@@ -123,9 +130,11 @@
 
 !    byExOrbbv is the same massive but for Indexsbv (when sorted by vacant orbitals)
 
+    void=glControlMemory(int(iglu*(Ne*(Nel+1)+Ne*(No-Nel+1)),kind=i8kind),'Spare coupled-cluster')
     allocate ( byExOrb(Ne,Nel+1),byExOrbbv(Ne,Nel+1:No+1) )
     byExOrb=0; byExOrbbv=0
 
+    void=glControlMemory(int(iglu*(Ne+1)*(Nel+1),kind=i8kind),'Spare coupled-cluster')
     allocate ( occEx(0:Ne,0:Nel) )
     occEx=0
 
@@ -145,6 +154,7 @@
         occEx(mm,0)=cnt
     enddo
 
+    void=glControlMemory(int(iglu*No*(No+1),kind=i8kind),'Spare coupled-cluster')
     allocate ( mrEx(No,0:No) )
     ! mrEx = in case l!=maxnei
     ! mrEx(i,:) - list of excitations, that fits "i" by cueDistance.
@@ -189,11 +199,13 @@
     enddo
 
     ! amplitude arrays.
+    void=glControlMemory(int(rglu*(2*Nel*(No-Nel)+(Nue+1)*Nth+2*(Nue+1)),kind=i8kind),'Spare coupled-cluster')
     allocate ( t1(1:Nel,Nel+1:No),d1(1:Nel,Nel+1:No) )
     allocate ( pvd(0:Nue,1:Nth) )
     allocate ( vt(0:Nue),vd(0:Nue) )
 
     ! index information
+    void=glControlMemory(int( iglu*(2*(Nue+Ne+2)) ,kind=i8kind),'Spare coupled-cluster')
     allocate ( numcol  (Nue),erow  (0:Ne+1) )
     allocate ( numcolbv(Nue),erowbv(0:Ne+1) )
 
@@ -203,6 +215,7 @@
     ! position in vd&vt by two excitations.
     ! the most expensive by memory
 
+    void=glControlMemory(int( iglu*((Ne+1)*(Ne+1)) ,kind=i8kind),'Spare coupled-cluster')
     allocate ( ftfm(0:Ne,0:Ne) )
 
     ! in this block we will define byExOrb
@@ -314,6 +327,7 @@
     byExOrbbv(Ne,No+1)=Nue
 
     ! Fockian sparse information
+    void=glControlMemory(int( iglu*(No+1+No) ,kind=i8kind),'Spare coupled-cluster')
     allocate (ferow(No+1),whOVf(No))
 
     return
@@ -323,7 +337,7 @@
 
     subroutine initSpareCC
 
-    use glob                , only: iglu,gluCompare
+    use glob                , only: iglu,rglu,gluCompare,void,i8kind,glControlMemory
     use coupledCluster      , only: Nel,No,F,NFnz
     use coupledClusterSparse
 
@@ -370,8 +384,12 @@
     !*********     Ax=F(c,b)
     !********* enddo
 
-    if (allocated(vF)) deallocate (vF,fnumcol)
+    if (allocated(vF)) then
+        deallocate (vF,fnumcol)
+        void=glControlMemory(int( sizeof(vF)+sizeof(fnumcol) ,kind=i8kind),'Spare coupled-cluster','free')
+    endif
 
+    void=glControlMemory(int( iglu*NFnz+rglu*NFnz ,kind=i8kind),'Spare coupled-cluster')
     allocate (vF(NFnz),fnumcol(NFnz))
 
     k=1
@@ -400,7 +418,7 @@
 
     subroutine finalizeSparseCC
 
-    use glob                , only: iglu
+    use glob                , only: iglu,i8kind,void,glControlMemory
     use coupledClusterSparse
 
     implicit none
@@ -412,6 +430,15 @@
                 t1numcol,byExOrbbv,mrEx,t1,d1,occEx, stat=err)
     deallocate (ftfm,ferow,whOVf,numcolbv,erowbv,numcol,erow,vt,&
                 vd,pvd,t1cIndex,t1Indexs,t1mrEx,byExOrb, stat=err)
+
+    void=glControlMemory(int(&
+                             sizeof(Indexs)+sizeof(Indexsbv)+sizeof(intersectOrbitals)+sizeof(vt)+&
+                             sizeof(cIndex)+sizeof(t1erow)+sizeof(t1numcol)+sizeof(byExOrbbv)+&
+                             sizeof(mrEx)+sizeof(t1)+sizeof(d1)+sizeof(occEx)+sizeof(t1Indexs)+&
+                             sizeof(ftfm)+sizeof(ferow)+sizeof(whOVf)+sizeof(numcolbv)+sizeof(erow)+&
+                             sizeof(erowbv)+sizeof(numcol)+sizeof(vd)+sizeof(pvd)+sizeof(t1cIndex)+&
+                             sizeof(t1mrEx)+sizeof(byExOrb)&
+                             ,kind=i8kind),'Spare coupled-cluster','free')
 
     return
     end subroutine finalizeSparseCC

@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob      , only: iglu,rglu,void,true,false,uch
+    use glob      , only: iglu,rglu,void,true,false,uch,i8kind,glControlMemory
     use hdb       , only: mol,scfbd,ou,ouWidth
     use txtParser , only: tpFill
     use math      , only: tred4
@@ -350,11 +350,15 @@
         case ('general')
             select case (action)
                 case ('allocate')
+                    void=glControlMemory(int(rglu*(6*N*N+N),kind=i8kind),'SCF module')
                     allocate (F(N,N),V(N,N),E(N),D(N,N))
                     allocate (Fmin(N,N),Comut(N,N),Refl(N,N))
                     F=0; V=0; E=0; D=0; Fmin=0; Comut=0; Refl=0
+
                 case ('deallocate')
                     deallocate (F,V,E,D,Fmin,Comut,Refl, stat=err)
+                    void=glControlMemory(int(rglu*(6*N*N+N),kind=i8kind),'SCF module','free')
+
             end select
     end select
 

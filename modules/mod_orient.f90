@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob, only: rglu,iglu,lglu,false,true,void,gluUnity
+    use glob, only: rglu,iglu,lglu,false,true,void,gluUnity,i8kind,glControlMemory
     use glob, only: definePi,pi,dtr
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -42,6 +42,7 @@
 
 
     void=definePi()
+    void=glControlMemory(int( rglu*3*(N+3) ,kind=i8kind),'Orient module')
     N=UBound(X,1); allocate ( oX(-2:N),oY(-2:N),oZ(-2:N) )
 
     oX=0; oX(1:N)=X(1:N)
@@ -60,6 +61,7 @@
 
     X=oX(1:N); Y=oY(1:N); Z=oZ(1:N)
     deallocate (oX,oY,oZ)
+    void=glControlMemory(int( rglu*3*(N+3) ,kind=i8kind),'Orient module','free')
 
     return
     end subroutine getNewCoords

@@ -1,10 +1,10 @@
     subroutine parseInput
 
     use glob,       only: assignment(=)
-    use glob,       only: iglu,rglu,true,void,false
+    use glob,       only: iglu,rglu,true,void,false,i8kind,glShareMemory
     use glob,       only: uch
     use hdb,        only: bdNames,eu,ou,init,ouWidth
-    use hdb,        only: mol,generalbd,geometrybd,densitybd,fcibd,scfbd,pipekbd,ccbd,lrbd,iterationbd
+    use hdb,        only: mol,generalbd,geometrybd,systembd
     use hdb,        only: scfg,lrg
     use datablock,  only: bdParseFile,bdPrintBlockData
     use argsParser, only: parseArgs,apArgumentFound
@@ -43,24 +43,10 @@
     geometrybd%searchLinear(2)=false
     geometrybd%searchPlanar(2)=false
 
-    !geometrybd%symmetryTolerance=real(10,rglu)**-geometrybd%symmetryTolerance
-    !geometrybd%searchTolerance=  real(10,rglu)**-geometrybd%searchTolerance
-    !densitybd%prntAccuracy=      real(10,rglu)**-densitybd%prntAccuracy
-    !fcibd%accuracy=              real(10,rglu)**-fcibd%accuracy
-    !fcibd%zeroThreshold=         real(10,rglu)**-fcibd%zeroThreshold
-    !scfbd%accuracy=              real(10,rglu)**-scfbd%accuracy
-    !pipekbd%accuracy=            real(10,rglu)**-pipekbd%accuracy
-    !ccbd%accuracy=               real(10,rglu)**-ccbd%accuracy
-    !lrbd%accuracy=               real(10,rglu)**-lrbd%accuracy
-
-    !write (*,*) fcibd%accuracy,fcibd%zeroThreshold
-    !stop
-
-    !call infiniteVoidLoop
+    void=glShareMemory(int(systembd%memory*1024*1024,kind=i8kind))
 
     open (ou  ,file=generalbd%outfile%get())
     open (init,file=generalbd%infile%get())
-
 
     call primaryInformation('init')
     write (ou,'(A/)') tpAdjustc('Input file',ouWidth,'=')

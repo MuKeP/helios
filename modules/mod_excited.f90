@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob, only: iglu,rglu,true
+    use glob, only: iglu,rglu,true,void,i8kind,glControlMemory
     use math, only: tred4
     use hdb , only: mol,statesbd,scfbd,ou
     use printmod, only: prEigenProblem,prMatrix
@@ -132,14 +132,18 @@
         case ('general')
             select case (action)
                 case ('allocate')
+                    void=glControlMemory(int( rglu*(2*Ne*(2*Ne+2*Ne+1+1+1)) ,kind=i8kind),'Excited states module')
                     allocate (HH(2*Ne,2*Ne),Vectors(2*Ne,2*Ne),Values(2*Ne),coefs(2*Ne),confs(2*Ne))
                     HH=0; Vectors=0; Values=0; coefs=0; confs=0
 
+                    void=glControlMemory(int( rglu*(N*N+N+2*Ne) ,kind=i8kind),'Excited states module')
                     allocate (hfV(N,N),hfE(N),excSet(2,Ne))
                     hfV=0; hfE=0; excSet=0
 
                 case ('deallocate')
                     deallocate (HH,Vectors,Values,coefs,confs,hfV,hfE,excSet, stat=err)
+                    void=glControlMemory(int( sizeof(HH)+sizeof(Vectors)+sizeof(Values)+sizeof(coefs)+&
+                                              sizeof(confs)+sizeof(hfV)+sizeof(hfE)+sizeof(excSet) ,kind=i8kind),'Excited states module', 'free')
 
             end select
 

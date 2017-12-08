@@ -1,6 +1,6 @@
     subroutine cueOrbitals
 
-    use glob    , only: iglu,rglu
+    use glob    , only: iglu,rglu,void,i8kind,glControlMemory
     use hdb     , only: eu,ou,cueConstant1
     use hdb     , only: mol,cuebd
     use printmod, only: prMatrix
@@ -16,6 +16,7 @@
     N=mol%nAtoms; M=mol%nBonds
     Nel=mol%nEls; Nocc=mol%nEls/2
 
+    void=glControlMemory(int(iglu*N,kind=i8kind),'tmp. Connectivity check')
     allocate (connectivity(N)); connectivity=0
 
     do k = 1,N
@@ -37,6 +38,7 @@
     endif
 
     deallocate (connectivity)
+    void=glControlMemory(int(sizeof(connectivity),kind=i8kind),'tmp. Connectivity check','free')
 
     l=0
     do k = 1,M

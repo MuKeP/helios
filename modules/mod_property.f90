@@ -2,8 +2,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-!    use glob          , only: assignment(=)
-    use glob          , only: rglu,iglu,lglu,true,false,uch,void,uch_set
+    use glob          , only: assignment(=)
+    use glob          , only: rglu,iglu,lglu,true,false,uch,void
     use txtParser     , only: tpSplit,tpSplitLen,tpSplitHold,tpFill,tpAdjustc,operator(.in.)
     use printmod      , only: prStrByVal
     use hdb           , only: mol,scfbd,ccbd,statesbd,generalbd,polarizbd,ou,ouWidth
@@ -84,7 +84,7 @@
     allocate (V(N,N),E(N)); V=0; E=0
     do
         if (firstRun) then
-            lastMethod=uch_set(method)
+            lastMethod=method
             lastEnergyHolder=0
 
             select case (method)
@@ -361,9 +361,9 @@
             rez=getEnergy('finalize')
 
             if (state.EQ.0) then
-                sendString=uch_set(methodSet(i)%get())
+                sendString=methodSet(i)%get()
             else
-                sendString=uch_set(methodSet(i)%get()//' State #'//prStrByVal(state))
+                sendString=methodSet(i)%get()//' State #'//prStrByVal(state)
             endif
 
             call putPoint

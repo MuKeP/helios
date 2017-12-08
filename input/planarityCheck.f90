@@ -1,9 +1,8 @@
     subroutine planarityCheck
 
     use glob       , only: assignment(=)
-    use glob       , only: rglu,iglu,true,false
-    use glob       , only: uch
-    use glob       , only: rangen
+    use glob       , only: rglu,iglu,true,false,void,i8kind,glControlMemory
+    use glob       , only: uch,rangen
     use hdb        , only: mol,geometrybd,polarizbd,hyperchargesbd
     use hdb        , only: unul
     use orientation, only: shareCoords,orSetIOunit,putOnAxis,putOnPlane,getNewCoords
@@ -20,6 +19,7 @@
     geometrybd%searchLinear(2)=false
 
     if (geometrybd%searchPlanar(1) .OR. geometrybd%searchLinear(1)) then
+        void=glControlMemory(int( 3*rglu*N, kind=i8kind),'tmp. Planarity check')
         allocate (X(N),Y(N),Z(N))
         X=mol%atm(:)%coords(1); Y=mol%atm(:)%coords(2); Z=mol%atm(:)%coords(3)
     endif
@@ -89,7 +89,7 @@
         & +X(i2)*(Y(i3)*Z(i1)-Y(i1)*Z(i3))&
         & +X(i3)*(Y(i1)*Z(i2)-Y(i2)*Z(i1))
 
-        sum=0.d0
+        sum=0
         do k = 1,N
             sum=sum+abs(X(k)*A+Y(k)*B+Z(k)*C+D)
         enddo
@@ -135,6 +135,7 @@
         endif
 
         deallocate (X,Y,Z)
+        void=glControlMemory(int( sizeof(X)+sizeof(Y)+sizeof(Z) ,kind=i8kind),'tmp. Planarity check','free')
 
         return
         end subroutine setLinear
@@ -166,6 +167,7 @@
         endif
 
         deallocate (X,Y,Z)
+        void=glControlMemory(int( sizeof(X)+sizeof(Y)+sizeof(Z) ,kind=i8kind),'tmp. Planarity check','free')
 
         return
         end subroutine setPlanar

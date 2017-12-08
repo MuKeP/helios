@@ -31,4 +31,4 @@ scf{max-iterations=200,accuracy=14,iter-step=0.05,excited-states-method=cis}
 diis{enabled,steps=20,storage=ram}
 fci{steps=5,max-iterations=500,accuracy=8}
 linear-responce{guess=cis,max-iterations=30000,accuracy=13,iter-step=0.03,guess-threshold=0.0001}
-states{excited-states-number=2}
+states{excited-states-number=0}

@@ -2,8 +2,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-!    use glob,      only: assignment(=)
-    use glob,      only: mid,uch,find,true,false,osSeparator,ivarVector,uch_set,vec_set
+    use glob,      only: assignment(=)
+    use glob,      only: mid,uch,find,true,false,osSeparator,ivarVector
     use txtParser, only: tpRealByStr,tpIntByStr,tpDeQuote,tpFill,tpLowerCase
     use txtParser, only: operator(.in.)
 
@@ -156,7 +156,7 @@
 
     if (.NOT.dcasesensitive) then
         do k = 1,recarg%synonymsListLen
-            recarg%str(k)=uch_set(tpLowerCase( recarg%str(k)%get() ))
+            recarg%str(k)=tpLowerCase( recarg%str(k)%get() )
         enddo
     endif
 
@@ -186,11 +186,11 @@
     arg(ind)%required=drequired
     arg(ind)%expect=dexpect
     arg(ind)%value=dvalue
-    arg(ind)%expectValue=uch_set(dexpectvalue)
+    arg(ind)%expectValue=dexpectvalue
     arg(ind)%group=dgroup
     arg(ind)%str=recarg%str
     arg(ind)%synonymsListLen=recarg%synonymsListLen
-    arg(ind)%description=uch_set(trim(description))
+    arg(ind)%description=trim(description)
     arg(ind)%found=false
     arg(ind)%synonym=0
     arg(ind)%position=0
@@ -216,7 +216,7 @@
     enddo
 
     groupListLen=groupListLen+1
-    groupSet(groupListLen)=uch_set(trim(adjustl(group)))
+    groupSet(groupListLen)=trim(adjustl(group))
 
     rcode=groupListLen; return
     end function addGroup
@@ -261,7 +261,7 @@
 
     do i = 1,argsCount
         ! store all arguments
-        call getarg(i,tempStr); holdArguments(i)=uch_set(trim(adjustl(tempStr)))
+        call getarg(i,tempStr); holdArguments(i)=trim(adjustl(tempStr))
 
         ! if found -h/--help, show help
         if (argumentConforms(holdArguments(i)%get(),arg(0)).GT.0) then; void=showHelp(); stop; endif
@@ -389,7 +389,7 @@
     character (len=*) :: str
 
 
-    appNameSet=true; appName=uch_set(trim(str))
+    appNameSet=true; appName=trim(str)
 
     ret=0; return
     end function setApplicationName
@@ -401,7 +401,7 @@
     character (len=*) :: str
 
 
-    preambleSet=true; preamble=uch_set(trim(str))
+    preambleSet=true; preamble=trim(str)
 
     ret=0; return
     end function setPreamble
@@ -413,7 +413,7 @@
     character (len=*) :: str
 
 
-    commentSet=true; comment=uch_set(trim(str))
+    commentSet=true; comment=trim(str)
 
     ret=0; return
     end function setComment
@@ -691,7 +691,7 @@
     do
         tempStr=repeat(' ',len(tempStr))
         call getarg(i,tempStr)
-        ret=uch_set(ret%get()//' '//trim(tempStr))
+        ret=ret%get()//' '//trim(tempStr)
         if (len_trim(tempStr).EQ.0) exit
         i=i+1
     enddo
@@ -735,8 +735,8 @@
         iarr(k)=getArgumentIndex(arr(k))
     enddo
 
-    ruleSet(ruleListLen)%argsList=vec_set(iarr)
-    ruleset(ruleListLen)%type=uch_set(ruletype)
+    ruleSet(ruleListLen)%argsList=iarr
+    ruleset(ruleListLen)%type=ruletype
 
     deallocate (iarr)
 
@@ -780,7 +780,7 @@
 
     do k = 1,ruleListLen
         call ruleSet(k)%argsList%del()
-        ruleSet(k)%type=uch_set('')
+        ruleSet(k)%type=''
     enddo
     ruleListLen=0
 
@@ -876,18 +876,18 @@
     recarg%default=false
     recarg%required=false
     recarg%expect=false
-    recarg%str(1)=uch_set('-h')
-    recarg%str(2)=uch_set('--help')
-    recarg%description=uch_set('show help message')
+    recarg%str(1)='-h'
+    recarg%str(2)='--help'
+    recarg%description='show help message'
     recarg%group=-1
     recarg%synonymsListLen=2
     recarg%synonym=0
     recarg%position=0
-    recarg%expectValue=uch_set('')
+    recarg%expectValue=''
     recarg%found=false
     recarg%value=false
-    groupSet(-1)=uch_set('')
-    groupSet(0)=uch_set('Others')
+    groupSet(-1)=''
+    groupSet(0)='Others'
 
     err=checkExistence(recarg)
 
@@ -918,12 +918,12 @@
         i=index(str(sta:sto),splitSymbol)
         if (i.EQ.0) then
             if (sto-sta+1.GT.argLen) then; ret=-2; return; endif
-            splCount=splCount+1; split(splCount)=uch_set(str(sta:sto))
+            splCount=splCount+1; split(splCount)=str(sta:sto)
             exit
         endif
 
         if (i-1.GT.argLen) then; ret=-2; return; endif
-        splCount=splCount+1; split(splCount)=uch_set(str(sta:sta+i-2))
+        splCount=splCount+1; split(splCount)=str(sta:sta+i-2)
         sta=sta+i
     enddo
 
@@ -1045,7 +1045,7 @@
     tempStr=repeat(' ',appNameLen); call getarg(0,tempStr)
     sta=index(tempStr,osSeparator,true)+1; sto=len_trim(tempStr)
 
-    appName=uch_set(tempStr(sta:sto))
+    appName=tempStr(sta:sto)
 
     ret=0; return
     end function getApplicationName
@@ -1505,7 +1505,7 @@
     if (i.GT.0) then
 
         if (variableSet(i)%kind.EQ.12) then
-            variableSet(i)%pntuch=uch_set(val)
+            variableSet(i)%pntuch=val
             ret=0
             return
         endif

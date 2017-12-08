@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob     , only: true,false,rglu,rspu,iglu,lglu,r16kind,find
+    use glob     , only: true,false,rglu,rspu,iglu,lglu,r16kind,find,glControlMemory,void,i8kind
     use math     , only: LagrangeDerivative,factorial,tred4
     use txtParser, only: tpCount
 
@@ -77,7 +77,7 @@
             continue
     end select
 
-    select case (tp) !
+    select case (tp)
         case (1)
             select case (j)
                 case (1); ret=LagrangeDerivative(nPoints,icart(1),im3(aStart:aStop,0,0),deStep)
@@ -156,6 +156,7 @@
 
     field=deStep; points=dePnts
 
+    void=glControlMemory(int( rglu*((points+2)*maxpower+3*maxpower*maxpower) ,kind=i8kind),'tmp. LSM')
     allocate (lsKof(points,maxpower),lsWork(maxpower,maxpower),lsInv(maxpower,maxpower))
     allocate (lsEVec(maxpower,maxpower),lsEVal(maxpower))
     allocate (lsRez(maxpower))
@@ -206,6 +207,7 @@
     enddo
 
     deallocate (lsKof,lsWork,lsInv,lsEVec,lsEVal,lsRez)
+    void=glControlMemory(int( sizeof(lsKof)+sizeof(lsWork)+sizeof(lsInv)+sizeof(lsEVec)+sizeof(lsEVal)+sizeof(lsRez) ,kind=i8kind),'tmp. LSM', 'free')
 
     return
     end subroutine prepareLSM
@@ -222,6 +224,7 @@
     deStep=pstep; dePnts=ppoints
     aStart=-(dePnts-1)/2; aStop=(dePnts-1)/2; sft=(UBound(valSet,1)-1)/2+1
 
+    void=glControlMemory(int( rglu*(dePnts+dePnts**2+dePnts**3) ,kind=i8kind),'tmp. LSM')
     allocate (im1(aStart:aStop),&
     &         im2(aStart:aStop,aStart:aStop),&
     &         im3(aStart:aStop,aStart:aStop,aStart:aStop))
@@ -231,6 +234,7 @@
     parShared=true
 
     if (rspu.EQ.r16kind) then
+        void=glControlMemory(int( rglu*(5*dePnts) ,kind=i8kind),'tmp. LSM')
         allocate (lsmReady(0:4,dePnts)); call prepareLSM
     endif
 
@@ -242,11 +246,11 @@
     subroutine deFinalize
     implicit none
 
+    integer(kind=iglu) :: err
 
-    if (allocated(im1))      deallocate (im1)
-    if (allocated(im2))      deallocate (im2)
-    if (allocated(im3))      deallocate (im3)
-    if (allocated(lsmReady)) deallocate (lsmReady)
+
+    deallocate(im1,im2,im3,lsmReady,stat=err)
+    void=glControlMemory(int( sizeof(im1)+sizeof(im2)+sizeof(im3)+sizeof(lsmReady) ,kind=i8kind),'tmp. LSM', 'free')
 
     return
     end subroutine deFinalize

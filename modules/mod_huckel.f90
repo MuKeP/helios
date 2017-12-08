@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob    , only: iglu,rglu,lglu
+    use glob    , only: iglu,rglu,lglu,void,i8kind,glControlMemory
     use hdb     , only: mol,ou,ouWidth
     use math    , only: tred4
     use printmod, only: prEigenProblem
@@ -38,6 +38,8 @@
 
 
     N=mol%nAtoms; Nocc=mol%nEls/2
+
+    void=glControlMemory(int( rglu*(N*N+N+N*N) ,kind=i8kind),'Huckel')
     allocate(V(N,N),E(N),D(N,N)); V=0; E=0; D=0
     call tred4(mol%huckelCore,V,E,N,1.e-100_rglu,1.e-300_rglu)
 
@@ -86,6 +88,7 @@
     endif
 
     deallocate (V,E,D)
+    void=glControlMemory(int( sizeof(V)+sizeof(E)+sizeof(D) ,kind=i8kind),'Huckel','free')
 
     return
     end subroutine getHuckelResult

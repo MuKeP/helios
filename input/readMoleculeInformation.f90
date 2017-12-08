@@ -1,7 +1,7 @@
     subroutine readMoleculeInformation
 
     use glob     , only: assignment(=)
-    use glob     , only: iglu,rglu,lglu,true,false
+    use glob     , only: iglu,rglu,lglu,true,false,void,i8kind,glControlMemory
     use glob     , only: uch
     use glob     , only: mid,rangen
     use hdb      , only: in,ou,ouWidth
@@ -31,6 +31,7 @@
 
     Nel=mol%nEls; No=mol%nOrbs
 
+    void=glControlMemory(int( 4*rglu*N*N + N*(3*iglu+6*rglu+2) + M*(3*iglu+5*rglu+6) + N*(6*iglu+3*rglu) ,kind=i8kind),'Molecule information')
     allocate (mol%atm(N),mol%bnd(M),mol%orb(N))
     allocate (mol%g(N,N),mol%connect(N,N),mol%atmDist(N,N),mol%cueDist(N,N))
 
@@ -45,11 +46,11 @@
 
         if (mol%atm(i)%symbol.EQ.'C ') then
             mol%atm(i)%atype=1
-        elseif ( (mol%atm(i)%symbol.EQ.'N ').AND. (mol%atm(i)%nels.EQ.1) ) then
+        elseif ( (mol%atm(i)%symbol.EQ.'N ').AND.(mol%atm(i)%nels.EQ.1) ) then
             mol%atm(i)%atype=2
-        elseif ( (mol%atm(i)%symbol.EQ.'O ').AND. (mol%atm(i)%nels.EQ.2) ) then
+        elseif ( (mol%atm(i)%symbol.EQ.'O ').AND.(mol%atm(i)%nels.EQ.2) ) then
             mol%atm(i)%atype=3
-        elseif ( (mol%atm(i)%symbol.EQ.'N ').AND. (mol%atm(i)%nels.EQ.2) ) then
+        elseif ( (mol%atm(i)%symbol.EQ.'N ').AND.(mol%atm(i)%nels.EQ.2) ) then
             mol%atm(i)%atype=4
         else
             mol%atm(i)%atype=0
@@ -125,6 +126,7 @@
         enddo
     endif
 
+    void=glControlMemory(int( 4*rglu*N*N ,kind=i8kind),'Molecule information')
     allocate (mol%core(N,N),mol%coreImage(N,N),mol%huckelCore(N,N),mol%perturbation(N,N))
     mol%perturbation=0; mol%huckelCore=0
     do i = 1,N
@@ -153,7 +155,6 @@
         write (ou,101) mol%atm(i)%symbol,mol%atm(i)%coords(1),mol%atm(i)%coords(2),&
                        mol%atm(i)%coords(3),mol%atm(i)%alpha,int(mol%atm(i)%nels)
     enddo
-
     call prMatrix(mol%atmdist,ou,'Distance matrix','^.0000',maxwidth=ouWidth)
 
     write (ou,102) mol%clearance(:),mol%clearance(:)/mol%nEls
@@ -168,6 +169,11 @@
 
     call prMatrix(mol%G,ou,'Gammas: '//generalbd%coulombType%get(),'^.0000',maxwidth=ouWidth)
 
+    call cueOrbitals
+    call symmetrySettings
+
+    return
+
  99 format (/2X,'Molecule:',1X,A/&
              2X,'Atoms: ',i<mid(mol%nAtoms)>,' Bonds: ',i<mid(mol%nBonds)>,' Electrons: ',i<mid(mol%nEls)>//)
 100 format ( 2X,'Type',23X,'Cartesian Coordinates',22X,'IP',3X,'e'/)
@@ -179,12 +185,7 @@
 103 format (/2X,'bond',8X,'mu',10X,'nu',4X,'distance',8X,'beta',8X,'kind'/)
 104 format ( 2X,i4,6X,i4,1X,'----->',1X,i4,2X,F10.5,2X,F10.5,1X,'eV',4X,A)
 
-    call cueOrbitals
-    call symmetrySettings
-
-    return
-
-666    continue
+666 continue
     stop
 
 667 continue
@@ -207,7 +208,7 @@
 
 
         trConst=1/(BohrRadius*HartreeEnergy) !real coefficient
-        trConst=real(0.0694589d0,rglu)       !old value for compatibility
+        trConst=0.0694589_rglu               !old value for compatibility
 
         N=mol%nAtoms; mol%G=0
         select case (generalbd%coulombType%get())
@@ -257,6 +258,7 @@
 
 
         N=mol%nAtoms
+        void=glControlMemory(int( 3*rglu*N ,kind=i8kind),'tmp. Geometry displacement')
         allocate (X(N),Y(N),Z(N))
 
         X=mol%atm(:)%coords(1)
@@ -286,6 +288,8 @@
 
         deallocate (X,Y,Z)
 
+        void=glControlMemory(int( sizeof(X)+sizeof(Y)+sizeof(Z) ,kind=i8kind),'tmp. Geometry displacement','free')
+
         return
         end subroutine geometryDisplacement
 
@@ -301,6 +305,7 @@
 
         N=mol%nAtoms; M=mol%nBonds
 
+        void=glControlMemory(int( iglu*N+lglu*N ,kind=i8kind),'tmp. Check uniqueness')
         allocate (connect(N),uniqueAtom(N)); uniqueAtom=true
 
         Na=N
@@ -350,6 +355,7 @@
         mol%chBonds=Nbch
 
         deAllocate (connect,uniqueAtom)
+        void=glControlMemory(int( sizeof(connect)+sizeof(uniqueAtom) ,kind=i8kind),'tmp. Check uniqueness','free')
 
         return
         end subroutine checkUniqueness
@@ -359,7 +365,7 @@
         subroutine centrateCoordinates
         implicit none
 
-        real   (kind=rglu) :: sumCoords(3)
+        real(kind=rglu) :: sumCoords(3)
 
 
         sumCoords(1)=sum(mol%atm(:)%coords(1))

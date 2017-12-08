@@ -1,60 +1,57 @@
-    !DEC$if defined(__unix)
-        !DEC$define OS=2
-    !DEC$else
-        !DEC$define OS=1
-    !DEC$endif
+#   if defined(__INTEL_COMPILER)
+#       define __COMPILER 1
+#   elif defined(__GFORTRAN__)
+#       define __COMPILER 2
+#       define __unix 1
+#   elif defined(__SUNPRO_F90)
+#       define __COMPILER 3
+#   elif defined(__SUNPRO_F95)
+#       define __COMPILER 3
+#   else
+#       define __COMPILER 4
+#   endif
 
-    !DEC$if defined(__INTEL_COMPILER)
-        !DEC$define compiler=1
-    !DEC$elseif defined(__GFORTRAN__)
-        !DEC$define compiler=2
-    !DEC$elseif defined(__SUNPRO_F90)
-        !DEC$define compiler=3
-    !DEC$elseif defined(__SUNPRO_F95)
-        !DEC$define compiler=3
-    !DEC$else
-        !DEC$define compiler=4
-    !DEC$endif
+#   if defined(__unix)
+#       define __OS 2
+#   else
+#       define __OS 1
+#   endif
 
-    !DEC$if defined(_OPENMP)
-        !DEC$define opnmp=1
-    !DEC$else
-        !DEC$define opnmp=0
-    !DEC$endif
+#   if defined(_OPENMP)
+#       define __opnmp 1
+#   else
+#       define __opnmp 0
+#   endif
 
     module glob
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    !DEC$if (compiler.EQ.1) ! Intel Fortran Compiler
+#   if (__COMPILER==1)
         use ifport , only: signal,system,getpid,splitpathqq
-        use ifport , only: SRT$REAL16,SRT$REAL8,SRT$REAL4
-        use ifport , only: SRT$INTEGER8,SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
         use ifport , only: SIGABRT,SIGINT,SIGTERM
         use ifposix, only: PXFSTRUCTCREATE
-        !DEC$if (os.EQ.2)
+#       if (__OS==2)
             use ifposix, only: PXFSIGADDSET
-        !DEC$endif
-    !DEC$elseif (compiler.EQ.2)
+#       endif
+#   elif (__COMPILER==2)
         !
-    !DEC$elseif (compiler.EQ.3)
+#   elif (__COMPILER==3)
         !
-    !DEC$elseif (compiler.EQ.4) ! Compaq© Visual Fortran
+#   elif (__COMPILER==4)
         use DFPort, only: signal,system,getpid
         use DFLib , only: splitpathqq
-        use DFLib , only: SRT$REAL8,SRT$REAL4
-        use DFLib , only: SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
         use DFPort, only: SIGABRT,SIGINT,SIGTERM
-    !DEC$endif
+#   endif
 
-    !MS$if(opnmp.EQ.1)
+#   if(__opnmp==1)
         include "omp_lib.h"
-    !MS$endif
+#   endif
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: glVersion='4.310'
-    character (len=*), parameter :: glDate   ='2017.09.15'
+    character (len=*), parameter :: glVersion='4.500'
+    character (len=*), parameter :: glDate   ='2017.12.07'
     character (len=*), parameter :: glAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: r16kind=16, r8kind=8, r4kind=4
@@ -72,11 +69,11 @@
     integer(kind=i4kind), parameter :: lglu=l1kind
 
     !   ~~~~ Global data settings ~~~~ !
-    !MS$if(OS.EQ.1)
+#   if(__OS==1)
         character (len=*), parameter :: os='win',osSeparator='\',osMove='move',osCopy='copy' !'sublime
-    !MS$else
+#   else
         character (len=*), parameter :: os='nix',osSeparator='/',osMove='mv'  ,osCopy='cp'
-    !MS$endif
+#   endif
 
     real(kind=rglu), parameter :: gluZero=0,gluUnity=1
     real(kind=rspu), parameter :: spuZero=0,spuUnity=1
@@ -129,15 +126,20 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer(kind=iglu) :: defaultIO=6
-    real   (kind=rglu) :: pi,dtr
-    character          :: glPrintString*500
-    integer(kind=iglu) :: iounit=6
+    integer(kind=i8kind) :: glSharedMemory
+    real   (kind=rglu)   :: lastTimerPoint=0
 
-    integer(kind=iglu) :: void
-    real   (kind=rglu) :: voidr
-    character          :: voidc*1
-    logical(kind=lglu) :: voidl
+
+    character (len=200) :: fmtstr
+    integer(kind=iglu)  :: defaultIO=6
+    real   (kind=rglu)  :: pi,dtr
+    character           :: glPrintString*500
+    integer(kind=iglu)  :: iounit=6
+
+    integer(kind=iglu)  :: void
+    real   (kind=rglu)  :: voidr
+    character           :: voidc*1
+    logical(kind=lglu)  :: voidl
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTERFACES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -156,7 +158,7 @@
     interface mid
         module procedure mid_i8,mid_i4,mid_i2,mid_i1,mid_r16,&
                          mid_r8,mid_r4,mid_l8,mid_l4,mid_l2 ,&
-                         mid_l1,mid_c
+                         mid_l1,mid_ch,mid_uc
     end interface mid
 
     interface lenTrimArray
@@ -176,17 +178,13 @@
                          random_generate_r8,random_generate_r4
     end interface rangen
 
-    interface sort
-        module procedure sort_uch,sort_r8,sort_r4,sort_i4,sort_i2,sort_i1
-    end interface sort
-
     interface arrayAnalize
         module procedure arrayAnalize1,arrayAnalize2,arrayAnalize3,&
                          arrayAnalize4,arrayAnalize5,arrayAnalize6
     end interface arrayAnalize
 
     interface assignment (=)
-        module procedure assign_uchSet,assign_uchGet,  &
+        module procedure assign_uchSet ,assign_uchGet, &
                          assign_ivarSet,assign_ivarGet,&
                          assign_rvarSet,assign_rvarGet,&
                          assign_uchExchange
@@ -195,6 +193,12 @@
     interface vec_set
         module procedure rvar_set,ivar_set
     end interface
+
+    interface call_wrapper
+        module procedure call_wrapper_i8,call_wrapper_i4,call_wrapper_i2,call_wrapper_i1,&
+                         call_wrapper_l8,call_wrapper_l4,call_wrapper_l2,call_wrapper_l1,&
+                         call_wrapper_r16,call_wrapper_r8,call_wrapper_ch,call_wrapper_uc
+    end interface call_wrapper
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -210,10 +214,13 @@
     public :: rglu,gluZero,gluUnity,gluCompare
     public :: rspu,spuZero,spuUnity,spuCompare
 
+    ! to be compatible with GNU Fortran. FUCK GNU FORTRAN.
+    !public :: fmtstr
+
     ! types
     public :: uch,ivarVector,rvarVector
     ! type "methods"
-    public :: uchGet,uchSet,uchDel,delVector,setVector,uch_set,vec_set
+    !public :: uchGet,uchSet,uchDel,delVector,setVector !,uch_set,vec_set
 
     public :: assignment (=)
 
@@ -229,26 +236,98 @@
     ! OpenMP functions
     public :: setThreadsNumber,getThreadNumber
 
-    ! sort function types
-    public :: SRT$REAL8,SRT$REAL4
-    public :: SRT$INTEGER4,SRT$INTEGER2,SRT$INTEGER1
-
     ! variables
     public :: defaultIO,glPrintString
     public :: true,false,void,voidr,voidc,voidl,pi,dtr
 
     ! tools
-    public :: find,isEven,same,mid,lenTrimArray,collectArray,rangen,sort
+    public :: find,isEven,same,mid,lenTrimArray,collectArray,rangen
     public :: compareStrings,arrayAnalize,definePi
+
     ! almost useless
     public :: infiniteVoidLoop,nullSub
 
     ! time and date
-    public :: convertTime,timeControl,dayOfWeek,isLeapYear,timeStamp,date_time
+    public :: convertTime,timeControl,dayOfWeek,isLeapYear,timeStamp,date_time,timeControlCheckpoint
+
+    ! memory
+    public :: glControlMemory,glShareMemory,glMemoryLeft
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     contains
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MEMORY ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function glControlMemory(bytesUsed,label,action) result(ret)
+    implicit none
+
+    integer(kind=i8kind), intent(in)           :: bytesUsed
+    character (len=*)   , intent(in)           :: label
+    character (len=*)   , intent(in), optional :: action
+    integer(kind=i8kind)                       :: ubytes
+
+
+    ubytes=bytesUsed
+    if (present(action)) then
+        if (action.EQ.'free') then
+            ubytes=-abs(bytesUsed)
+        elseif(action.EQ.'use') then
+            ubytes= abs(bytesUsed)
+        endif
+    endif
+
+    if (glSharedMemory.LT.0) then
+        write (iounit,100) label,ubytes,glSharedMemory
+        stop
+    endif
+    glSharedMemory=glSharedMemory-ubytes
+
+100 format (A,': not enough memory. Required ',i<mid(ubytes)>,', left ', i<mid(glSharedMemory)>' bytes.')
+
+    ret=0; return
+    end function glControlMemory
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function glShareMemory(bytes) result(ret)
+    implicit none
+
+    integer(kind=i8kind), intent(in) :: bytes
+
+
+    glSharedMemory=bytes
+
+    ret=0; return
+    end function glShareMemory
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    real(kind=rglu) function glMemoryLeft(units) result(ret)
+    implicit none
+
+    character (len=*), optional :: units
+
+
+    if (present(units)) then
+        select case (units)
+            case ('B','b','BYTES','bytes','BYTE','byte')
+                ret=float(glSharedMemory)
+            case ('KB','kb','KILOBYTES','kilobytes','KILOBYTE','kilobyte')
+                ret=float(glSharedMemory)/1024.
+            case ('MB','mb','MEGABYTES','megabytes','MEGABYTE','megabyte')
+                ret=float(glSharedMemory)/(1024.*1024.)
+            case ('GB','gb','GIGABYTES','gigabytes','GIGABYTE','gigabyte')
+                ret=float(glSharedMemory)/(1024.*1024.*1024)
+            case default
+                ret=float(glSharedMemory)
+        end select
+    else
+        ret=float(glSharedMemory)
+    endif
+
+    return
+    end function glMemoryLeft
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ UCH METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -257,7 +336,7 @@
 
     type(uch)         , intent(out) :: this
     character(len=*)  , intent(in)  :: str
-    integer(kind=iglu)            :: i
+    integer(kind=iglu)              :: i
 
 
     this%ln=len(str); allocate (this%ch(len(str)))
@@ -731,13 +810,23 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    pure integer(kind=iglu) function mid_c(str) result(ret)
+    pure integer(kind=iglu) function mid_ch(str) result(ret)
     implicit none
     character (len=*), intent(in) :: str
 
 
     ret=len(str); return
-    end function mid_c
+    end function mid_ch
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    pure integer(kind=iglu) function mid_uc(str) result(ret)
+    implicit none
+    type(uch), intent(in) :: str
+
+
+    ret=str%ln; return
+    end function mid_uc
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TRIM ARRAY FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -1747,291 +1836,6 @@
     ret=-1; return
     end function find_i1
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SORT FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_r16(vector,rev) result(ret)
-    implicit none
-    real   (kind=r16kind)          :: vector(:),swap
-    logical(kind=iglu)  , optional :: rev
-    logical(kind=lglu)             :: urev
-    integer(kind=iglu)             :: send,k,vlen
-    integer(kind=i8kind)           :: address
-    integer(kind=i4kind)           :: vtype
-
-
-    urev=false; if (present(rev)) urev=rev
-
-    send=ubound(vector,1); address=loc(vector); vtype=SRT$REAL16
-    call sortqq(address,send,vtype)
-    ret=send
-
-    if (urev) then
-        vlen=ubound(vector,1)
-        do k = 1,vlen/2
-            swap=vector(k); vector(k)=vector(vlen-k+1); vector(vlen-k+1)=swap
-        enddo
-    endif
-
-    return
-    end function sort_r16
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_r8(vector,rev) result(ret)
-    implicit none
-    real   (kind=r8kind)           :: vector(:),swap
-    logical(kind=iglu)  , optional :: rev
-    logical(kind=lglu)             :: urev
-    integer(kind=iglu)             :: send,k,vlen
-    integer(kind=i8kind)           :: address
-    integer(kind=i4kind)           :: vtype
-
-
-    urev=false; if (present(rev)) urev=rev
-
-    send=ubound(vector,1); address=loc(vector); vtype=SRT$REAL8
-    call sortqq(address,send,vtype)
-    ret=send
-
-    if (urev) then
-        vlen=ubound(vector,1)
-        do k = 1,vlen/2
-            swap=vector(k); vector(k)=vector(vlen-k+1); vector(vlen-k+1)=swap
-        enddo
-    endif
-
-    return
-    end function sort_r8
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_r4(vector,rev) result(ret)
-    implicit none
-    real   (kind=r4kind)           :: vector(:),swap
-    logical(kind=iglu)  , optional :: rev
-    logical(kind=lglu)             :: urev
-    integer(kind=iglu)             :: send,k,vlen
-    integer(kind=i8kind)           :: address
-    integer(kind=i4kind)           :: vtype
-
-
-    urev=false; if (present(rev)) urev=rev
-
-    send=UBound(vector,1); address=loc(vector); vtype=SRT$REAL4
-    call sortqq(address,send,vtype)
-    ret=send
-
-    if (urev) then
-        vlen=UBound(vector,1)
-        do k = 1,vlen/2
-            swap=vector(k); vector(k)=vector(vlen-k+1); vector(vlen-k+1)=swap
-        enddo
-    endif
-
-    return
-    end function sort_r4
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_i8(vector,rev) result(ret)
-    implicit none
-    integer(kind=i8kind)           :: vector(:),swap
-    logical(kind=lglu)  , optional :: rev
-    logical(kind=lglu)             :: urev
-    integer(kind=iglu)             :: send,k,vlen
-    integer(kind=i8kind)           :: address
-    integer(kind=i4kind)           :: vtype
-
-
-    urev=false; if (present(rev)) urev=rev
-
-    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER8
-    call sortqq(address,send,vtype)
-    ret=send
-
-    if (urev) then
-        vlen=UBound(vector,1)
-        do k = 1,vlen/2
-            swap=vector(k)
-            vector(k)=vector(vlen-k+1)
-            vector(vlen-k+1)=swap
-        enddo
-    endif
-
-    return
-    end function sort_i8
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_i4(vector,rev) result(ret)
-    implicit none
-    integer(kind=i4kind)           :: vector(:),swap
-    logical(kind=lglu)  , optional :: rev
-    logical(kind=lglu)             :: urev
-    integer(kind=iglu)             :: send,k,vlen
-    integer(kind=i8kind)           :: address
-    integer(kind=i4kind)           :: vtype
-
-
-    integer(4) ln
-    integer(8) sz
-
-    urev=false; if (present(rev)) urev=rev
-
-    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER4
-    !call sortqq(address,send,vtype)
-    ln=size(vector); sz=sizeof(vector(1))
-    call qsort(vector,ln,sz,compar)
-    ret=send
-
-    if (urev) then
-        vlen=UBound(vector,1)
-        do k = 1,vlen/2
-            swap=vector(k)
-            vector(k)=vector(vlen-k+1)
-            vector(vlen-k+1)=swap
-        enddo
-    endif
-
-    return
-    end function sort_i4
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(2) function compar(a1,a2)
-    integer(4) a1,a2
-    compar=a1-a2
-    end function
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_i2(vector,rev) result(ret)
-    implicit none
-    integer(kind=i2kind)           :: vector(:),swap
-    logical(kind=lglu)  , optional :: rev
-    logical(kind=lglu)             :: urev
-    integer(kind=iglu)             :: send,k,vlen
-    integer(kind=i8kind)           :: address
-    integer(kind=i4kind)           :: vtype
-
-
-    urev=false; if (present(rev)) urev=rev
-
-    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER4
-    call sortqq(address,send,vtype)
-    ret=send
-
-    if (urev) then
-        vlen=UBound(vector,1)
-        do k = 1,vlen/2
-            swap=vector(k)
-            vector(k)=vector(vlen-k+1)
-            vector(vlen-k+1)=swap
-        enddo
-    endif
-
-    return
-    end function sort_i2
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_i1(vector,rev) result(ret)
-    implicit none
-    integer(kind=i1kind)           :: vector(:),swap
-    logical(kind=lglu)  , optional :: rev
-    logical(kind=lglu)             :: urev
-    integer(kind=iglu)             :: send,k,vlen
-    integer(kind=i8kind)           :: address
-    integer(kind=i4kind)           :: vtype
-
-
-    urev=false; if (present(rev)) urev=rev
-
-    send=UBound(vector,1); address=loc(vector); vtype=SRT$INTEGER4
-    call sortqq(address,send,vtype)
-    ret=send
-
-    if (urev) then
-        vlen=UBound(vector,1)
-        do k = 1,vlen/2
-            swap=vector(k)
-            vector(k)=vector(vlen-k+1)
-            vector(vlen-k+1)=swap
-        enddo
-    endif
-
-    return
-    end function sort_i1
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer(kind=iglu) function sort_uch(vector,rev,attribute) result(ret)
-    implicit none
-    type(uch)                       :: vector(:),swap
-    character (len=*), optional     :: attribute
-    character (len=8)               :: uattribute
-    logical(kind=lglu), optional    :: rev
-    logical(kind=lglu)              :: urev,cnd
-    integer(kind=iglu)              :: N,k,cnt
-
-
-    urev=false; if (present(rev)) urev=rev
-    uattribute=repeat(' ',len(uattribute)); uattribute='length'
-    if (present(attribute)) uattribute=attribute
-    N=UBound(vector,1)
-
-    if ( (uattribute.NE.'alphabet').AND.(uattribute.NE.'length') ) then
-        ret=-1
-        return
-    endif
-
-    ret=0
-    select case (trim(uattribute)) ! assume that vector is small, bubble sort.
-        case ('length')
-            do
-                cnt=0
-                do k = 1,N-1
-
-                    if (urev) then
-                        cnd=(vector(k)%ln.LT.vector(k+1)%ln)
-                    else
-                        cnd=(vector(k)%ln.GT.vector(k+1)%ln)
-                    endif
-
-                    if (cnd) then
-                        swap=vector(k); vector(k)=vector(k+1); vector(k+1)=swap
-                        cnt=cnt+1
-                    endif
-                enddo
-                ret=ret+cnt
-                if (cnt.EQ.0) exit
-            enddo
-
-        case ('alphabet')
-            do
-                cnt=0
-                do k = 1,N-1
-
-                    if (urev) then
-                        cnd=compareStrings( uchGet(vector(k)), uchGet(vector(k+1)) ) .LT. 0
-                    else
-                        cnd=compareStrings( uchGet(vector(k)), uchGet(vector(k+1)) ) .GT. 0
-                    endif
-
-                    if (cnd) then
-                        swap=vector(k); vector(k)=vector(k+1); vector(k+1)=swap
-                        cnt=cnt+1
-                    endif
-                enddo
-                ret=ret+cnt
-                if (cnt.EQ.0) exit
-            enddo
-
-    end select
-
-    return
-    end function sort_uch
-
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TIME AND DATE FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     real(kind=rglu) function timeControl(cputime) result(ret)
@@ -2040,15 +1844,59 @@
     real(kind=rglu), optional :: cputime
 
 
-    !MS$if(opnmp.EQ.1)
+#   if(__opnmp==1)
         ret=omp_get_wtime()
-    !MS$else
+#   else
         call cpu_time(ret)
-    !MS$endif
+#   endif
     if (present(cputime)) call cpu_time(cputime)
 
     return
     end function timeControl
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    real(kind=rglu) function timeControlCheckpoint(msg,save,drop,raw,rcall) result(ret)
+    implicit none
+
+    character (len=*),  optional, intent(in) :: msg
+    logical(kind=lglu), optional, intent(in) :: save,drop,raw
+    integer(kind=iglu), optional, intent(in) :: rcall
+    logical(kind=lglu)                       :: usave,udrop,uraw,prnt
+
+
+    prnt=present(msg)
+    udrop=false; if (present(drop)) udrop=drop
+    usave=true ; if (present(save)) usave=save
+    uraw =false; if (present(raw))  uraw =raw
+
+    if (udrop) lastTimerPoint=0
+
+    if (lastTimerPoint.EQ.0) then
+        lastTimerPoint=timecontrol()
+        ret=lastTimerPoint
+        if (prnt) then
+            if (uraw) then
+                write (iounit,"(' [',F13.3,' ] ',A)") 0,msg !fmt on more than 30 years.
+            else
+                write (iounit,'(A,1X,A)') msg,timeStamp()
+            endif
+        endif
+        return
+    endif
+
+    ret=timecontrol()-lastTimerPoint
+    if (.NOT.usave) lastTimerPoint=timecontrol()
+    if (prnt) then
+        if (uraw) then
+            write (iounit,"(' [ ',F13.3,' ] ',A)") ret,msg !fmt on more than 30 years.
+        else
+            write (iounit,'(A,1X,A)') msg,convertTime(ret)
+        endif
+    endif
+
+    return
+    end function timeControlCheckpoint
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -2110,7 +1958,7 @@
 
     pure function convertTime(secs,spec) result(ret)
     implicit none
-    character (len=20)                        :: ret
+    character (len=25)                        :: ret
     real   (kind=rglu), intent(in)            :: secs
     logical(kind=lglu), optional, intent(in)  :: spec
 
@@ -2197,9 +2045,9 @@
     integer(kind=iglu) :: n_threads
 
 
-    !MS$if(opnmp.EQ.1)
+#   if(__opnmp==1)
         call omp_set_num_threads(n_threads)
-    !MS$endif
+#   endif
 
     ret=0; return
     end function setThreadsNumber
@@ -2211,9 +2059,9 @@
 
 
     ret=1
-    !MS$if(opnmp.EQ.1)
+#   if(__opnmp==1)
         ret=omp_get_thread_num()+1
-    !MS$endif
+#   endif
 
     return
     end function getThreadNumber
@@ -2623,6 +2471,136 @@
 
     return
     end subroutine nullSub
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_i8(var) result(ret)
+    implicit none
+    integer(kind=i8kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_i8
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_i4(var) result(ret)
+    implicit none
+    integer(kind=i4kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_i4
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_i2(var) result(ret)
+    implicit none
+    integer(kind=i2kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_i2
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_i1(var) result(ret)
+    implicit none
+    integer(kind=i1kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_i1
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_r16(var) result(ret)
+    implicit none
+    real(kind=r16kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_r16
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_r8(var) result(ret)
+    implicit none
+    real(kind=r8kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_r8
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_r4(var) result(ret)
+    implicit none
+    real(kind=r4kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_r4
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_l8(var) result(ret)
+    implicit none
+    logical(kind=l8kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_l8
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_l4(var) result(ret)
+    implicit none
+    logical(kind=l4kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_l4
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_l2(var) result(ret)
+    implicit none
+    logical(kind=l2kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_l2
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_l1(var) result(ret)
+    implicit none
+    logical(kind=l1kind) :: var
+
+
+    ret=0; return
+    end function call_wrapper_l1
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_ch(var) result(ret)
+    implicit none
+    character (len=*) :: var
+
+
+    ret=0; return
+    end function call_wrapper_ch
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function call_wrapper_uc(var) result(ret)
+    implicit none
+    type(uch) :: var
+
+
+    ret=0; return
+    end function call_wrapper_uc
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

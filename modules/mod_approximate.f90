@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob     , only: rglu,iglu,lglu,true,false
+    use glob     , only: rglu,iglu,lglu,true,false,void,i8kind,glControlMemory
     use math     , only: tred4,gaussSLE
     use txtParser, only: tpLowerCase
 
@@ -65,6 +65,7 @@
 
     meth='sd'; if (present(gmeth)) meth=tpLowerCase(gmeth)
 
+    void=glControlMemory(int( rglu*(3*N+M*N+2*M*M+M) ,kind=i8kind),'tmp. Approximate')
     allocate (X(N),Y(N),Yth(N),A(M,N),B(M,M),C(M,M),kof(M))
     X=0; Y=0; Yth=0; A=0; B=0; C=0; kof=0
 
@@ -121,6 +122,7 @@
     enddo
     enddo
 
+    void=glControlMemory(int( rglu*(M*M+M) ,kind=i8kind),'tmp. Approximate')
     allocate (eVec(M,M),eVal(M))
 
     select case (meth)
@@ -197,6 +199,9 @@
     gkof=kof
 
     deallocate (eVec,eVal,X,Y,Yth,A,B,C,kof)
+    void=glControlMemory(int( sizeof(eVec)+sizeof(eVal)+sizeof(X)+&
+                              sizeof(Y)+sizeof(Yth)+sizeof(A)+sizeof(B)+&
+                              sizeof(C)+sizeof(kof) ,kind=i8kind),'tmp. Geometry displacement','free')
 
     return
     end function approximate

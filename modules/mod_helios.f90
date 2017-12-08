@@ -1,17 +1,22 @@
-    !DEC$if defined(__unix)
-        !DEC$define OS=2
-    !DEC$else
-        !DEC$define OS=1
-    !DEC$endif
+#   if defined(__GFORTRAN__)
+#       define __unix 1
+#   endif
+
+#    if defined(__unix)
+#       define __OS 2
+#    else
+#       define __OS 1
+#   endif
 
     module hdb
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob      , only: rglu,iglu,lglu,i4kind,void,true,false
+    use glob      , only: assignment (=)
+    use glob      , only: rglu,iglu,lglu,i4kind,i8kind,void,true,false
     use glob      , only: SIGABRT,SIGINT,SIGTERM,system
-    use glob      , only: uch,uch_set
-    use glob      , only: setThreadsNumber,timeControl,definePi,getpid
+    use glob      , only: uch,mid
+    use glob      , only: setThreadsNumber,timeControl,definePi,getpid,glSetIOunit
     use fcontrol  , only: fcNewID,fcSetIOunit,fcNullID
     use printmod  , only: prMatrix
 
@@ -91,10 +96,11 @@
     end type bdgeometry
 
     type bdsystem
-        type(uch)          :: muttDestination
-        real(kind=rglu)    :: memory
-        integer(kind=iglu) :: nNodes,verboselvl
-        logical(kind=lglu) :: allowRestart,allowMutt,muttSendTared,ignoreSIGHUP
+        type(uch)            :: muttDestination
+        real(kind=rglu)      :: memory
+        integer(kind=iglu)   :: nNodes,verboselvl
+        integer(kind=i8kind) :: imemory
+        logical(kind=lglu)   :: allowRestart,allowMutt,muttSendTared,ignoreSIGHUP
     end type bdsystem
 
     type bditeration
@@ -247,13 +253,13 @@
 
     ! ~~~~~ Derivatives ~~~~~ !
     integer(kind=iglu)   :: pointToPut,pointToCalc,perturbationID=0
-    ! Memory: 2*iglu
+    ! Memory: 3*iglu
 
     ! ~~~~~ File IDs ~~~~~ !
     ! su=screen; in=input; ou=output; rf=restart file; eu=error unit
     ! debug=debug file; lsmf=for lsm check; unul=/dev/null or NUL
     integer(kind=iglu)   :: su,init,in,ou,eu,unul,lrg,scfg
-    ! Memory: 6*iglu
+    ! Memory: 8*iglu
 
     ! ~~~~~ Service ~~~~~ !
 
@@ -261,7 +267,8 @@
     integer(kind=iglu)   :: appPID,ouWidth,ouIndent,nMethods
     logical(kind=lglu)   :: showInputHelp
     real   (kind=rglu)   :: timeSpent(2,3)
-    ! Memory: 4+4*iglu+lglu+6*rglu
+    integer(kind=i8kind) :: store_memory
+    ! Memory: 4+4*iglu+lglu+6*rglu+8
 
     type(uch)            :: pauseFileName,continueFileName,holdMethods(30)
     ! Memory: based on the length
@@ -298,19 +305,19 @@
     integer(kind=i4kind) :: fid,err
 
 
-    !MS$if(OS.EQ.2)
+#   if(__OS==2)
         fid=fcNewID()
         open  (fid,file=pauseFileName%get())   ; write (fid,"('kill -19 ',i5)") appPID; close (fid)
         open  (fid,file=continueFileName%get()); write (fid,"('kill -18 ',i5)") appPID; close (fid)
         void=fcNullID(fid)
         err=system('chmod +x '//pauseFileName%get()); err=system('chmod +x '//continueFileName%get())
 
-        call PXFSTRUCTCREATE("sigset",SIGNSET,err)
+        call PXFSTRUCTCREATE('sigset',SIGNSET,err)
         call PXFSIGADDSET(SIGNSET,SIGCONT,err)
         call PXFSIGADDSET(SIGNSET,SIGSTOP,err)
         call PXFSIGADDSET(SIGNSET,SIGHUP ,err)
         call PXFSIGADDSET(SIGNSET,SIGUSR1,err)
-    !MS$endif
+#   endif
 
     return
     end subroutine trapSignals
@@ -323,12 +330,12 @@
     integer(kind=i4kind) :: fid
 
 
-    !MS$if(OS.EQ.2)
+#   if(__OS==2)
         fid=fcNewID()
         open (fid,file=pauseFileName%get())   ; close (fid,status='delete')
         open (fid,file=continueFileName%get()); close (fid,status='delete')
         void=fcNullID(fid)
-    !MS$endif
+#   endif
 
     return
     end subroutine finalizeHelios
@@ -343,7 +350,7 @@
 
 
     rcode=0
-    !MS$if(OS.EQ.2)
+#   if(__OS==2)
         call time(ttime); call date(ddate); write (ou,99) ddate,ttime
         select case (SIGNUM)
             case (SIGHUP) ; write (ou,100) 'SIGHUP  received. Ignoring.  '; rcode=1; return
@@ -360,7 +367,7 @@
      99 format (/2X,A9,1X,A8,1X\)
     100 format (2X,A/)
     101 format (2X,'Defined StopIteration signal received (',i2,'). Iteration procedure will be interrupted.'/)
-    !MS$endif
+#   endif
 
     return
     end function onTrap
@@ -387,13 +394,16 @@
     cueConstant4=cueConstant1**4
 
     !define names.
-    pauseFileName   =uch_set('pauseproc.sh')
-    continueFileName=uch_set('continueproc.sh')
+    pauseFileName   ='pauseproc.sh'
+    continueFileName='continueproc.sh'
 
     su=6 ! screen/console unit
     eu=6 ! error unit
 
     ! setting i/o units for modules.
+    ! glob
+    call glSetIOunit(su)
+
     ! args parser
     call apSetIOunit(su); call apSetERRunit(eu)
 
@@ -414,11 +424,11 @@
     scfg =fcNewID()
 
     unul =fcNewID()
-    !MS$if(OS.EQ.2)
+#   if (__OS==2)
         open(unul,file='/dev/null')
-    !MS$else
+#   else
         open(unul,file='NUL')
-    !MS$endif
+#   endif
 
     call definebd
     call defineArguments

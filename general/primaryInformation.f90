@@ -1,6 +1,6 @@
     subroutine primaryInformation(action)
 
-    use glob      , only: iglu,uch,uchSet,date_time,mid
+    use glob      , only: iglu,uch,date_time,mid
     use glob      , only: getPath,convertTime,timeControl
     use hdb       , only: ouWidth,ou,heVersion,heDate,heCompilDate
     use hdb       , only: appPid,timeSpent

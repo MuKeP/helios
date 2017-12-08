@@ -2,8 +2,9 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob     , only: iglu,rglu,lglu,true,false,gluCompare
-    use glob     , only: uch,uch_set,timecontrol
+    use glob     , only: assignment (=)
+    use glob     , only: iglu,rglu,lglu,true,false,void,gluCompare,i8kind
+    use glob     , only: uch,timecontrol,glControlMemory
     use txtParser, only: operator(.in.)
     use printmod , only: prMatrix,prStrByVal
     use math     , only: tred4
@@ -82,35 +83,35 @@
         case ('cue-ccs','cue-ccsd','cue-ccsdt')
             do
                 if (cuebd%sparse .AND. (method.EQ.'cue-ccsd')) then
-                    umethod=uch_set('spare-'//method); exit
+                    umethod='spare-'//method; exit
                 endif
 
                 if (ccbd%forceSpin) then
-                    umethod=uch_set('spin-'//method); exit
+                    umethod='spin-'//method; exit
                 endif
 
                 if (method.EQ.'cue-ccsdt') then
-                    umethod=uch_set('spin-'//method); exit
+                    umethod='spin-'//method; exit
                 endif
 
-                umethod=uch_set(method); exit
+                umethod=method; exit
             enddo
 
         case ('u-ccd','u-ccsd','u-ccsdt','r-ccd','r-ccsd','r-ccsdt','r-ccsd(t)')
             do
                 if (ccbd%forceSpin) then
-                    umethod=uch_set('spin-'//method); exit
+                    umethod='spin-'//method; exit
                 endif
 
                 if (method .in. ['u-ccsdt','r-ccsdt','r-ccsd(t)'] ) then
-                    umethod=uch_set('spin-'//method); exit
+                    umethod='spin-'//method; exit
                 endif
 
-                umethod=uch_set(method); exit
+                umethod=method; exit
             enddo
 
         case default
-            umethod=uch_set(method)
+            umethod=method
             !stop 'CC: Unknown method'
 
     end select
@@ -2256,6 +2257,7 @@
     integer(kind=iglu)              :: mu,nu,i,j
 
 
+    void=glControlMemory(int( rglu*N*N ,kind=i8kind),'tmp. Coupled Cluster Module')
     allocate (X(N,N)); X=0
 
     !$omp parallel default(shared) private(mu,nu,sum)
@@ -2302,6 +2304,7 @@
     call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
 
     deallocate (X)
+    void=glControlMemory(int( sizeof(X) ,kind=i8kind),'tmp. Coupled Cluster Module', 'free')
 
     return
     end subroutine prepareFock
@@ -2318,6 +2321,7 @@
     integer(kind=iglu)              :: mu,nu,i,j
 
 
+    void=glControlMemory(int( rglu*N*N ,kind=i8kind),'tmp. Coupled Cluster Module')
     allocate (X(N,N)); X=0
 
     !$omp parallel default(shared) private(mu,nu,sum)
@@ -2374,6 +2378,7 @@
     call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
 
     deallocate (X)
+    void=glControlMemory(int( sizeof(X) ,kind=i8kind),'tmp. Coupled Cluster Module', 'free')
 
     return
     end subroutine prepareFockCUE
@@ -2474,44 +2479,69 @@
         case ('general')
             select case (action)
                 case ('allocate')
+                    void=glControlMemory(int( rglu*N*N ,kind=i8kind),'Coupled cluster module')
                     allocate (sCore(N,N))
                     select case (umethod%get())
                         case ('spare-cue-ccsd')
+                            void=glControlMemory(int( rglu*(2*N*N+2*No*No)+&
+                                                      iglu*(2*No+No+2*Nel*(No-Nel))+&
+                                                      1*((N+1)*No) ,kind=i8kind),'Coupled cluster module. spare-cue-ccsd')
                             allocate (cueIndex(2,No),V(0:N,No),iapairs(No),G(N,N),density(N,N),&
                                       F(No,No),cueDistance(No,No),Fnz(2,Nel*(No-Nel)))
                             cueIndex=0; V=0; iapairs=0; G=0; density=0; F=0; cueDistance=0; Fnz=0
 
                         case ('cue-ccs','cue-ccsd')
+                            void=glControlMemory(int( rglu*(4*N*N+N*N*N*N)+&
+                                                      iglu*(2*N+N+2*Ne+2*Nocc*(N-Nocc))+&
+                                                      1*(N*N) ,kind=i8kind),'Coupled cluster module. cue-(ccs/ccsd)')
                             allocate (cueIndex(2,N),V(N,N),iapairs(N),excSet(Ne,2),G(N,N),&
                                       density(N,N),cueDistance(N,N),R(N,N,N,N),F(N,N),Fnz(2,Nocc*(N-Nocc)))
                             cueIndex=0; V=0; iapairs=0; excSet=0; G=0; density=0; cueDistance=0; R=0; F=0; Fnz=0
 
                             select case (umethod%get())
                                 case ('cue-ccs')
+                                    void=glControlMemory(int( rglu*(2*Nocc*(N-Nocc))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. cue-ccs')
                                     allocate (t1(Nocc,Nocc+1:N),d1(Nocc,Nocc+1:N))
                                     t1=0; d1=0
 
                                 case ('cue-ccsd')
+                                    void=glControlMemory(int( rglu*(2*Nocc*(N-Nocc)+2*Nocc*Nocc*(N-Nocc)*(N-Nocc))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. cue-ccsd')
                                     allocate (t1(Nocc,Nocc+1:N),t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),d1(Nocc,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N))
                                     t1=0; t2=0; d1=0; d2=0
 
                             end select
 
                         case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
+                            void=glControlMemory(int( rglu*(2*N*N+2*No*No+No*No*No*No)+&
+                                                      iglu*(2*No+No+2*Nel*(No-Nel))+&
+                                                      1*((N+1)*No) ,kind=i8kind),'Coupled cluster module. spin-cue-(ccs/ccsd/ccsdt)')
                             allocate (cueIndex(2,No),V(0:N,No),iapairs(No),G(N,N),density(N,N),&
                                       cueDistance(No,No),R(No,No,No,No),F(No,No),Fnz(2,Nel*(No-Nel)))
                             cueIndex=0; V=0; iapairs=0; G=0; density=0; cueDistance=0; R=0; F=0; Fnz=0
 
                             select case (umethod%get())
                                 case ('spin-cue-ccs')
+                                    void=glControlMemory(int( rglu*(2*Nel*(No-Nel))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. spin-cue-ccs')
                                     allocate (t1(Nel,Nel+1:No),d1(Nel,Nel+1:No))
                                     t1=0; d1=0
 
                                 case ('spin-cue-ccsd')
+                                    void=glControlMemory(int( rglu*(2*Nel*(No-Nel)+2*Nel*Nel*(No-Nel)*(No-Nel))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. spin-cue-ccsd')
                                     allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No))
                                     t1=0; t2=0; d1=0; d2=0
 
                                 case ('spin-cue-ccsdt')
+                                    void=glControlMemory(int( rglu*(2*Nel*(No-Nel)+2*Nel*Nel*(No-Nel)*(No-Nel)+2*Nel*Nel*Nel*(No-Nel)*(No-Nel)*(No-Nel))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. spin-cue-ccsdt')
                                     allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),t3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No),&
                                               d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No),d3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No) )
                                     t1=0; t2=0; t3=0; d1=0; d2=0; d3=0
@@ -2519,34 +2549,55 @@
                             end select
 
                         case ('u-ccd','u-ccsd','r-ccd','r-ccsd')
+                            void=glControlMemory(int( rglu*(4*N*N+N*N*N*N)+&
+                                                      iglu*(2*Ne)+&
+                                                      1*(0) ,kind=i8kind),'Coupled cluster module. (u/r)-(ccd/ccsd)')
                             allocate (hV(N,N),excSet(Ne,2),G(N,N),density(N,N),R(N,N,N,N),F(N,N))
                             hV=0; excSet=0; G=0; density=0; R=0; F=0
 
                             select case (umethod%get())
                                 case ('u-ccd','r-ccd')
+                                    void=glControlMemory(int( rglu*(2*Nocc*Nocc*(N-Nocc)*(N-Nocc))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. (u/r)-ccd')
                                     allocate (t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N))
                                     t2=0; d2=0
 
                                 case ('u-ccsd','r-ccsd')
+                                    void=glControlMemory(int( rglu*(2*Nocc*(N-Nocc)+2*Nocc*Nocc*(N-Nocc)*(N-Nocc))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. (u/r)-ccsd')
                                     allocate (t1(Nocc,Nocc+1:N),t2(Nocc,Nocc,Nocc+1:N,Nocc+1:N),d1(Nocc,Nocc+1:N),d2(Nocc,Nocc,Nocc+1:N,Nocc+1:N))
                                     t1=0; t2=0; d1=0; d2=0
 
                             end select
 
                         case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt','spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
+                            void=glControlMemory(int( rglu*(3*N*N+No*No+N*No+No*No*No*No)+&
+                                                      iglu*(0)+&
+                                                      1*(0) ,kind=i8kind),'Coupled cluster module. spin-(u/r)-(ccd/ccsd/ccsdt/ccsdt(t))')
                             allocate (hV(N,N),hVs(N,No),G(N,N),density(N,N),R(No,No,No,No),F(No,No))
                             hV=0; hVs=0; G=0; density=0; R=0; F=0
 
                             select case (umethod%get())
                                 case ('spin-u-ccd','spin-r-ccd')
+                                    void=glControlMemory(int( rglu*(2*Nel*Nel*(No-Nel)*(No-Nel))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. spin-(u/r)-ccd')
                                     allocate (t2(Nel,Nel,Nel+1:No,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No))
                                     t2=0; d2=0
 
                                 case ('spin-u-ccsd','spin-r-ccsd','spin-r-ccsd(t)')
+                                    void=glControlMemory(int( rglu*(2*Nel*(No-Nel)+2*Nel*Nel*(No-Nel)*(No-Nel))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. spin-(u/r)-ccsd')
                                     allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No))
                                     t1=0; t2=0; d1=0; d2=0
 
                                 case ('spin-u-ccsdt','spin-r-ccsdt')
+                                    void=glControlMemory(int( rglu*(2*Nel*(No-Nel)+2*Nel*Nel*(No-Nel)*(No-Nel)+2*Nel*Nel*Nel*(No-Nel)*(No-Nel)*(No-Nel))+&
+                                                              iglu*(0)+&
+                                                              1*(0) ,kind=i8kind),'Coupled cluster module. spin-(u/r)-ccsdt')
                                     allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No),t3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No),&
                                               d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No),d3(Nel,Nel,Nel,Nel+1:No,Nel+1:No,Nel+1:No) )
                                     t1=0; t2=0; t3=0; d1=0; d2=0; d3=0
@@ -2560,35 +2611,67 @@
                     select case (umethod%get())
                         case ('spare-cue-ccsd')
                             deallocate (cueIndex,V,iapairs,G,density,F,cueDistance,Fnz)
+                            void=glControlMemory(int( sizeof(cueIndex)+sizeof(V)+sizeof(iapairs)+&
+                                                      sizeof(G)+sizeof(density)+sizeof(F)+sizeof(Fnz)+&
+                                                      sizeof(cueDistance) ,kind=i8kind),'Coupled cluster module. spare-cue-ccsd', 'free')
 
                         case ('cue-ccs','cue-ccsd')
                             deallocate (cueIndex,V,iapairs,excSet,G,density,cueDistance,R,F,Fnz)
+                            void=glControlMemory(int( sizeof(cueIndex)+sizeof(V)+sizeof(iapairs)+&
+                                                      sizeof(excSet)+sizeof(G)+sizeof(density)+&
+                                                      sizeof(cueDistance)+sizeof(R)+sizeof(F)+&
+                                                      sizeof(Fnz) ,kind=i8kind),'Coupled cluster module. cue-(ccs/ccsd)', 'free')
                             select case (umethod%get())
-                                case ('cue-ccs') ; deallocate (t1,d1)
-                                case ('cue-ccsd'); deallocate (t1,t2,d1,d2)
+                                case ('cue-ccs')
+                                    deallocate (t1,d1)
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(d1) ,kind=i8kind),'Coupled cluster module. cue-ccs', 'free')
+                                case ('cue-ccsd')
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(t2)+sizeof(d1)+sizeof(d2) ,kind=i8kind),'Coupled cluster module. cue-ccsd', 'free')
+                                    deallocate (t1,t2,d1,d2)
                             end select
 
                         case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
                             deallocate (cueIndex,V,iapairs,G,density,cueDistance,R,F,Fnz)
+                            void=glControlMemory(int( sizeof(cueIndex)+sizeof(V)+sizeof(iapairs)+&
+                                                      sizeof(G)+sizeof(density)+sizeof(cueDistance)+&
+                                                      sizeof(R)+sizeof(F)+sizeof(Fnz) ,kind=i8kind),'Coupled cluster module. spin-cue-(ccs/ccsd/ccsdt)', 'free')
                             select case (umethod%get())
-                                case ('spin-cue-ccs')  ; deallocate (t1,d1)
-                                case ('spin-cue-ccsd') ; deallocate (t1,t2,d1,d2)
-                                case ('spin-cue-ccsdt'); deallocate (t1,t2,t3,d1,d2,d3)
+                                case ('spin-cue-ccs')
+                                    deallocate (t1,d1)
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(d1) ,kind=i8kind),'Coupled cluster module. spin-cue-ccs', 'free')
+                                case ('spin-cue-ccsd')
+                                    deallocate (t1,t2,d1,d2)
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(t2)+sizeof(d1)+sizeof(d2) ,kind=i8kind),'Coupled cluster module. spin-cue-ccsd', 'free')
+                                case ('spin-cue-ccsdt')
+                                    deallocate (t1,t2,t3,d1,d2,d3)
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(t2)+sizeof(t3)+sizeof(d1)+sizeof(d2)+sizeof(d3) ,kind=i8kind),'Coupled cluster module. spin-cue-ccsdt', 'free')
                             end select
 
                         case ('u-ccd','u-ccsd','r-ccd','r-ccsd')
                             deallocate (hV,excSet,G,density,R,F)
+                            void=glControlMemory(int( sizeof(hV)+sizeof(excSet)+sizeof(G)+sizeof(density)+sizeof(R)+sizeof(F) ,kind=i8kind),'Coupled cluster module. (u/r)-(ccd/ccsd)', 'free')
                             select case (umethod%get())
-                                case ('u-ccd','r-ccd')  ; deallocate (t2,d2)
-                                case ('u-ccsd','r-ccsd'); deallocate (t1,t2,d1,d2)
+                                case ('u-ccd','r-ccd')
+                                    deallocate (t2,d2)
+                                    void=glControlMemory(int( sizeof(t2)+sizeof(d2) ,kind=i8kind),'Coupled cluster module. (u/r)-ccd', 'free')
+                                case ('u-ccsd','r-ccsd')
+                                    deallocate (t1,t2,d1,d2)
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(t2)+sizeof(d1)+sizeof(d2) ,kind=i8kind),'Coupled cluster module. (u/r)-ccsd', 'free')
                             end select
 
                         case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt','spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
                             deallocate (hV,hVs,G,density,R,F)
+                            void=glControlMemory(int( sizeof(hV)+sizeof(hVs)+sizeof(G)+sizeof(density)+sizeof(R)+sizeof(F) ,kind=i8kind),'Coupled cluster module. spin-(u/r)-(ccd/ccsd/ccsdt)', 'free')
                             select case (umethod%get())
-                                case ('spin-u-ccd','spin-r-ccd')                   ; deallocate (t2,d2)
-                                case ('spin-u-ccsd','spin-r-ccsd','spin-r-ccsd(t)'); deallocate (t1,t2,d1,d2)
-                                case ('spin-u-ccsdt','spin-r-ccsdt')               ; deallocate (t1,t2,t3,d1,d2,d3)
+                                case ('spin-u-ccd','spin-r-ccd')
+                                    deallocate (t2,d2)
+                                    void=glControlMemory(int( sizeof(t2)+sizeof(d2) ,kind=i8kind),'Coupled cluster module. (u/r)-ccd', 'free')
+                                case ('spin-u-ccsd','spin-r-ccsd','spin-r-ccsd(t)')
+                                    deallocate (t1,t2,d1,d2)
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(t2)+sizeof(d1)+sizeof(d2) ,kind=i8kind),'Coupled cluster module. (u/r)-ccsd', 'free')
+                                case ('spin-u-ccsdt','spin-r-ccsdt')
+                                    deallocate (t1,t2,t3,d1,d2,d3)
+                                    void=glControlMemory(int( sizeof(t1)+sizeof(t2)+sizeof(t3)+sizeof(d1)+sizeof(d2)+sizeof(d3) ,kind=i8kind),'Coupled cluster module. (u/r)-ccsdt', 'free')
                             end select
 
                     end select
@@ -2602,99 +2685,151 @@
                     select case (umethod%get())
                         case ('spare-cue-ccsd')
                             vv=0
-                            do i = 1,Nel; do a = Nel+1,No
+                            do i = 1,Nel
+                            do a = Nel+1,No
                                 if (btest(i,0).NE.btest(a,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
+                            enddo
+                            enddo
 
                             nn=UBound(vd,1)
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv+nn)) ,kind=i8kind),'Coupled cluster module. diis. spare-cue-ccsd')
 
                             allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
                             allocate ( sd2(nn,Nd),st2(nn,Nd) ); sd2=0; st2=0
 
                         case ('cue-ccs')
+                            void=glControlMemory(int( rglu*(2*Nd*(Ne)) ,kind=i8kind),'Coupled cluster module. diis. cue-ccs')
                             allocate ( sd1(Ne,Nd),st1(Ne,Nd) ); sd1=0; st1=0
 
                         case ('spin-cue-ccs')
                             vv=0
-                            do i = 1,Nel; do a = Nel+1,No
+                            do i = 1,Nel
+                            do a = Nel+1,No
                                 if (btest(i,0).NE.btest(a,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. spin-cue-ccs')
                             allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
 
                         case ('r-ccd','u-ccd')
                             vv=0
-                            do mm = 1,Ne; do nn = mm,Ne
+                            do mm = 1,Ne
+                            do nn = mm,Ne
                                 vv=vv+1
-                            enddo; enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. (u/r)-ccd')
                             allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
 
                         case ('spin-r-ccd','spin-u-ccd')
                             vv=0
-                            do i = 1,Nel-1;    do j = i+1,Nel
-                            do a = Nel+1,No-1; do b = a+1,No
+                            do i = 1,Nel-1
+                            do j = i+1,Nel
+                            do a = Nel+1,No-1
+                            do b = a+1,No
                                 if (btest(i+j,0).NE.btest(a+b,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
-                            enddo; enddo
+                            enddo
+                            enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. spin-(u/r)-ccd')
                             allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
 
                         case ('cue-ccsd','r-ccsd','u-ccsd')
                             vv=0
-                            do mm = 1,Ne; do nn = mm,Ne
+                            do mm = 1,Ne
+                            do nn = mm,Ne
                                 vv=vv+1
-                            enddo; enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv+Ne)) ,kind=i8kind),'Coupled cluster module. diis. (cue/u/r)-ccsd')
                             allocate ( sd1(Ne,Nd), st1(Ne,Nd) ); sd1=0; st1=0
                             allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
 
                         case ('spin-cue-ccsd','spin-r-ccsd','spin-u-ccsd','spin-r-ccsd(t)')
                             vv=0
-                            do i = 1,Nel; do a = Nel+1,No
+                            do i = 1,Nel
+                            do a = Nel+1,No
                                 if (btest(i,0).NE.btest(a,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. spin-(cue/u/r)-(ccsd/ccsd(t))')
                             allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
 
                             vv=0
-                            do i = 1,Nel-1;    do j = i+1,Nel
-                            do a = Nel+1,No-1; do b = a+1,No
+                            do i = 1,Nel-1
+                            do j = i+1,Nel
+                            do a = Nel+1,No-1
+                            do b = a+1,No
                                 if (btest(i+j,0).NE.btest(a+b,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
-                            enddo; enddo
+                            enddo
+                            enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. spin-(cue/u/r)-(ccsd/ccsd(t))')
                             allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
 
                         case ('spin-cue-ccsdt','spin-r-ccsdt','spin-u-ccsdt')
                             vv=0
-                            do i = 1,Nel; do a = Nel+1,No
+                            do i = 1,Nel
+                            do a = Nel+1,No
                                 if (btest(i,0).NE.btest(a,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. spin-(cue/u/r)-ccsdt')
                             allocate ( sd1(vv,Nd),st1(vv,Nd) ); sd1=0; st1=0
 
                             vv=0
-                            do i = 1,Nel-1;    do j = i+1,Nel
-                            do a = Nel+1,No-1; do b = a+1,No
+                            do i = 1,Nel-1
+                            do j = i+1,Nel
+                            do a = Nel+1,No-1
+                            do b = a+1,No
                                 if (btest(i+j,0).NE.btest(a+b,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
-                            enddo; enddo
+                            enddo
+                            enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. spin-(cue/u/r)-ccsdt')
                             allocate ( sd2(vv,Nd), st2(vv,Nd) ); sd2=0; st2=0
 
                             vv=0
-                            do i = 1,Nel-2 ; do j = i+1,Nel-1
-                            do k = j+1,Nel ; do a = Nel+1,No-2
-                            do b = a+1,No-1; do c = b+1,No
+                            do i = 1,Nel-2
+                            do j = i+1,Nel-1
+                            do k = j+1,Nel
+                            do a = Nel+1,No-2
+                            do b = a+1,No-1
+                            do c = b+1,No
                                 if (btest(i+j+k,0).NE.btest(a+b+c,0)) cycle
                                 vv=vv+1
-                            enddo; enddo
-                            enddo; enddo
-                            enddo; enddo
+                            enddo
+                            enddo
+                            enddo
+                            enddo
+                            enddo
+                            enddo
+
+                            void=glControlMemory(int( rglu*(2*Nd*(vv)) ,kind=i8kind),'Coupled cluster module. diis. spin-(cue/u/r)-ccsdt')
                             allocate ( sd3(vv,Nd), st3(vv,Nd) ); sd3=0; st3=0
 
                     end select
 
+                    void=glControlMemory(int( rglu*(2*(Nd+1)*(Nd+1)+Nd+1+Nd) ,kind=i8kind),'Coupled cluster module. diis')
                     allocate (diisVectors(Nd+1,Nd+1),diisValues(Nd+1))
                     allocate (diisMatrix (Nd+1,Nd+1),diisCoefficients(Nd))
                     diisVectors=0; diisValues=0; diisMatrix=0 ; diisCoefficients=0
@@ -2704,6 +2839,12 @@
                     deallocate (st1,sd1,stat=err)
                     deallocate (st2,sd2,stat=err)
                     deallocate (st3,sd3,stat=err)
+
+                    void=glControlMemory(int( sizeof(st1)+sizeof(sd1)+&
+                                              sizeof(st2)+sizeof(sd2)+&
+                                              sizeof(st3)+sizeof(sd3)+&
+                                              sizeof(diisVectors)+sizeof(diisValues)+sizeof(diisCoefficients)&
+                                              ,kind=i8kind),'Coupled cluster module. (u/r)-ccd', 'free')
 
             end select
 

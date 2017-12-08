@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob, only: rglu,rspu,iglu,lglu,true,false
+    use glob, only: rglu,rspu,iglu,lglu,true,false,void,i8kind,glControlMemory
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -43,6 +43,7 @@
     real(kind=rglu), allocatable   :: E(:)
 
 
+    void=glControlMemory(int( rglu*N ,kind=i8kind),'tmp. tred4')
     allocate (E(N)); E=0
     do i=1,N
         do j=1,i
@@ -146,6 +147,7 @@
         endif
 1        if (j.LE.0) then
             deallocate (E)
+            void=glControlMemory(int( rglu*N ,kind=i8kind),'tmp. tred4','free')
             return
         endif
         j=j-1
@@ -223,6 +225,7 @@
     enddo
 
     deallocate (E)
+    void=glControlMemory(int( rglu*N ,kind=i8kind),'tmp. tred4','free')
 
     return
     end subroutine gltred4
@@ -244,6 +247,7 @@
     real(kind=rspu), allocatable   :: E(:)
 
 
+    void=glControlMemory(int( rspu*N ,kind=i8kind),'tmp. tred4')
     allocate (E(N)); E=0
     do i=1,N
         do j=1,i
@@ -347,6 +351,7 @@
         endif
 1        if (j.LE.0) then
             deallocate (E)
+            void=glControlMemory(int( rspu*N ,kind=i8kind),'tmp. tred4','free')
             return
         endif
         j=j-1
@@ -424,6 +429,7 @@
     enddo
 
     deallocate (E)
+    void=glControlMemory(int( rspu*N ,kind=i8kind),'tmp. tred4','free')
 
     return
     end subroutine sptred4
@@ -445,6 +451,7 @@
 
 
     tol=epsilon(tol)*10; ret=1
+    void=glControlMemory(int( 2*rglu*N*N ,kind=i8kind),'tmp. gaussSLE')
     allocate (dmatrix(N,N),dinverted(N,N))
     dmatrix=matrix
 
@@ -489,6 +496,7 @@
     inverted=dinverted
 
     deallocate (dmatrix,dinverted)
+    void=glControlMemory(int( 2*rglu*N*N ,kind=i8kind),'tmp. gaussSLE','free')
 
     return
     end function gaussSLE

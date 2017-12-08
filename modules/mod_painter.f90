@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob, only: rglu,iglu,dtr,pi
+    use glob, only: rglu,iglu,dtr,pi,definePi,void
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -19,6 +19,7 @@
     private
     public :: tdVersion,tdDate,tdAuthor
     public :: centrcord,xyz,sft,plr,rem,rot,rpl,ini
+    public :: thX,thY,thZ
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -96,6 +97,7 @@
     character          :: plane*2
 
 
+    void=definePi()
     Ncurr=Ncurr+1
 
     if (isEveryThingFine(Ncurr)  .EQ.-1) then; plr=-1; return; endif
@@ -156,6 +158,7 @@
     integer(kind=iglu) :: i,Ncurr
 
 
+    void=definePi()
     if (isEveryThingFine(Ncurr)   .EQ.-1) then; rot=-1; return; endif
 
     call centrcord (Ncurr,thX(1:Ncurr),thY(1:Ncurr),thZ(1:Ncurr))
@@ -205,6 +208,7 @@
     character          :: plane*2
 
 
+    void=definePi()
     Ncurr=Ncurr+1
 
     if (isEveryThingFine(Ncurr)   .EQ.-1) then; rpl=-1; return; endif
@@ -253,6 +257,7 @@
     integer(kind=iglu) :: polygon_n,Ncurr,i
 
 
+    void=definePi()
     thX(1:size(thX))=0
     thY(1:size(thY))=0
     thZ(1:size(thZ))=0
@@ -336,6 +341,8 @@
     integer(kind=iglu) :: jj,aa,pl
     real(kind=rglu)    :: x1,x2,y1,y2,z1,z2,zna,chis,cos_ang,x1s,y1s,z1s
 
+
+    void=definePi()
     select case (pl)
         case (1); x1= 0; y1=real(-1,rglu); z1= 0 ! xy
         case (2); x1=real(-1,rglu); y1= 0; z1= 0 ! xz

@@ -2,9 +2,9 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-!    use glob     , only: assignment(=)
-    use glob     , only: uch,uch_set,rglu,iglu,lglu,true,false
-    use glob     , only: ivarVector,rvarVector,vec_set
+    use glob     , only: assignment(=)
+    use glob     , only: uch,rglu,iglu,lglu,true,false,void,i8kind,glControlMemory
+    use glob     , only: ivarVector,rvarVector
     use hdb      , only: mol,statesbd,lrbd,diisbd
     use hdb      , only: scfbd,ou,ouWidth,cueConstant1
     use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
@@ -105,7 +105,7 @@
 
 
     if (method .in. ['r-ccsd','u-ccsd','cue-ccsd','spin-cue-ccsd','spin-u-ccsd','spin-r-ccsd'] ) then
-        umethod=uch_set('lr-'//method)
+        umethod='lr-'//method
     else
         stop 'LR: Illegal method '
     endif
@@ -776,20 +776,20 @@
         case ('general')
             select case (action)
                 case ('allocate')
-                    allocate (r1(Nel,Nel+1:No),r2(Nel,Nel,Nel+1:No,Nel+1:No))
-                    r1=0; r2=0
-
-                    allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No))
-                    t1=0; t2=0
-
-                    allocate (d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No))
-                    d1=0; d2=0
-
-                    allocate (F(No,No),R(No,No,No,No))
-                    F=0; R=0
+                    void=glControlMemory(int( rglu*(3*Nel*(No-Nel)+3*Nel*Nel*(No-Nel)*(No-Nel)+No*No+No*No*No*No+2*N*N+N)+&
+                                              iglu*(2*Ne+No)+&
+                                              1*(0) ,kind=i8kind),'Linear response module')
+                    allocate (r1(Nel,Nel+1:No),r2(Nel,Nel,Nel+1:No,Nel+1:No)); r1=0; r2=0
+                    allocate (t1(Nel,Nel+1:No),t2(Nel,Nel,Nel+1:No,Nel+1:No)); t1=0; t2=0
+                    allocate (d1(Nel,Nel+1:No),d2(Nel,Nel,Nel+1:No,Nel+1:No)); d1=0; d2=0
+                    allocate (F(No,No),R(No,No,No,No)); F=0; R=0
 
                     allocate (hfV(N,N),cueV(N,N),hfE(N),excSet(2,Ne),iapairs(No))
                     hfV=0; cueV=0; hfE=0; excSet=0; iapairs=0
+
+                    void=glControlMemory(int( rglu*(N*N+statesbd%nStates*(Nel*(No-Nel)+Nel*Nel*(No-Nel)*(No-Nel)))+&
+                                              iglu*(0)+&
+                                              1*(0) ,kind=i8kind),'Linear response module')
 
                     allocate (basisTransformation(N,N)); basisTransformation=0
 
@@ -798,19 +798,26 @@
                               lrHoldStateEnergy(statesbd%nStates),&
                               lrOrthogonality(statesbd%nStates))
 
-                    lrHoldStateVectorR1=0; lrHoldStateVectorR2=0
-                    lrHoldStateEnergy=0
-                    lrOrthogonality=0
+                    lrHoldStateVectorR1=0; lrHoldStateVectorR2=0; lrHoldStateEnergy=0; lrOrthogonality=0
 
+                    ! hard to estimate
                     allocate (guessConfigurations(statesbd%nStates),guessCoefficients(statesbd%nStates))
 
                 case ('deallocate')
                     deallocate (lrHoldStateEnergy,lrHoldStateVectorR1,lrHoldStateVectorR2,&
                                 lrOrthogonality,hfV,cueV,hfE,excSet,iapairs,stat=err)
 
-                    deallocate (r1,r2,t1,t2,d1,d2,F,R, stat=err)
+                    void=glControlMemory(int( sizeof(lrHoldStateEnergy)+sizeof(lrHoldStateVectorR1)+&
+                                              sizeof(lrHoldStateVectorR2)+sizeof(lrOrthogonality)+&
+                                              sizeof(hfV)+sizeof(cueV)+sizeof(hfE)+sizeof(excSet)+sizeof(iapairs)&
+                                               ,kind=i8kind),'Linear response module', 'free')
 
+                    deallocate (r1,r2,t1,t2,d1,d2,F,R, stat=err)
                     deallocate (basisTransformation,stat=err)
+
+                    void=glControlMemory(int( sizeof(r1)+sizeof(r2)+sizeof(t1)+sizeof(t2)+sizeof(d1)+&
+                                              sizeof(d2)+sizeof(F)+sizeof(R)+sizeof(basisTransformation)&
+                                               ,kind=i8kind),'Linear response module', 'free')
 
                     call guessConfigurations%del()
                     call guessCoefficients%del()
@@ -822,6 +829,14 @@
         case ('intermediates')
             select case (action)
                 case ('allocate')
+                    void=glControlMemory(int( rglu*( (No-Nel)**2+Nel**2+Nel*(No-Nel)+&
+                                                     (No-Nel)**2*(Nel**2)+(No-Nel)**1*(Nel**3)+&
+                                                     (No-Nel)**3*(Nel**1)+(No-Nel)**0*(Nel**4)+&
+                                                     (No-Nel)**4*(Nel**0)+(No-Nel)**1*(Nel**3)+&
+                                                     (No-Nel)**3*(Nel**1)+&
+                                                     3*Nel**2+3*(No-Nel)**2)&
+                                              ,kind=i8kind),'Linear response module. intermediates')
+
                     allocate (Fab(Nel+1:No,Nel+1:No),Fij(Nel,Nel),Fia(Nel,Nel+1:No))
                     Fab=0; Fij=0; Fia=0
 
@@ -837,6 +852,10 @@
 
                 case ('deallocate')
                     deallocate (Fab,Fij,Fia,ai1,ai2,ai3,ai4,ai5,ai6,ai7,at1,at2,at3,at4,at5,at6, stat=err)
+                    void=glControlMemory(int( sizeof(Fab)+sizeof(Fij)+sizeof(ai1)+sizeof(ai2)+sizeof(ai3)+&
+                                              sizeof(ai4)+sizeof(ai5)+sizeof(ai6)+sizeof(ai7)+sizeof(at1)+&
+                                              sizeof(at2)+sizeof(at3)+sizeof(at4)+sizeof(at5)+sizeof(at6)&
+                                              ,kind=i8kind),'Linear response module. intermediates', 'free')
 
             end select
 
@@ -854,6 +873,7 @@
                     enddo
                     !$omp end parallel
 
+                    void=glControlMemory(int( rglu*(2*vv*Nd) ,kind=i8kind),'Linear response module. diis')
                     allocate (st1(vv,Nd),sd1(vv,Nd))
 
                     vv=0
@@ -871,35 +891,49 @@
                     enddo
                     !$omp end parallel
 
+                    void=glControlMemory(int( rglu*(2*vv*Nd) ,kind=i8kind),'Linear response module. diis')
                     allocate (st2(vv,Nd),sd2(vv,Nd))
 
+                    void=glControlMemory(int( rglu*( 2*(Nd+1)**2 + Nd+1 + Nd ) ,kind=i8kind),'Linear response module. diis')
                     allocate (diisVectors(Nd+1,Nd+1),diisValues(Nd+1))
                     allocate (diisMatrix (Nd+1,Nd+1),diisCoefficients(Nd))
 
                 case ('deallocate')
                     deallocate (diisVectors,diisValues,diisMatrix,diisCoefficients, stat=err)
                     deallocate (st1,sd1,st2,sd2, stat=err)
+                    void=glControlMemory(int( sizeof(diisVectors)+sizeof(diisValues)+&
+                                              sizeof(diisMatrix)+sizeof(diisCoefficients)+&
+                                              sizeof(st1)+sizeof(sd1)+sizeof(st2)+sizeof(sd2)&
+                                              ,kind=i8kind),'Linear response module. diis', 'free')
 
             end select
 
         case('guess')
             select case (action)
                 case ('allocate')
+                    void=glControlMemory(int( rglu*(2*(2*Ne)**2+3*(2*Ne)) ,kind=i8kind),'Linear response module. guess')
                     allocate (HH(2*Ne,2*Ne),Vectors(2*Ne,2*Ne),Values(2*Ne),coefs(2*Ne),confs(2*Ne))
                     HH=0; Vectors=0; Values=0; coefs=0; confs=0
 
                 case ('deallocate')
                     deallocate (HH,Vectors,Values,coefs,confs, stat=err)
+                    void=glControlMemory(int( sizeof(HH)+sizeof(Vectors)+sizeof(Values)+&
+                                              sizeof(coefs)+sizeof(confs)&
+                                              ,kind=i8kind),'Linear response module. guess', 'free')
 
             end select
 
         case ('spin_transformation')
             select case (action)
                 case ('allocate')
+                    void=glControlMemory(int( rglu*(N*N+N*No)+iglu*(2*No)+N*No ,kind=i8kind),'Linear response module')
                     allocate (G(N,N),hVs(N,No),cueIndex(2,No),V(N,No))
                     G=0; hVs=0; cueIndex=0; V=0
                 case ('deallocate')
                     deallocate (G,hVs,cueIndex,V)
+                    void=glControlMemory(int( sizeof(G)+sizeof(hVs)+sizeof(cueIndex)+sizeof(V)&
+                                              ,kind=i8kind),'Linear response module', 'free')
+
             end select
 
     end select
@@ -1127,8 +1161,8 @@
                         confs(vv)=k
                     endif
                 enddo
-                guessConfigurations(state)=vec_set(confs(1:vv))
-                guessCoefficients  (state)=vec_set(coefs(1:vv))
+                guessConfigurations(state)=confs(1:vv)
+                guessCoefficients  (state)=coefs(1:vv)
             enddo
 
         case ('rpa')
@@ -1143,8 +1177,8 @@
                         confs(vv)=k
                     endif
                 enddo
-                guessConfigurations(state)=vec_set(confs(1:vv))
-                guessCoefficients  (state)=vec_set(coefs(1:vv))
+                guessConfigurations(state)=confs(1:vv)
+                guessCoefficients  (state)=coefs(1:vv)
             enddo
 
     end select

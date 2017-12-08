@@ -2,9 +2,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-!    use glob     , only: assignment (=)
-    use glob     , only: mid,void,true,false,collectArray,lenTrimArray,uch_set
-    use glob     , only: uch
+    use glob     , only: assignment (=)
+    use glob     , only: mid,void,true,false,collectArray,lenTrimArray,uch
     use sorts    , only: qsort
     use fcontrol , only: fcNewID,fcNullID
     use txtParser, only: tpFill,tpIsStrInList,tpCount,tpNewLine,tpIndex,tpReduce,tpReplace
@@ -1672,7 +1671,7 @@
 
     allocate (hold(N),strLength(N)); strLength=0
     do k = 1,N
-        hold(k)=uch_set(tpRetSplit(ustr,k))
+        hold(k)=tpRetSplit(ustr,k)
         strLength(k)=hold(k)%ln
     enddo
 

@@ -2,8 +2,10 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-!    use glob,      only: assignment (=)
-    use glob,      only: true,false,void,voidl,NaN,mid,uch,find,collectArray,uch_set
+    use glob,      only: assignment (=)
+    use glob,      only: true,false,void,voidl,NaN,mid,uch,find,collectArray
+    use fcontrol,  only: fcNewID,fcNullID,fcBanID
+    use printmod,  only: prLongText,prStrByVal,prTable,prEchoFile
 
     ! almost everything :(
     use txtParser, only: operator(.in.)
@@ -16,9 +18,6 @@
     use txtParser, only: tpQuoted,tpStartsWith,tpEndsWith
     use txtParser, only: tpRealByStr,tpIntByStr,tpLogByStr,tpRealArrayByStr,tpIntArrayByStr
     use txtParser, only: tpRealNumber,tpLetters,tpSetAccordance
-
-    use fcontrol,  only: fcNewID,fcNullID,fcBanID
-    use printmod,  only: prLongText,prStrByVal,prTable,prEchoFile
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -170,7 +169,7 @@
         return
     endif
 
-    bdSet(k)%description=uch_set(description)
+    bdSet(k)%description=description
 
     return
     end function bdAddDescription
@@ -192,7 +191,7 @@
         return
     endif
 
-    variableSet(k)%description=uch_set(description)
+    variableSet(k)%description=description
 
     rcode=0; return
     end function bdVariableAddDescription_Name
@@ -214,7 +213,7 @@
         return
     endif
 
-    variableSet(k)%description=uch_set(description)
+    variableSet(k)%description=description
 
     rcode=0; return
     end function bdVariableAddDescription_Address
@@ -236,7 +235,7 @@
         return
     endif
 
-    bdSet(j)%bdStr=uch_set(str)
+    bdSet(j)%bdStr=str
     if (present(stat)) stat=0
 
     return
@@ -317,13 +316,13 @@
 
     arrayLen=UBound(array,1); bdAppend=bdAppend+1; rcode=bdAppend
 
-    bdSet(bdAppend)%name=uch_set(tpAdjustl(name))
+    bdSet(bdAppend)%name=tpAdjustl(name)
 
-    bdSet(bdAppend)%startCh=uch_set(tpReplace(trim(ustartCh),'%name',bdSet(bdAppend)%name%get()))
-    bdSet(bdAppend)%commentCh=uch_set(trim(ucommentCh))
-    bdSet(bdAppend)%accordCh=uch_set(trim(uaccordCh))
-    bdSet(bdAppend)%separatorCh=uch_set(trim(useparatorCh))
-    bdSet(bdAppend)%endCh=uch_set(tpReplace(trim(uendCh),'%name',bdSet(bdAppend)%name%get()))
+    bdSet(bdAppend)%startCh=tpReplace(trim(ustartCh),'%name',bdSet(bdAppend)%name%get())
+    bdSet(bdAppend)%commentCh=trim(ucommentCh)
+    bdSet(bdAppend)%accordCh=trim(uaccordCh)
+    bdSet(bdAppend)%separatorCh=trim(useparatorCh)
+    bdSet(bdAppend)%endCh=tpReplace(trim(uendCh),'%name',bdSet(bdAppend)%name%get())
     bdSet(bdAppend)%freeBlock=ufreeBlock
     bdSet(bdAppend)%associatedIO=uassociatedIO
 
@@ -415,12 +414,12 @@
 
     arrayLen=UBound(array,1); bdAppend=bdAppend+1; rcode=bdAppend
 
-    bdSet(bdAppend)%name=uch_set(tpAdjustl(name))
-    bdSet(bdAppend)%startCh=uch_set(tpReplace(trim(ustartCh),'%name',bdSet(bdAppend)%name%get()))
-    bdSet(bdAppend)%commentCh=uch_set(trim(ucommentCh))
-    bdSet(bdAppend)%accordCh=uch_set(trim(uaccordCh))
-    bdSet(bdAppend)%separatorCh=uch_set(trim(useparatorCh))
-    bdSet(bdAppend)%endCh=uch_set(tpReplace(trim(uendCh),'%name',bdSet(bdAppend)%name%get()))
+    bdSet(bdAppend)%name=tpAdjustl(name)
+    bdSet(bdAppend)%startCh=tpReplace(trim(ustartCh),'%name',bdSet(bdAppend)%name%get())
+    bdSet(bdAppend)%commentCh=trim(ucommentCh)
+    bdSet(bdAppend)%accordCh=trim(uaccordCh)
+    bdSet(bdAppend)%separatorCh=trim(useparatorCh)
+    bdSet(bdAppend)%endCh=tpReplace(trim(uendCh),'%name',bdSet(bdAppend)%name%get())
     bdSet(bdAppend)%freeBlock=ufreeBlock
     bdSet(bdAppend)%associatedIO=uassociatedIO
 
@@ -731,7 +730,7 @@
     endif
 
     !write (*,*) trim(holdBlockStr)
-    bdSet(bdPos)%bdStr=uch_set(trim(holdBlockStr))
+    bdSet(bdPos)%bdStr=trim(holdBlockStr)
 
     !write (*,*) bdSet(bdPos)%bdStr%get()
     !stop
@@ -867,7 +866,7 @@
                 cycle
             end if
 
-            ustr=uch_set(bdSet(bdPos)%bdStr%get(pStart,pEnd))
+            ustr=bdSet(bdPos)%bdStr%get(pStart,pEnd)
             !write (*,*) '#'//ustr%get()//'#'
             !write (*,*) variableSet(j)%name%get()//' ===> '//bdSet(bdPos)%bdStr%get(pStart,pEnd)//' ===> '//variableSet(j)%expect%get()
 
@@ -1221,7 +1220,7 @@
 
     if (rcode.EQ.1) then
         call variableSet(position)%exph%init()
-        variableSet(position)%exph%kind=uch_set('any')
+        variableSet(position)%exph%kind='any'
     endif
 
     if (rcode.EQ.2) then
@@ -1333,7 +1332,7 @@
 
         call variableSet(position)%exph%init()
 
-        variableSet(position)%exph%kind=uch_set('range')
+        variableSet(position)%exph%kind='range'
         variableSet(position)%exph%lb  =slice(1)
         variableSet(position)%exph%ub  =slice(2)
         variableSet(position)%exph%step=slice(3)
@@ -1344,14 +1343,14 @@
         select case (switch)
             case ('000')
                 if ( (posit.EQ.'n') .AND. (even.EQ.'n') ) then
-                    variableSet(position)%exph%kind=uch_set('any')
+                    variableSet(position)%exph%kind='any'
                 endif
-                variableSet(position)%exph%value=uch_set('norange')
+                variableSet(position)%exph%value='norange'
 
-            case ('010'); variableSet(position)%exph%value=uch_set('le')
-            case ('100'); variableSet(position)%exph%value=uch_set('ge')
-            case ('110'); variableSet(position)%exph%value=uch_set('in')
-            case ('111'); variableSet(position)%exph%value=uch_set('ins')
+            case ('010'); variableSet(position)%exph%value='le'
+            case ('100'); variableSet(position)%exph%value='ge'
+            case ('110'); variableSet(position)%exph%value='in'
+            case ('111'); variableSet(position)%exph%value='ins'
         end select
     endif
 
@@ -1420,17 +1419,17 @@
 
         call variableSet(position)%exph%init()
 
-        variableSet(position)%exph%kind=uch_set('list')
-        if (fndAny)  variableSet(position)%exph%listType=uch_set('any')
-        if (fndNone) variableSet(position)%exph%listType=uch_set('none')
+        variableSet(position)%exph%kind='list'
+        if (fndAny)  variableSet(position)%exph%listType='any'
+        if (fndNone) variableSet(position)%exph%listType='none'
 
         select case (cnt)
             case(1)
                 sta=tpIndex(bstr,':')+1
-                variableSet(position)%exph%listStore=uch_set('{'//bstr(sta:len_trim(bstr))//'}')
+                variableSet(position)%exph%listStore='{'//bstr(sta:len_trim(bstr))//'}'
 
             case(0)
-                variableSet(position)%exph%listStore=uch_set('{'//trim(bstr)//'}')
+                variableSet(position)%exph%listStore='{'//trim(bstr)//'}'
 
         end select
     endif
@@ -1629,21 +1628,21 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name      =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name      =tpAdjustl(name)
     variableSet(varAppend)%address   =loc(var)
     variableSet(varAppend)%position  =varAppend
     variableSet(varAppend)%vlen      =vkind
     variableSet(varAppend)%opt       =dopt
     variableSet(varAppend)%variable  =dvary
     !variableSet(varAppend)%defstor   =transfer(ddef,storeTemplate)
-    variableSet(varAppend)%concatCh  =uch_set('')
+    variableSet(varAppend)%concatCh  =''
     variableSet(varAppend)%nvals     =0
     variableSet(varAppend)%potentiate='n'
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(potentiate)) then
@@ -1651,9 +1650,9 @@
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     select case (variableSet(varAppend)%potentiate)
@@ -1718,21 +1717,21 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name      =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name      =tpAdjustl(name)
     variableSet(varAppend)%address   =loc(var)
     variableSet(varAppend)%position  =varAppend
     variableSet(varAppend)%vlen      =vkind
     variableSet(varAppend)%opt       =dopt
     variableSet(varAppend)%variable  =dvary
     !variableSet(varAppend)%defstor   =transfer(ddef,storeTemplate)
-    variableSet(varAppend)%concatCh  =uch_set('')
+    variableSet(varAppend)%concatCh  =''
     variableSet(varAppend)%nvals     =0
     variableSet(varAppend)%potentiate='n'
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(potentiate)) then
@@ -1740,9 +1739,9 @@
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     select case (variableSet(varAppend)%potentiate)
@@ -1807,21 +1806,21 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name      =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name      =tpAdjustl(name)
     variableSet(varAppend)%address   =loc(var)
     variableSet(varAppend)%position  =varAppend
     variableSet(varAppend)%vlen      =vkind
     variableSet(varAppend)%opt       =dopt
     variableSet(varAppend)%variable  =dvary
     !variableSet(varAppend)%defstor   =transfer(ddef,storeTemplate)
-    variableSet(varAppend)%concatCh  =uch_set('')
+    variableSet(varAppend)%concatCh  =''
     variableSet(varAppend)%nvals     =0
     variableSet(varAppend)%potentiate='n'
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(potentiate)) then
@@ -1829,9 +1828,9 @@
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     select case (variableSet(varAppend)%potentiate)
@@ -1893,26 +1892,26 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
     variableSet(varAppend)%opt     =dopt
     variableSet(varAppend)%variable=dvary
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind  =3
@@ -1968,26 +1967,26 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
     variableSet(varAppend)%opt     =dopt
     variableSet(varAppend)%variable=dvary
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind  =4
@@ -2043,26 +2042,26 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
     variableSet(varAppend)%opt     =dopt
     variableSet(varAppend)%variable=dvary
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind  =5
@@ -2118,26 +2117,26 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
     variableSet(varAppend)%opt     =dopt
     variableSet(varAppend)%variable=dvary
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind  =6
@@ -2186,7 +2185,7 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
@@ -2194,14 +2193,14 @@
     variableSet(varAppend)%variable=false
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%several =false
-    variableSet(varAppend)%expect  =uch_set('any')
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%expect  ='any'
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind =7
@@ -2247,7 +2246,7 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
@@ -2255,14 +2254,14 @@
     variableSet(varAppend)%variable=false
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%several =false
-    variableSet(varAppend)%expect  =uch_set('any')
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%expect  ='any'
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind =8
@@ -2308,7 +2307,7 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
@@ -2316,14 +2315,14 @@
     variableSet(varAppend)%variable=false
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%several =false
-    variableSet(varAppend)%expect  =uch_set('any')
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%expect  ='any'
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind =9
@@ -2369,7 +2368,7 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%vlen    =vkind
@@ -2377,14 +2376,14 @@
     variableSet(varAppend)%variable=false
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%several =false
-    variableSet(varAppend)%expect  =uch_set('any')
-    variableSet(varAppend)%concatCh=uch_set('')
+    variableSet(varAppend)%expect  ='any'
+    variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
     variableSet(varAppend)%kind =10
@@ -2434,7 +2433,7 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%kind    =11
@@ -2446,24 +2445,24 @@
     variableSet(varAppend)%nvals   =0
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(concat)) then
-        variableSet(varAppend)%concatCh=uch_set(concat)
+        variableSet(varAppend)%concatCh=concat
     else
-        variableSet(varAppend)%concatCh=uch_set('+')
+        variableSet(varAppend)%concatCh='+'
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
-    if (present(def)) variableSet(varAppend)%defc=uch_set(trim(def))
+    if (present(def)) variableSet(varAppend)%defc=trim(def)
 
     return
     end function shareVariable_c
@@ -2509,7 +2508,7 @@
 
     varAppend=varAppend+1
 
-    variableSet(varAppend)%name    =uch_set(tpAdjustl(name))
+    variableSet(varAppend)%name    =tpAdjustl(name)
     variableSet(varAppend)%address =loc(var)
     variableSet(varAppend)%position=varAppend
     variableSet(varAppend)%kind    =12
@@ -2521,24 +2520,24 @@
     variableSet(varAppend)%nvals   =0
 
     if (present(expect)) then
-        variableSet(varAppend)%expect=uch_set(expect)
+        variableSet(varAppend)%expect=expect
     else
-        variableSet(varAppend)%expect=uch_set('any')
+        variableSet(varAppend)%expect='any'
     endif
 
     if (present(concat)) then
-        variableSet(varAppend)%concatCh=uch_set(concat)
+        variableSet(varAppend)%concatCh=concat
     else
-        variableSet(varAppend)%concatCh=uch_set('+')
+        variableSet(varAppend)%concatCh='+'
     endif
 
     if (present(description)) then
-        variableSet(varAppend)%description=uch_set(description)
+        variableSet(varAppend)%description=description
     else
-        variableSet(varAppend)%description=uch_set('')
+        variableSet(varAppend)%description=''
     endif
 
-    if (present(def)) variableSet(varAppend)%defc=uch_set(trim(def))
+    if (present(def)) variableSet(varAppend)%defc=trim(def)
 
     return
     end function shareVariable_uc
@@ -2597,8 +2596,8 @@
     class(expectHolder), intent(out) :: this
 
 
-    this%kind=uch_set('None'); this%value=uch_set('None');
-    this%listStore=uch_set('None'); this%listType=uch_set('None')
+    this%kind='None'; this%value='None';
+    this%listStore='None'; this%listType='None'
     this%even='n'; this%positive='n'
     this%ub=NaN; this%lb=NaN; this%step=NaN
 
@@ -2619,7 +2618,7 @@
     if (i.GT.0) then
 
         if (variableSet(i)%kind.EQ.12) then
-            variableSet(i)%pntuch=uch_set(val)
+            variableSet(i)%pntuch=val
             ret=0
             return
         endif

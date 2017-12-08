@@ -1,7 +1,8 @@
     subroutine symmetrySettings
 
-    use glob     , only: rglu,iglu,lglu,true,false,mid
-    use glob     , only: uch,uch_set
+    use glob     , only: assignment (=)
+    use glob     , only: rglu,iglu,lglu,true,false,mid,void,i8kind,glControlMemory
+    use glob     , only: uch
     use hdb      , only: mol,geometrybd,polarizbd,generalbd,ou,ouWidth
     use hdb      , only: gEnergyHolder,GlEt,Et,MEt,MMEt,MethodListLen
     use hdb      , only: pointAccordance,pointSet,pointToPut,pointToCalc
@@ -43,6 +44,7 @@
 
     end select
 
+    void=glControlMemory(int( rglu*(4*dSize+2*dSize*dSize) ,kind=i8kind),'tmp. Symmetry settings')
     allocate (coords(3,dSize),distance(dSize,dSize),eigenVectors(dSize,dSize),eigenValues(dSize))
 
     cElements=0
@@ -62,6 +64,8 @@
 
     select case( generalbd%task%get() )
         case ('polarizability')
+
+            void=glControlMemory(int( 9*iglu*Np**3 ,kind=i8kind),'Symmetry settings')
             allocate (pointSet       (3,Np**3  ))
             allocate (pointAccordance(Np**3,2,3))
 
@@ -110,10 +114,13 @@
 
     select case( generalbd%task%get() )
         case ('polarizability')
+
+            void=glControlMemory(int( rglu*(Np+Np**2+Np**3) ,kind=i8kind),'Symmetry settings')
             allocate (d1gridEquivalence(sta:sto),&
             &         d2gridEquivalence(sta:sto,sta:sto),&
             &         d3gridEquivalence(sta:sto,sta:sto,sta:sto))
 
+            void=glControlMemory(int( rglu*(Np+Np**2+Np**3*(2+6*MethodListLen)) ,kind=i8kind),'Symmetry settings')
             allocate (GlEt(sta:sto,sta:sto,sta:sto))
             allocate (gEnergyHolder(sta:sto,sta:sto,sta:sto,0:5,MethodListLen))
             allocate (Et(sta:sto),MEt(sta:sto,sta:sto),MMEt(sta:sto,sta:sto,sta:sto))
@@ -158,6 +165,7 @@
             call prMatrix(d3gridEquivalence(:,0,:),ou,'Matrix of xz grid equivalence','0.00000E00')
             call prMatrix(d3gridEquivalence(0,:,:),ou,'Matrix of yz grid equivalence','0.00000E00')
 
+            void=glControlMemory(int( rglu*(Np+Np**2+Np**3) ,kind=i8kind),'tmp. Symmetry settings')
             allocate (d1grid(sta:sto),d2grid(sta:sto,sta:sto),d3grid(sta:sto,sta:sto,sta:sto))
 
             pointAccordance=0; pointSet=0; pointToCalc=1
@@ -201,11 +209,11 @@
                 case ('xy','yx','xz','zx','yz','zy')
 
                     if (polarizbd%scales%get().EQ.'yx') then
-                        polarizbd%scales=uch_set('xy')
+                        polarizbd%scales='xy'
                     elseif(polarizbd%scales%get().EQ.'zx') then
-                        polarizbd%scales=uch_set('xz')
+                        polarizbd%scales='xz'
                     elseif(polarizbd%scales%get().EQ.'zy') then
-                        polarizbd%scales=uch_set('yz')
+                        polarizbd%scales='yz'
                     endif
 
                     select case (polarizbd%scales%get(1,1))
@@ -321,6 +329,8 @@
 
             deallocate ( d1grid,d2grid,d3grid )
             deallocate ( d1gridEquivalence,d2gridEquivalence,d3gridEquivalence)
+            void=glControlMemory(int( sizeof(d1grid)+sizeof(d2grid)+sizeof(d3grid) ,kind=i8kind),'tmp. Symmetry settings','free')
+            void=glControlMemory(int( sizeof(d1gridEquivalence)+sizeof(d2gridEquivalence)+sizeof(d3gridEquivalence) ,kind=i8kind),'tmp. Symmetry settings','free')
 
             select case (polarizbd%scales%ln)
                 case (1); writeMypnts=Np
@@ -346,6 +356,8 @@
             deallocate (pntDistribution)
 
         case ('density','coulson','hypercharges')
+
+            void=glControlMemory(int( iglu*(N*N+M*M)+rglu*dSize*dSize ,kind=i8kind),'Symmetry settings')
             allocate (atomEqu(N,N),bondEqu(M,M)); atomEqu=0; bondEqu=0
             allocate (evecDifference(dSize,dSize))
 
@@ -394,6 +406,7 @@
             write (ou,*)
             call prMatrix(evecDifference,ou,'Atom equivalence','0.0000E00')
             deallocate (pntDistribution,evecDifference)
+            void=glControlMemory(int( sizeof(evecDifference) ,kind=i8kind),'tmp. Symmetry settings','free')
 
     end select
 

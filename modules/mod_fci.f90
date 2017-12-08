@@ -2,7 +2,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob    , only: true,false,rglu,iglu,lglu,void,uchGet
+    use glob    , only: true,false,rglu,iglu,lglu,void,glControlMemory,i8kind
     use math    , only: tred4
     use fcontrol, only: fcNewID,fcNullID
     use hdb     , only: mol,fcibd,statesbd,densitybd,ou
@@ -27,7 +27,7 @@
 
     ! arrays for Knuth sparse algorythm
     real   (kind=rglu), allocatable :: AN(:)
-    integer(kind=iglu), allocatable :: JPA(:),NEXTR(:),JR(:),IA(:,:)
+    integer(kind=iglu), allocatable :: JPA(:),NEXTR(:),JR(:),IA(:,:),IND(:)
 
     ! arrays for iteration procedure
     real   (kind=rglu), allocatable :: eiMas(:,:),eiVec(:,:),eiVal(:)
@@ -39,7 +39,7 @@
 
     real   (kind=rglu) :: currentEnergy,coreEnergy
     integer(kind=iglu) :: N,Nocca,Noccb,Nel,KF
-    integer(kind=iglu) :: NN,NN1,currentState
+    integer(kind=iglu) :: NN,NN1,currentState,GIJ
 
     logical(kind=lglu) :: doOffDiagonal
 
@@ -69,6 +69,8 @@
     fciNSteps=fcibd%nSteps
     fciNStates=statesbd%nStates
 
+    KF=(NOCCA+NOCCB)/2
+
     if (N.GT.maxAtoms) then; write (iount,'(A)') ' Too big molecule.'; stop; endif
 
     if (N.EQ.maxAtoms) then
@@ -79,13 +81,7 @@
     endif
 100 format ('Too much memory is necessary for ',i2,' steps. It will be set ',i2,'.')
 
-    allocate(G(N,N),H(N,N),TAU(N,N))
-    allocate(eiMas(fciNSteps,fciNSteps),eiVec(fciNSteps,fciNSteps),eiVal(fciNSteps))
-    allocate(fciHoldStateEnergy(    0:fciNStates))
-    allocate(fciHoldStateOrthog(    0:fciNStates))
-    allocate(fciHoldStateRDM   (N,N,0:fciNStates))
-
-    G=0; H=0
+    call controlMemoryFCI('general','allocate')
 
     do i = 1,N
     do j = 1,N
@@ -125,12 +121,9 @@
         IJ=IJ+1
     enddo
     enddo
+    GIJ=IJ
 
-    allocate (GAM(IJ),X(IJ),Z(IJ)); GAM=0; X=0; Z=0
-    allocate (suppMass(NN1,fciNSteps),OV(NN1)); suppMass=0; OV=0
-    allocate (fciHoldStateVector(IJ,0:fciNStates))
-
-    fciHoldStateVector=0
+    call controlMemoryFCI('init','allocate')
 
     coreEnergy=0
     do i= 1,N-1
@@ -174,12 +167,12 @@
         fciHoldStateEnergy(  istate)=currentEnergy
         fciHoldStateVector(:,istate)=X
 
-        deallocate (AN,JPA,NEXTR,JR)
+        call controlMemoryFCI('iter','deallocate')
     enddo
 
     if (fciNStates.GT.2) call resortStates
 
-    deallocate (GAM,X,Z,suppMass,OV,fciHoldStateVector)
+    call controlMemoryFCI('init','deallocate')
 
     call prepareRDM
 
@@ -240,7 +233,7 @@
     integer(kind=iglu) :: k
 
 
-    select case ( uchGet(densitybd%dtype) )
+    select case ( densitybd%dtype%get() )
         case ('none')
             fciHoldStateRDM=0
 
@@ -293,11 +286,8 @@
     subroutine finalizeFCI
     implicit none
 
-    integer(kind=iglu) :: err
 
-
-    deallocate(G,H,TAU,eiMas,eiVec,eiVal,stat=err)
-    deallocate(fciHoldStateEnergy,fciHoldStateOrthog,fciHoldStateRDM,stat=err)
+    call controlMemoryFCI('general','deallocate')
 
     return
     end subroutine finalizeFCI
@@ -636,7 +626,7 @@
         enddo
     enddo
 
-    allocate(AN(NEL),JPA(NEL),NEXTR(NEL),JR(NN))
+    call controlMemoryFCI('iter','allocate')
 
     AN=0; JPA=0; NEXTR=0; JR=0
 
@@ -741,21 +731,16 @@
     subroutine multi
     implicit none
 
-    integer(kind=iglu)              :: I,K1,L,P
-    integer(kind=iglu), allocatable :: IND(:)
+    integer(kind=iglu)              :: I,L,P
     integer(kind=iglu)              :: fileid
 
 
-    KF=(NOCCA+NOCCB)/2
-
-    allocate (IND(KF))
-
     fileid=fcNewID(); open (fileid,status='scratch',form='binary')
 
-    K1=KF+1; NN=1
+    NN=1
     do I=1,KF
         IND(I)=I
-        write (fileid) 1,I,I !IA(1,I)=I
+        write (fileid) NN,I,I
     enddo
 
     P=KF
@@ -769,7 +754,7 @@
 
         if(P.LT.1) exit
 
-        I=K1
+        I=KF+1
         do
             I=I-1
             if(I.LT.P) exit
@@ -781,19 +766,22 @@
         enddo
     enddo
 
-    if (allocated(IA)) deallocate (IA); allocate (IA(NN,KF))
+    if (allocated(IA)) then
+        deallocate (IA)
+        void=glControlMemory(int( sizeof(IA) ,kind=i8kind),'tmp. FCI module', 'free')
+    endif
+    void=glControlMemory(int( iglu*NN*KF ,kind=i8kind),'tmp. FCI module')
+    allocate (IA(NN,KF))
     rewind(fileid)
 
     do
         if (eof(fileid)) exit
-        read (fileid) NN,L,K1
-        IA(NN,L)=K1
+        read (fileid) NN,L,P; IA(NN,L)=P
     enddo
 
     close (fileid); void=fcNullID(fileid)
 
     NN1=NN*(NN+1)/2
-    deallocate (IND)
 
     return
     end subroutine multi
@@ -833,6 +821,68 @@
 
     VSPS=T; return
     end function VSPS
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine controlMemoryFCI(section,action)
+    implicit none
+
+    character (len=*)   :: section,action
+    integer (kind=iglu) :: err
+
+
+    select case (section)
+        case ('general')
+            select case (action)
+                case ('allocate')
+                    void=glControlMemory(int( rglu*(N*N*(3+fciNStates+1)+fciNsteps*(fciNSteps+1))+iglu*(KF)+2*(fciNStates+1) ,kind=i8kind),'FCI module')
+                    allocate(G(N,N),H(N,N),TAU(N,N),IND(KF),fciHoldStateRDM(N,N,0:fciNStates))
+                    allocate(eiMas(fciNSteps,fciNSteps),eiVec(fciNSteps,fciNSteps),eiVal(fciNSteps))
+                    allocate(fciHoldStateEnergy(0:fciNStates),fciHoldStateOrthog(0:fciNStates))
+
+                    G=0; H=0; TAU=0; IND=0
+                    eiMas=0; eiVec=0; eiVal=0
+                    fciHoldStateEnergy=0; fciHoldStateOrthog=0; fciHoldStateRDM=0
+
+                case ('deallocate')
+                    deallocate(G,H,TAU,eiMas,eiVec,eiVal,IND,stat=err)
+                    deallocate(fciHoldStateEnergy,fciHoldStateOrthog,fciHoldStateRDM,stat=err)
+                    void=glControlMemory(int( sizeof(G)+sizeof(H)+sizeof(TAU)+sizeof(eiMas)+&
+                                              sizeof(eiVec)+sizeof(eiVal)+sizeof(IND)+&
+                                              sizeof(fciHoldStateEnergy)+sizeof(fciHoldStateOrthog)+&
+                                              sizeof(fciHoldStateRDM) ,kind=i8kind),'FCI module', 'free')
+            end select
+
+        case ('init')
+            select case (action)
+                case ('allocate')
+                    void=glControlMemory(int( rglu*(3*GIJ+NN1*fciNSteps+NN1+GIJ*(fciNStates+1)) ,kind=i8kind),'FCI module')
+                    allocate (GAM(GIJ),X(GIJ),Z(GIJ)); GAM=0; X=0; Z=0
+                    allocate (suppMass(NN1,fciNSteps),OV(NN1)); suppMass=0; OV=0
+                    allocate (fciHoldStateVector(GIJ,0:fciNStates))
+
+                    fciHoldStateVector=0
+
+                case ('deallocate')
+                    deallocate (GAM,X,Z,suppMass,OV,fciHoldStateVector)
+                    void=glControlMemory(int( sizeof(GAM)+sizeof(X)+sizeof(Z)+sizeof(OV)+&
+                                              sizeof(suppMass)+sizeof(fciHoldStateVector) ,kind=i8kind),'FCI module', 'free')
+            end select
+
+        case ('iter')
+            select case (action)
+                case ('allocate')
+                    void=glControlMemory(int( rglu*(NEL)+iglu*(NEL+NEL+NN) ,kind=i8kind),'FCI module')
+                    allocate(AN(NEL),JPA(NEL),NEXTR(NEL),JR(NN))
+
+                case ('deallocate')
+                    deallocate (AN,JPA,NEXTR,JR)
+                    void=glControlMemory(int( sizeof(AN)+sizeof(JPA)+sizeof(NEXTR)+sizeof(JR) ,kind=i8kind),'FCI module', 'free')
+            end select
+    end select
+
+    return
+    end subroutine controlMemoryFCI
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
