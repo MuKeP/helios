@@ -14,8 +14,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: ccVersion='1.000'
-    character (len=*), parameter :: ccDate   ='2017.08.11'
+    character (len=*), parameter :: ccVersion='1.100'
+    character (len=*), parameter :: ccDate   ='2017.12.10'
     character (len=*), parameter :: ccAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -908,10 +908,12 @@
         case ('spare-cue-ccsd')
             !$omp parallel default(shared) private(i,a)
             !$omp do
-            do i = 1,Nel; do a = Nel+1,No
+            do i = 1,Nel
+            do a = Nel+1,No
                 if ( abs(spd1(i,a)).LT.1D-15) spd1(i,a)=0
                 spt1(i,a)=spt1(i,a)+ccbd%iterStep(1)*spd1(i,a)/(F(i,i)-F(a,a))
-            enddo; enddo
+            enddo
+            enddo
             !$omp end parallel
 
             spd2(0)=0; spt2(0)=0

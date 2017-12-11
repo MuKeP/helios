@@ -42,12 +42,12 @@
             apppath=getPath()
 
             write (ou,'(/A)') tpAdjustc('Execution of HELIOS started '//date_time(),ouWidth)
-            write (ou,'(/A)') tpFill(ouWidth,'/\')
+            write (ou,'(/A)') tpFill(ouWidth,'/\') !' sublime enjoyes escaping quotes
             write (ou,'(/A,A,A,i<mid(appPID)>)')  'Executed:     ',commandline%get(),'with PID:',appPID
             write (ou,'(A,A/)') 'Working path: ',apppath%get()
 
         case ('end')
-            write (ou,'(/A)') tpFill(ouWidth,'/\')
+            write (ou,'(/A)') tpFill(ouWidth,'/\') !' sublime enjoyes escaping quotes
             timeSpent(1,2)=timeControl(timeSpent(2,2))
             write (ou,'(/A)') tpAdjustc('Proper termination of HELIOS '//date_time(),ouWidth)
             write (ou,'( A)') tpAdjustc('Total time spent '//convertTime(timeSpent(1,2)-timeSpent(1,1)),ouWidth)

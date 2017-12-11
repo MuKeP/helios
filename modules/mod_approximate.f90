@@ -8,8 +8,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: axVersion='1.100'
-    character (len=*), parameter :: axDate   ='2017.05.23'
+    character (len=*), parameter :: axVersion='1.200'
+    character (len=*), parameter :: axDate   ='2017.12.10'
     character (len=*), parameter :: axAuthor ='Anton B. Zakharov'
 
     real  (kind=rglu), parameter :: eValTol=epsilon(eValTol)*10,conditTol=1e+10_rglu

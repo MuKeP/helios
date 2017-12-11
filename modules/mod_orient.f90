@@ -7,8 +7,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: orVersion='1.302'
-    character (len=*), parameter :: orDate   ='2015.07.04'
+    character (len=*), parameter :: orVersion='1.400'
+    character (len=*), parameter :: orDate   ='2015.12.10'
     character (len=*), parameter :: orAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TYPES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

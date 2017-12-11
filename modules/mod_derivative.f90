@@ -8,8 +8,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: deVersion='1.000'
-    character (len=*), parameter :: deDate   ='2015.08.22'
+    character (len=*), parameter :: deVersion='1.100'
+    character (len=*), parameter :: deDate   ='2017.12.10'
     character (len=*), parameter :: deAuthor ='Anton B. Zakharov'
 
     character (len=*), parameter :: crt='xyz'

@@ -9,8 +9,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: esVersion='1.000'
-    character (len=*), parameter :: esDate   ='2017.08.28'
+    character (len=*), parameter :: esVersion='1.100'
+    character (len=*), parameter :: esDate   ='2017.12.10'
     character (len=*), parameter :: esAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

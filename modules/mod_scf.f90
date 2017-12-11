@@ -10,8 +10,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: hfVersion='1.000'
-    character (len=*), parameter :: hfDate   ='2017.08.11'
+    character (len=*), parameter :: hfVersion='1.100'
+    character (len=*), parameter :: hfDate   ='2017.12.10'
     character (len=*), parameter :: hfAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

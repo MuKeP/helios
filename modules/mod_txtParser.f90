@@ -1,3 +1,22 @@
+#   if defined(__INTEL_COMPILER)
+#       define __COMPILER 1
+#   elif defined(__GFORTRAN__)
+#       define __COMPILER 2
+#       define __unix 1
+#   elif defined(__SUNPRO_F90)
+#       define __COMPILER 3
+#   elif defined(__SUNPRO_F95)
+#       define __COMPILER 3
+#   else
+#       define __COMPILER 4
+#   endif
+
+#   if defined(__unix)
+#       define __OS 2
+#   else
+#       define __OS 1
+#   endif
+
     module txtParser
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -8,15 +27,15 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: tpVersion='3.600'
-    character (len=*), parameter :: tpDate   ='2017.09.15'
+    character (len=*), parameter :: tpVersion='3.610'
+    character (len=*), parameter :: tpDate   ='2017.12.10'
     character (len=*), parameter :: tpAuthor ='Anton B. Zakharov'
 
     integer*4, parameter         :: maxStrLen=1024,maxCommentDefLen=5
 
     integer*4, parameter         :: maxReplaceStrLen=4*maxStrLen
 
-    character (len=1), parameter :: spaceChar=char(32),tabChar=char(9)
+    character (len=1), parameter :: spaceChar=char(32),tabChar=char(9),nullchar=char(0)
 
     character (len=*), parameter :: sigset='+-',&
                                     expset='edqEDQ',&
@@ -28,9 +47,15 @@
                                     octset='01234547',&
                                     binset='01',&
                                     abcset='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPRSTUVWXYZ',&
-                                    bancomset=':,./_{}+-'//"'"//'"'//spaceChar//tabChar//char(0),&
-                                    quoset='"'//"'",&
-                                    newline=char(13)//char(10)
+                                    bancomset=':,./_{}+-'//"'"//'"'//spaceChar//tabChar//nullchar,&
+                                    quoset='"'//"'"
+
+#   if (__OS==1)
+        character (len=*), parameter :: newline=char(13)//char(10)
+#   else
+        character (len=*), parameter :: newline=char(10)
+#   endif
+
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -1096,6 +1121,57 @@
 
     return
     end function splitCheck
+
+    !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    function tpTranslateEscapes(str,stat) result(ret)
+    implicit none
+
+    character (len=*), intent(in)    :: str
+    character (len=:), allocatable   :: ret
+    integer*4, intent(out), optional :: stat
+
+    character (len=len(str))         :: tmp
+    character (len=1)                :: chr
+    character (len=*), parameter     :: backslash=char(92)
+    character (len=*), parameter     :: keys     ='btnvfr'//backslash
+    integer*4        , parameter     :: values(7)= (/ 8,9,10,11,12,13,92 /)
+    integer*4                        :: k,l,pos
+
+
+    if (present(stat)) stat=0
+
+    tmp=tpFill(tmp); k=0; l=0
+    do
+        k=k+1; if (k.GT.len(str)) exit
+        if (str(k:k).EQ.backslash) then
+            k=k+1
+            pos=Index(keys,str(k:k))
+
+            ! account fucking difference of CRLF & LF for OSs
+#           if (__OS==1)
+                if (pos.EQ.3) then
+                    l=l+1; tmp(l:l)=char(13)
+                endif
+#           endif
+
+            if (pos.GT.0) then
+                chr=char( values(pos) )
+            else
+                ! char is not escape symbol, but backslashed
+                if (present(stat)) stat=-1
+                ret=''; return
+            endif
+        else
+            chr=str(k:k)
+        endif
+        l=l+1; tmp(l:l)=chr
+    enddo
+
+    allocate (character (len=l) :: ret); ret=tmp(:l)
+
+    return
+    end function tpTranslateEscapes
 
     !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

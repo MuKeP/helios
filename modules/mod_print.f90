@@ -11,8 +11,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: prVersion='2.212'
-    character (len=*), parameter :: prDate   ='2017.07.10'
+    character (len=*), parameter :: prVersion='2.300'
+    character (len=*), parameter :: prDate   ='2017.12.10'
     character (len=*), parameter :: prAuthor ='Anton B. Zakharov'
 
     character (len=*), parameter :: prMatrixPrefix=' '
@@ -70,10 +70,12 @@
     interface prStrByVal
         module procedure nomStrByInt_i8,nomStrByInt_i4,nomStrByInt_i2,nomStrByInt_i1,    &
                          defStrByInt_i8,defStrByInt_i4,defStrByInt_i2,defStrByInt_i1,    &
-                         strByRealf_r8,strByReale_r8,strByRealf_r4,strByReale_r4,        &
+                         strByIntfmt_i8,strByIntfmt_i4,strByIntfmt_i2,strByIntfmt_i1,    &
+                         strByRealf_r16,strByRealf_r8,strByRealf_r4,                     &
+                         strByReale_r16,strByReale_r8,strByReale_r4,                     &
+                         strByRealfmt_r16,strByRealfmt_r8,strByRealfmt_r4,               &
                          strByLogical_l8,strByLogical_l4,strByLogical_l2,strByLogical_l1,&
-                         strByRealfmt_r8,strByRealfmt_r4,strByIntfmt_i8,strByIntfmt_i4,  &
-                         strByIntfmt_i2,strByIntfmt_i1
+                         strByStr,strByUch
     end interface prStrByVal
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -1503,11 +1505,11 @@
     endif
 
     fmt='(A)'
-
     scrio=fcNewID()
     open (scrio,status='scratch')
     do while (index(ustr,tpNewline()).GT.0)
-        ustr( tpIndex(ustr,tpNewline()):tpIndex(ustr,tpNewline())+1 )='  '
+        k=tpIndex(ustr,tpNewline()); l=len(tpNewline())-1
+        ustr( k:k+l )='  '
     enddo
 
     ustr=trim(tpReduce(ustr))
@@ -1550,7 +1552,6 @@
     enddo
 
     rewind(scrio)
-
     if (trim(umargin).EQ.'justified') then
         do i = 1,cnt-1
             blstr=tpFill(blstr); read (scrio,fmt) blstr(:tw)
@@ -1579,6 +1580,7 @@
             end select
             call advanceCarriage(1)
         enddo
+
         read (scrio,fmt) blstr(:tw); ln=pw-tw
         select case (trim(uadjust))
             case('left')  ; write (iounit,fmt) blstr(:tw)//tpFill(ln,uspacer)
@@ -2154,6 +2156,16 @@
     write (ret,ufmt) i; return
     end function strByIntfmt_i1
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+    pure function strByRealf_r16(r,indent,accuracy) result(ret)
+    implicit none
+    real*16  , intent(in)             :: r
+    integer*4, intent(in)             :: indent,accuracy
+    character (len=indent+accuracy+1) :: ret
+
+
+    write (ret,'(F<indent+accuracy+1>.<accuracy>)') r; return
+    end function strByRealf_r16
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     pure function strByRealf_r8(r,indent,accuracy) result(ret)
     implicit none
     real*8   , intent(in)             :: r
@@ -2173,6 +2185,21 @@
 
     write (ret,'(F<indent+accuracy+1>.<accuracy>)') r; return
     end function strByRealf_r4
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+    pure function strByReale_r16(r,indent,accuracy,form) result(ret)
+    implicit none
+    real*16  , intent(in)             :: r
+    integer*4, intent(in)             :: indent,accuracy
+    character (len=*), intent(in)     :: form
+    character (len=indent+accuracy+7) :: ret
+
+
+    if (form.NE.'exp') then
+        ret=''; return
+    endif
+
+    write (ret,'(ES<indent+accuracy+7>.<accuracy>)') r; return
+    end function strByReale_r16
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     pure function strByReale_r8(r,indent,accuracy,form) result(ret)
     implicit none
@@ -2204,6 +2231,20 @@
     write (ret,'(ES<indent+accuracy+7>.<accuracy>)') r; return
     end function strByReale_r4
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+    function strByRealfmt_r16(r,fmt) result(ret)
+    implicit none
+    real*16          , intent(in) :: r
+    character (len=*), intent(in) :: fmt
+    character (len=fmtPrintLen)   :: ret
+
+
+    rMid=mid(r); arrType=1
+
+    void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
+    !write (*,*) '$'//trim(ufmt)//'$'
+    write (ret,ufmt) r; return
+    end function strByRealfmt_r16
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByRealfmt_r8(r,fmt) result(ret)
     implicit none
     real*8           , intent(in) :: r
@@ -2230,6 +2271,29 @@
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
     write (ret,ufmt) r; return
     end function strByRealfmt_r4
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+    pure function strByStr(str) result(ret)
+    implicit none
+
+    character (len=*)       , intent(in) :: str
+    character (len=len(str))             :: ret
+
+
+    ret=str; return
+    end function strByStr
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+    pure function strByUch(uc) result(ret)
+    implicit none
+
+    type(uch)        , intent(in)  :: uc
+    character (len=:), allocatable :: ret
+
+
+    allocate (character (len=uc%ln) :: ret)
+
+    ret=uc%get(); return
+    end function strByUch
+
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     integer*4 function parsfmt(fmt)

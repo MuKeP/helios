@@ -9,8 +9,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: ciVersion='4.400'       !5
-    character (len=*), parameter :: ciDate   ='2017.08.13'  !10
+    character (len=*), parameter :: ciVersion='4.500'       !5
+    character (len=*), parameter :: ciDate   ='2017.12.10'  !10
     character (len=*), parameter :: ciAuthor ='Vladimir V. Ivanov'
 
     integer(kind=iglu), parameter :: maxAtoms=16,maxSteps=8

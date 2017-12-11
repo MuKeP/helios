@@ -50,8 +50,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: glVersion='4.500'
-    character (len=*), parameter :: glDate   ='2017.12.07'
+    character (len=*), parameter :: glVersion='4.510'
+    character (len=*), parameter :: glDate   ='2017.12.10'
     character (len=*), parameter :: glAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: r16kind=16, r8kind=8, r4kind=4
@@ -70,9 +70,9 @@
 
     !   ~~~~ Global data settings ~~~~ !
 #   if(__OS==1)
-        character (len=*), parameter :: os='win',osSeparator='\',osMove='move',osCopy='copy' !'sublime
+        character (len=*), parameter :: os='win',osSeparator=char(92),osMove='move',osCopy='copy'
 #   else
-        character (len=*), parameter :: os='nix',osSeparator='/',osMove='mv'  ,osCopy='cp'
+        character (len=*), parameter :: os='nix',osSeparator=char(47),osMove='mv'  ,osCopy='cp'
 #   endif
 
     real(kind=rglu), parameter :: gluZero=0,gluUnity=1

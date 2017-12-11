@@ -6,8 +6,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: maVersion='1.000'
-    character (len=*), parameter :: maDate   ='2017.03.28'
+    character (len=*), parameter :: maVersion='1.100'
+    character (len=*), parameter :: maDate   ='2017.12.10'
     character (len=*), parameter :: maAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTERFACES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

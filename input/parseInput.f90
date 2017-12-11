@@ -18,10 +18,7 @@
 
     void=parseArgs(true)
 
-    if (apArgumentFound('-i')) then
-        !call ShowInputHelp
-        stop
-    endif
+    if (apArgumentFound('-i')) call inputHelp
 
     if ( tpIndex( generalbd%infile%get(),'.inp').GT.0 ) then
         generalbd%outfile=generalbd%infile%get(1,tpIndex( generalbd%infile%get(),'.inp',rev=true)-1)//'.out'

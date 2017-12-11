@@ -28,10 +28,10 @@
 
     ! ~~~~~ Module information ~~~~~ !
 
-    character (len=*), parameter :: heVersion   ='1.500a'
-    character (len=*), parameter :: heDate      ='18-Aug-2017'
+    character (len=*), parameter :: heVersion   ='1.510a'
+    character (len=*), parameter :: heDate      ='10-Dec-2017'
     character (len=*), parameter :: heAuthor    ='Anton B. Zakharov'
-    character (len=*), parameter :: heCompilDate='18-Aug-2017'
+    character (len=*), parameter :: heCompilDate='12-Dec-2017'
     ! Memory: 45 bytes
 
     ! ~~~~~ Fundamental constants ~~~~~ !
@@ -69,13 +69,13 @@
     character (len=*), dimension(bdListLen), parameter :: bdNames=['general','system','geometry',&
                                                             'polariz','rdm','scf','hypercharges',&
                                                             'states','coulson','coupled-cluster',&
-                                                            'linear-responce','molecule','local',&
+                                                            'linear-response','molecule','local',&
                                                             'fci','diis','iteration','scfguess', &
                                                             'lrguess','cue']
 
     ! ~~~~~ Methods names ~~~~~ !
     integer(kind=iglu)  , parameter :: MethodListLen=15
-    character (len=*), dimension(MethodListLen), parameter :: methodNames=['huckel','hf','cue-ccs' ,&
+    character (len=*), dimension(MethodListLen), parameter :: methodNames=['huckel','rhf','cue-ccs',&
                                                               'r-ccd','u-ccd','mp2','mp3','r-ccsd' ,&
                                                               'cue-ccsd','u-ccsd','r-ccsd(t)','fci',&
                                                               'cue-ccsdt','u-ccsdt','r-ccsdt']
@@ -170,7 +170,7 @@
     type bdlr
         type(uch)          :: guess
         integer(kind=iglu) :: maxiters
-        real(kind=rglu)    :: accuracy,iterStep,guessThreshold
+        real(kind=rglu)    :: accuracy,iterStep(2),guessThreshold
         logical(kind=lglu) :: orthogonalize
     end type bdlr
 
@@ -265,7 +265,7 @@
 
     integer(kind=i4kind) :: SIGNSET
     integer(kind=iglu)   :: appPID,ouWidth,ouIndent,nMethods
-    logical(kind=lglu)   :: showInputHelp
+    type(uch)            :: showInputHelp
     real   (kind=rglu)   :: timeSpent(2,3)
     integer(kind=i8kind) :: store_memory
     ! Memory: 4+4*iglu+lglu+6*rglu+8

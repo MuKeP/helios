@@ -9,8 +9,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: apVersion='4.201'
-    character (len=*), parameter :: apDate   ='2017.07.09'
+    character (len=*), parameter :: apVersion='4.300'
+    character (len=*), parameter :: apDate   ='2017.12.10'
     character (len=*), parameter :: apAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: maxArgsListLen=128  ! maximum number of defined arguments
@@ -720,8 +720,8 @@
         rcode=-2; return
     endif
 
-    ruleListLen=ruleListLen+1
     do k = 1,ub
+        !write (*,*) 'Calling from appendRule (preliminary)'
         j=getArgumentIndex(arr(k))
 
         if (j.EQ.-1) then
@@ -732,9 +732,11 @@
     allocate (iarr(ub)); iarr=0
 
     do k = 1,ub
+        !write (*,*) 'Calling from appendRule (final)'
         iarr(k)=getArgumentIndex(arr(k))
     enddo
 
+    ruleListLen=ruleListLen+1
     ruleSet(ruleListLen)%argsList=iarr
     ruleset(ruleListLen)%type=ruletype
 
@@ -1101,10 +1103,19 @@
     integer*4                :: k,i
 
 
+    ! write (*,*) 'All arguments',argsListLen
+    ! do i = 1,argsListLen
+    !     do k = 1,arg(i)%synonymsListLen
+    !         write (*,*) '#'//arg(i)%str(k)%get()//'#'
+    !     enddo
+    ! enddo
+    ! write (*,*) 'Proceeding...'
+
     do i = 1,argsListLen
         tempStr=repeat(' ',len(str)); tempStr=trim(str)
         if (.NOT.arg(i)%csensitive) tempStr=tpLowerCase(tempStr)
         do k = 1,arg(i)%synonymsListLen
+            !write (*,*) '#'//trim(tempStr)//'# #'//arg(i)%str(k)%get()//'#'
             if ( trim(tempStr).EQ.arg(i)%str(k)%get() ) then
                 ret=i; return
             endif

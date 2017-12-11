@@ -1,6 +1,6 @@
     program HELIOS
 
-    use glob    , only: timecontrol,glMemoryLeft,timeControlCheckpoint,timestamp
+    use glob    , only: glMemoryLeft,timeControlCheckpoint,timestamp,rangen
     use glob    , only: void,signal,false,true,rglu,iglu,nullSub,pi,uch
     use hdb     , only: onLoad,trapSignals,generalbd,setParams,onTrap,ccbd,ou,finalizeHelios
     use hdb     , only: sighup,sigabrt,sigint,sigterm,sigcont,sigstop,sigusr1
@@ -10,6 +10,9 @@
 
     use hdb, only: mol,polarizbd,perturbate
     use printmod, only: prMatrix,prStrByVal
+    use datablock, only: bdPrintHelp
+
+    use txtParser
 
     use coupledCluster
     use lrccsdmodule
@@ -18,8 +21,10 @@
 
     real(kind=rglu) :: Ax,Bx,Eref,field
 
-    integer(kind=iglu) :: mu,pX,pY,pZ,k
-    real(kind=rglu)    :: sta,sto
+    integer(kind=iglu) :: mu,pX,pY,pZ,k,iter
+    real(kind=rglu)    :: sta,sto,accur
+
+    type(uch) :: store
 
 
     call onLoad; call trapSignals
@@ -30,6 +35,8 @@
     void=signal(SIGCONT, ontrap, -1)
     void=signal(SIGSTOP, ontrap, -1)
     void=signal(SIGUSR1, ontrap, -1)
+
+    !write (*,'(A,i7,A,5X,F7.5\)') char(13)//'Iteration ',i,' Accuracy ',a
 
     call parseInput
     call setParams
@@ -43,8 +50,8 @@
 !
 !    call setLRParameters('spin-cue-ccsd')
 !    call initLR
-!
-!    stop
+
+    stop
 
     field=0.01_rglu
     mol%perturbation=0
@@ -56,15 +63,13 @@
     enddo
     !write (*,*) mol%perturbation
     !call perturbate
-
-
     !call prMatrix(mol%core,6,'Perturbated core (outside)','^.00000',maxwidth=79)
 
     void=timeControlCheckpoint('Started at',drop=true)
     void=timeControlCheckpoint('',raw=true)
     void=timeControlCheckpoint('Huckel    '//prStrByVal(getEnergy('huckel'   ),4,12),raw=true)
     void=timeControlCheckpoint('cue-ccs   '//prStrByVal(getEnergy('cue-ccs'  ),4,12),raw=true)
-    void=timeControlCheckpoint('hf        '//prStrByVal(getEnergy('hf'       ),4,12),raw=true)
+    void=timeControlCheckpoint('rhf       '//prStrByVal(getEnergy('rhf'      ),4,12),raw=true)
     void=timeControlCheckpoint('mp2       '//prStrByVal(getEnergy('mp2'      ),4,12),raw=true)
     void=timeControlCheckpoint('mp3       '//prStrByVal(getEnergy('mp3'      ),4,12),raw=true)
     void=timeControlCheckpoint('r-ccd     '//prStrByVal(getEnergy('r-ccd'    ),4,12),raw=true)
@@ -82,11 +87,9 @@
     void=timeControlCheckpoint('Finished at',drop=true)
     stop
 
-
-
     !Ax=getEnergy('huckel')   ; write (*,*) 'huckel   ',Ax
     !Ax=getEnergy('cue-ccs')  ; write (*,*) 'cue-ccs  ',Ax
-    !Ax=getEnergy('hf')       ; write (*,*) 'hf       ',Ax
+    !Ax=getEnergy('rhf')      ; write (*,*) 'rhf      ',Ax
     !Ax=getEnergy('mp2')      ; write (*,*) 'mp2      ',Ax
     !Ax=getEnergy('mp3')      ; write (*,*) 'mp3      ',Ax
     !Ax=getEnergy('r-ccd')    ; write (*,*) 'r-ccd    ',Ax
@@ -101,10 +104,9 @@
     !Ax=getEnergy('fci')      ; write (*,*) 'fci      ',Ax
     !stop
 
-    sta=timecontrol()
-    Ax=getEnergy('hf')         ; write (*,*) '0 hf       ',Ax; Bx=Ax
-    Ax=getEnergy('hf',1)       ; write (*,*) '1 hf       ',Ax !+Bx
-    Ax=getEnergy('hf',2)       ; write (*,*) '2 hf       ',Ax !+Bx
+    Ax=getEnergy('rhf')        ; write (*,*) '0 rhf      ',Ax; Bx=Ax
+    Ax=getEnergy('rhf',1)      ; write (*,*) '1 rhf      ',Ax !+Bx
+    Ax=getEnergy('rhf',2)      ; write (*,*) '2 rhf      ',Ax !+Bx
     !stop
     Ax=getEnergy('cue-ccsd')   ; write (*,*) '0 cue-ccsd ',Ax; Bx=Ax
     Ax=getEnergy('cue-ccsd',1) ; write (*,*) '1 cue-ccsd ',Ax !+Bx

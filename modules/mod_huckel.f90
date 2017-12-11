@@ -7,6 +7,12 @@
     use math    , only: tred4
     use printmod, only: prEigenProblem
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    character (len=*), parameter :: huVersion='1.000'
+    character (len=*), parameter :: huDate   ='2017.12.10'
+    character (len=*), parameter :: huAuthor ='Anton B. Zakharov'
+
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     real   (kind=rglu), allocatable :: V(:,:),E(:),D(:,:)

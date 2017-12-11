@@ -13,7 +13,7 @@
     use txtParser, only: tpSetCommentMark,tpPrepareString
     use txtParser, only: tpJoin,tpEnable,tpDisable,tpLocate,tpPointer,tpGetLineByPointer
     use txtParser, only: tpSplit,tpSplitLen,tpSplitHold,tpRetSplit
-    use txtParser, only: tpAdjustl,tpAdjustc,tpFill
+    use txtParser, only: tpAdjustl,tpAdjustc,tpFill,tpUpperCase
     use txtParser, only: tpIndex,tpCount,tpReplace,tpReduce,tpDeQuote
     use txtParser, only: tpQuoted,tpStartsWith,tpEndsWith
     use txtParser, only: tpRealByStr,tpIntByStr,tpLogByStr,tpRealArrayByStr,tpIntArrayByStr
@@ -21,8 +21,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: bdVersion='1.610'
-    character (len=*), parameter :: bdDate   ='2017.09.20'
+    character (len=*), parameter :: bdVersion='1.700'
+    character (len=*), parameter :: bdDate   ='2017.12.10'
     character (len=*), parameter :: bdAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: typeSetSize=12,mxKindNameLen=9,maxListSetLen=100
@@ -121,22 +121,6 @@
         module procedure modify_c,modify_r,modify_i,modify_l
     end interface modify
 
-    interface bdCollect
-        module procedure bdCollect_Name,bdCollect_Address
-    end interface bdCollect
-
-    interface bdAddVariable
-        module procedure bdAddVariable_Address,bdAddVariable_Name
-    end interface bdAddVariable
-
-    interface bdRemoveVariable
-        module procedure bdRemoveVariable_Address,bdRemoveVariable_Name
-    end interface bdRemoveVariable
-
-    interface bdVariableAddDescription
-        module procedure bdVariableAddDescription_Address,bdVariableAddDescription_Name
-    end interface bdVariableAddDescription
-
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     private
@@ -144,13 +128,105 @@
     public :: bdVersion,bdDate,bdAuthor
 
     public :: bdShareVariable,bdCollect,bdAddVariable,bdRemoveVariable,bdParseFile,&
-              bdPrintBlockData,bdSetIOunit,bdSetERRunit,bdFinalize,bdVariableAddDescription
+              bdPrintBlockData,bdSetIOunit,bdSetERRunit,bdFinalize
 
-!    public :: checkExpectFormat,checkOnExpect,variableSet
+    public :: bdAddDescription,bdVariableAddDescription,bdPrintHelp
+
+    !public :: checkExpectFormat,checkOnExpect,variableSet,varAppend
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     contains
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer*4 function bdPrintHelp(bdname,unit,width) result(rcode)
+    implicit none
+
+    character (len=*), intent(in) :: bdname
+    integer*4        , intent(in) :: unit,width
+    integer*4                     :: i,j,k,l,m
+
+
+    rcode=0
+    k=find(bdSet(1:bdAppend)%name,trim(bdname))
+    if (k.LT.0) then
+        write (errunit,'(A)') trim(bdname)//': Block data with such name has not been declared.'
+        rcode=-1
+        return
+    endif
+
+    write (unit,'(A)') tpFill(width,'()')
+    write (unit,'(A/A/)') tpUpperCase('Block: '),bdSet(k)%name%get()
+    write (unit,'(A)') tpUpperCase('Block description:')
+    write (unit,'(A)') bdSet(k)%description%get()
+    write (unit,*)
+    if (bdSet(k)%freeBlock) then
+        write (unit,'(A)') tpFill(width,'()')
+        return
+    endif
+
+    write (unit,'(A/)') tpUpperCase(tpFill(5,'=')//' Block contains variables '//tpFill(5,'='))
+    do i = 1,bdSet(k)%arrayLen
+        j=bdSet(k)%varSet(i)
+
+        write (unit,'(A,1X,A,1X,A,1X,A/)') tpFill(5,'*'),tpUpperCase('Variable'),prStrByVal(i),tpFill(5,'*')
+        write (unit,'(A/A/)') tpUpperCase('Name:'),variableSet(j)%name%get()
+        write (unit,'(A/A/)') tpUpperCase('Variable description:'),variableSet(j)%description%get()
+
+        select case(variableSet(j)%kind)
+            case (0)    ; write (unit,100) 'float128'
+            case (1)    ; write (unit,100) 'float64'
+            case (2)    ; write (unit,100) 'float32'
+            case (3)    ; write (unit,100) 'int64'
+            case (4)    ; write (unit,100) 'int32'
+            case (5)    ; write (unit,100) 'int16'
+            case (6)    ; write (unit,100) 'int8'
+            case ( 7:10); write (unit,100) 'boolean'
+            case (11:12); write (unit,100) 'string'
+        end select
+
+100     format ('TYPE:'/A/)
+
+        if (variableSet(j)%several) then
+            write (unit,'(A/A/)') tpUpperCase('Multivalued:'),'true (cancatination symbol: '//variableSet(j)%concatCh%get()//')'
+        endif
+
+        write (unit,'(A/A/)') tpUpperCase('Optional:'),prStrByVal(variableSet(j)%opt)
+
+        if (variableSet(j)%potentiate .in. '+-') then
+            write (unit,'(A/A/)') tpUpperCase('Exponent:'),'true (sign: 10^'//variableSet(j)%potentiate//'var)'
+        endif
+
+        if (variableSet(j)%opt) then
+            write (unit,'(A)') tpUpperCase('Default value:')
+            select case(variableSet(j)%kind)
+                case ( 0); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntr16),3,7,'exp')
+                case ( 1); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntr8 ),3,7,'exp')
+                case ( 2); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntr4 ),3,7,'exp')
+                case ( 3); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pnti8))
+                case ( 4); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pnti4))
+                case ( 5); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pnti2))
+                case ( 6); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pnti1))
+                case ( 7); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntl8))
+                case ( 8); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntl4))
+                case ( 9); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntl2))
+                case (10); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntl1))
+                case (11); write (unit,101) prStrByVal(variableSet(j)%defc)
+                case (12); write (unit,101) prStrByVal(variableSet(j)%defc)
+            end select
+101         format (A)
+            write (unit,*)
+        endif
+
+        if (variableSet(j)%expect%get().NE.'any') then
+            write (unit,'(A/A/)') tpUpperCase('Expected values preset:'),variableSet(j)%expect%get()
+        endif
+    enddo
+    write (unit,'(A)') tpFill(width,'()')
+
+    return
+    end function bdPrintHelp
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -176,29 +252,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer*4 function bdVariableAddDescription_Name(name,description) result(rcode)
-    implicit none
-
-    character (len=*) :: name
-    character (len=*) :: description
-    integer*4         :: k
-
-
-    k=find(variableSet(1:varAppend)%name,name)
-    if (k.LT.0) then
-        write (errunit,'(A,1X,A,A)') 'Not shared (unknown) variable with name ',name,'.'
-        rcode=-1
-        return
-    endif
-
-    variableSet(k)%description=description
-
-    rcode=0; return
-    end function bdVariableAddDescription_Name
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer*4 function bdVariableAddDescription_Address(id,description) result(rcode)
+    integer*4 function bdVariableAddDescription(id,description) result(rcode)
     implicit none
 
     integer*8         :: id
@@ -216,7 +270,7 @@
     variableSet(k)%description=description
 
     rcode=0; return
-    end function bdVariableAddDescription_Address
+    end function bdVariableAddDescription
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -243,7 +297,7 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer*4 function bdCollect_Address(name,array,startCh,endCh,commentCh,accordCh,separatorCh,freeBlock,associatedIO) result(rcode)
+    integer*4 function bdCollect(name,array,startCh,endCh,commentCh,accordCh,separatorCh,freeBlock,associatedIO) result(rcode)
     implicit none
 
     character (len=*)           :: name
@@ -343,106 +397,11 @@
     enddo
 
     return
-    end function bdCollect_Address
+    end function bdCollect
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer*4 function bdCollect_Name(name,array,startCh,endCh,commentCh,accordCh,separatorCh,freeBlock,associatedIO) result(rcode)
-    implicit none
-
-    character (len=*)           :: name
-    character (len=*)           :: array(:)
-
-    character (len=*), optional :: startCh,endCh,commentCh,accordCh,separatorCh
-    logical*1        , optional :: freeBlock
-    integer*4        , optional :: associatedIO
-
-    character (len=markUpChLen) :: ustartCh,uendCh,ucommentCh,uaccordCh,useparatorCh
-    logical*1                   :: ufreeBlock
-    integer*4                   :: uassociatedIO
-
-    integer*4                   :: arrayLen,i,j
-
-
-    ustartCh=tpFill(ustartCh); ustartCh=defStartCh
-    if (present(startCh)) ustartCh=trim(startCh)
-
-    uendCh=tpFill(uendCh); uendCh=defEndCh
-    if (present(endCh)) uendCh=trim(endCh)
-
-    ucommentCh=tpFill(ucommentCh); ucommentCh=defCommentCh
-    if (present(commentCh)) ucommentCh=trim(commentCh)
-
-    uaccordCh=tpFill(uaccordCh); uaccordCh=defAccordCh
-    if (present(accordCh)) uaccordCh=trim(accordCh)
-
-    useparatorCh=tpFill(useparatorCh); useparatorCh=defSeparatorCh
-    if (present(separatorCh)) useparatorCh=trim(separatorCh)
-
-    ufreeBlock=false; if (present(freeBlock))    ufreeBlock=freeBlock
-    uassociatedIO=0;  if (present(associatedIO)) uassociatedIO=associatedIO
-
-    if (ufreeBlock .AND. .NOT.present(associatedIO) ) then
-        write (errunit,*) name//': If present freeBlock option, must present associatedIO value.'
-        rcode=-1
-        return
-    endif
-
-    if (find(bdSet(1:bdAppend)%name,trim(name)).GT.0) then
-        write (errunit,*) name//': Block data with such name is already declared.'
-        rcode=-2
-        return
-    endif
-
-    if ( (trim(ucommentCh)).EQ.(trim(uaccordCh)) ) then
-        write (errunit,*) name//': Comment and accordance markers must be different.'
-        rcode=-3
-        return
-    endif
-
-    if ( (trim(useparatorCh)).EQ.(trim(uaccordCh)) ) then
-        write (errunit,*) name//': Separator and accordance markers must be different.'
-        rcode=-4
-        return
-    endif
-
-    if ( (trim(ucommentCh)).EQ.(trim(useparatorCh)) ) then
-        write (errunit,*) name//': Comment and separator markers must be different.'
-        rcode=-5
-        return
-    endif
-
-    arrayLen=UBound(array,1); bdAppend=bdAppend+1; rcode=bdAppend
-
-    bdSet(bdAppend)%name=tpAdjustl(name)
-    bdSet(bdAppend)%startCh=tpReplace(trim(ustartCh),'%name',bdSet(bdAppend)%name%get())
-    bdSet(bdAppend)%commentCh=trim(ucommentCh)
-    bdSet(bdAppend)%accordCh=trim(uaccordCh)
-    bdSet(bdAppend)%separatorCh=trim(useparatorCh)
-    bdSet(bdAppend)%endCh=tpReplace(trim(uendCh),'%name',bdSet(bdAppend)%name%get())
-    bdSet(bdAppend)%freeBlock=ufreeBlock
-    bdSet(bdAppend)%associatedIO=uassociatedIO
-
-    allocate ( bdSet(bdAppend)%varSet(arrayLen) )
-
-    bdSet(bdAppend)%arrayLen=0
-
-    do i = 1,arrayLen
-        j=find(variableSet(1:varAppend)%name,array(i))
-        if (j.LT.0) then
-            write (errunit,'(A,1X,A,A)') 'Not shared (unknown) variable with name ',array(i),'.'
-            stop
-        endif
-        bdSet(bdAppend)%arrayLen=bdSet(bdAppend)%arrayLen+1
-        bdSet(bdAppend)%varSet(bdSet(bdAppend)%arrayLen)=j
-    enddo
-
-    return
-    end function bdCollect_Name
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer*4 function bdAddVariable_Address(bdname,address) result(rcode)
+    integer*4 function bdAddVariable(bdname,address) result(rcode)
     implicit none
 
     character (len=*)      :: bdname
@@ -479,51 +438,11 @@
     deallocate (hold)
 
     return
-    end function bdAddVariable_Address
+    end function bdAddVariable
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer*4 function bdAddVariable_Name(bdname,varname) result(rcode)
-    implicit none
-
-    character (len=*)      :: bdname,varname
-    integer*4              :: j,k,varln
-    integer*4, allocatable :: hold(:)
-
-
-    rcode=0
-    j=find(bdSet(1:bdAppend)%name,trim(bdname))
-    if (j.LT.0) then
-        write (errunit,'(A)') trim(bdname)//': Block data with such name has not been declared.'
-        rcode=-1
-        return
-    endif
-
-    k=find(variableSet(1:varAppend)%name,varname)
-    if (k.LT.0) then
-        write (errunit,'(A,1X,i,A)') 'Not shared (unknown) variable with name ',varname,'.'
-        rcode=-2
-        return
-    endif
-
-    varln=bdSet(j)%arrayLen; allocate (hold(varln))
-
-    hold=bdSet(j)%varSet; deallocate (bdSet(j)%varSet)
-
-    allocate (bdSet(j)%varSet(varln+1))
-
-    bdSet(j)%varSet(1:varln)=hold
-    bdSet(j)%varSet(varln+1)=variableSet(k)%address
-    bdSet(j)%arrayLen=bdSet(j)%arrayLen+1
-
-    deallocate (hold)
-
-    return
-    end function bdAddVariable_Name
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer*4 function bdRemoveVariable_Address(bdname,address) result(rcode)
+    integer*4 function bdRemoveVariable(bdname,address) result(rcode)
     implicit none
 
     character (len=*)      :: bdname
@@ -562,49 +481,7 @@
     deallocate (hold)
 
     return
-    end function bdRemoveVariable_Address
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer*4 function bdRemoveVariable_Name(bdname,varname) result(rcode)
-    implicit none
-
-    character (len=*)      :: bdname,varname
-    integer*4              :: j,k,l,varln
-    integer*4, allocatable :: hold(:)
-
-
-    rcode=0
-    j=find(bdSet(1:bdAppend)%name,trim(bdname))
-    if (j.LT.0) then
-        write (errunit,'(A)') trim(bdname)//': Block data with such name has not been declared.'
-        rcode=-1
-        return
-    endif
-
-    k=find(variableSet(1:varAppend)%name,varname)
-    if (k.LT.0) then
-        write (errunit,'(A,1X,i,A)') 'Not shared (unknown) variable with name ',varname,'.'
-        rcode=-2
-        return
-    endif
-
-    varln=bdSet(j)%arrayLen; allocate (hold(varln))
-
-    hold=bdSet(j)%varSet; deallocate (bdSet(j)%varSet)
-
-    l=find(hold,k); if (l.GT.0) hold(l)=0
-    varln=collectArray(hold)
-
-    allocate (bdSet(j)%varSet(varln))
-
-    bdSet(j)%varSet(1:varln)=hold(1:varln)
-    bdSet(j)%arrayLen=varln
-
-    deallocate (hold)
-
-    return
-    end function bdRemoveVariable_Name
+    end function bdRemoveVariable
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -742,6 +619,150 @@
     return
     end function bdParseFile
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer*4 function bdPrintBlockData(name,trgt,width,namePattern,nameSelector,ignoreFreeBlock) result(rcode)
+    implicit none
+
+    character (len=*)           :: name
+    integer*4                   :: trgt
+    integer*4        , optional :: width
+    character (len=*), optional :: namePattern,nameSelector
+    logical*1        , optional :: ignoreFreeBlock
+
+    integer*4, parameter        :: stdlen=64,reslen=5000
+    real*8   , parameter        :: reUbound=1D+6,reLBound=1D-3
+
+    character (len=stdlen)      :: dnamePattern
+    character (len=1)           :: dnameSelector
+    integer*4                   :: dwidth
+    logical*1                   :: dignoreFreeBlock
+
+    character (len=reslen)      :: resStr
+    character (len=256)         :: valueString
+    character (len=32)          :: mfmt
+
+    real*8                      :: uReal
+    integer*4                   :: uInt
+    logical*4                   :: uLog
+
+    integer*4                   :: bdPos,accuracy,ln,k,j,err,pos
+
+
+    rcode=0
+    bdPos=find(bdSet(1:bdAppend)%name,trim(name))
+
+    if (bdPos.LT.0) then
+        write (errunit,'(A)') trim(name)//': Block data with such name has not been declared.'
+        rcode=-1
+        return
+    endif
+
+    dwidth=80; if (present(width)) dwidth=width
+    dnamePattern=tpFill(dnamePattern); dnamePattern='%name option'
+    dignoreFreeBlock=false; if (present(ignoreFreeBlock)) dignoreFreeBlock=ignoreFreeBlock
+
+    if (present(namePattern)) dnamePattern=namePattern
+
+    dnamePattern=tpReplace(trim(dnamePattern),'%name',trim(name))
+    !dnamePattern=tpCapitalize(dnamePattern)
+
+    dnameSelector='='; if (present(nameSelector)) dnameSelector=nameSelector
+
+    if ( (.NOT.dignoreFreeBlock) .AND.(bdSet(bdPos)%freeBlock)) then
+        write (trgt,'(/A)') tpFill(dwidth,dnameSelector)
+        call prEchoFile(bdSet(bdPos)%associatedIO,trgt,'numeration')
+        write (trgt,'( A)') tpFill(dwidth,dnameSelector)
+        return
+    endif
+
+    if (bdSet(bdPos)%freeBlock) return
+
+    ln=len_trim(dnamePattern); if (dwidth.LT.ln) dwidth=ln
+
+    write (trgt,'(/A)') tpAdjustc(tpFill(ln,dnameSelector),dwidth)
+    write (trgt,'(A)' ) tpAdjustc(trim(dnamePattern)      ,dwidth)
+    write (trgt,'(A)' ) tpAdjustc(tpFill(ln,dnameSelector),dwidth)
+
+    resStr=tpFill(reslen)
+
+    do k = 1,bdSet(bdPos)%arrayLen
+        j=bdSet(bdPos)%varSet(k)
+
+        ! format presets
+        mfmt=tpFill(mfmt)
+        select case (variableSet(j)%kind)
+            case ( 0); uReal=variableSet(j)%pntr16
+            case ( 1); uReal=variableSet(j)%pntr8
+            case ( 2); uReal=variableSet(j)%pntr4
+            case ( 3); uInt =variableSet(j)%pnti8
+            case ( 4); uInt =variableSet(j)%pnti4
+            case ( 5); uInt =variableSet(j)%pnti2
+            case ( 6); uInt =variableSet(j)%pnti1
+            case ( 7); uLog =variableSet(j)%pntl8
+            case ( 8); uLog =variableSet(j)%pntl4
+            case ( 9); uLog =variableSet(j)%pntl2
+            case (10); uLog =variableSet(j)%pntl1
+        end select
+
+        select case (shortKindLabels(variableSet(j)%kind))
+            case ('re')
+                select case (variableSet(j)%kind)
+                    case (0); accuracy=31
+                    case (1); accuracy=15
+                    case (2); accuracy=7
+                end select
+
+                if ((mid(abs(uReal)).GT.6).OR.(mid(uReal).LT.1D-5)) then
+                    mfmt='0.'//tpFill(accuracy,'0')//'E00'
+                else
+                    mfmt='^.'//tpFill(accuracy-mid(uReal),'0')
+                endif
+
+                if (abs(uReal)-abs(int(uReal)).LT.10.**(-accuracy)) then
+                    mfmt=tpFill(mfmt); mfmt='^.'
+                endif
+
+            case ('in'); mfmt='^'
+        end select
+
+        valueString=tpFill(valueString)
+
+        select case(shortKindLabels(variableSet(j)%kind))
+            case ('re'); valueString=trim(adjustl(prStrByVal(uReal,trim(mfmt))))
+            case ('in'); valueString=trim(adjustl(prStrByVal(uInt ,trim(mfmt))))
+            case ('lo'); valueString=trim(adjustl(prStrByVal(uLog)))
+            case ('ch'); valueString=trim(variableSet(j)%pntch(1:variableSet(j)%vlen))
+            case ('uc'); valueString=variableSet(j)%pntuch%get()
+        end select
+
+        if (shortKindLabels(variableSet(j)%kind).EQ.'re') then
+            pos=tpIndex(valueString,'E')
+            if (pos.EQ.0) then
+                do while (tpEndsWith(trim(valueString),'0'))
+                    ln=len_trim(valueString)
+                    valueString(ln:ln)=' '
+                enddo
+            else
+                do while ( tpEndsWith(valueString(:pos-1),'0') )
+                    ln=len_trim(valueString)
+                    valueString=valueString(:pos-2)//valueString(pos:ln)//tpFill(len(valueString)-ln+1)
+                    pos=pos-1
+                enddo
+            endif
+        endif
+
+        resStr=trim(resStr)//trim( variableSet(j)%name%get() )//'='//trim(valueString)
+        if (k.NE.bdSet(bdPos)%arrayLen) resStr=trim(resStr)//','
+    enddo
+
+    call prTable(trim(resStr),trgt,adjust='left',width=dwidth,indent=2,spacer=' ',interColWidth=2,saveOrder=false,equalWidth=false)
+
+    return
+    end function bdPrintBlockData
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     integer*4 function bdSetValues(bdPos) result(rcode)
@@ -1437,150 +1458,6 @@
     return
     end function checkExpectFormat
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    integer*4 function bdPrintBlockData(name,trgt,width,namePattern,nameSelector,ignoreFreeBlock) result(rcode)
-    implicit none
-
-    character (len=*)           :: name
-    integer*4                   :: trgt
-    integer*4        , optional :: width
-    character (len=*), optional :: namePattern,nameSelector
-    logical*1        , optional :: ignoreFreeBlock
-
-    integer*4, parameter        :: stdlen=64,reslen=5000
-    real*8   , parameter        :: reUbound=1D+6,reLBound=1D-3
-
-    character (len=stdlen)      :: dnamePattern
-    character (len=1)           :: dnameSelector
-    integer*4                   :: dwidth
-    logical*1                   :: dignoreFreeBlock
-
-    character (len=reslen)      :: resStr
-    character (len=256)         :: valueString
-    character (len=32)          :: mfmt
-
-    real*8                      :: uReal
-    integer*4                   :: uInt
-    logical*4                   :: uLog
-
-    integer*4                   :: bdPos,accuracy,ln,k,j,err,pos
-
-
-    rcode=0
-    bdPos=find(bdSet(1:bdAppend)%name,trim(name))
-
-    if (bdPos.LT.0) then
-        write (errunit,'(A)') trim(name)//': Block data with such name has not been declared.'
-        rcode=-1
-        return
-    endif
-
-    dwidth=80; if (present(width)) dwidth=width
-    dnamePattern=tpFill(dnamePattern); dnamePattern='%name option'
-    dignoreFreeBlock=false; if (present(ignoreFreeBlock)) dignoreFreeBlock=ignoreFreeBlock
-
-    if (present(namePattern)) dnamePattern=namePattern
-
-    dnamePattern=tpReplace(trim(dnamePattern),'%name',trim(name))
-    !dnamePattern=tpCapitalize(dnamePattern)
-
-    dnameSelector='='; if (present(nameSelector)) dnameSelector=nameSelector
-
-    if ( (.NOT.dignoreFreeBlock) .AND.(bdSet(bdPos)%freeBlock)) then
-        write (trgt,'(/A)') tpFill(dwidth,dnameSelector)
-        call prEchoFile(bdSet(bdPos)%associatedIO,trgt,'numeration')
-        write (trgt,'( A)') tpFill(dwidth,dnameSelector)
-        return
-    endif
-
-    if (bdSet(bdPos)%freeBlock) return
-
-    ln=len_trim(dnamePattern); if (dwidth.LT.ln) dwidth=ln
-
-    write (trgt,'(/A)') tpAdjustc(tpFill(ln,dnameSelector),dwidth)
-    write (trgt,'(A)' ) tpAdjustc(trim(dnamePattern)      ,dwidth)
-    write (trgt,'(A)' ) tpAdjustc(tpFill(ln,dnameSelector),dwidth)
-
-    resStr=tpFill(reslen)
-
-    do k = 1,bdSet(bdPos)%arrayLen
-        j=bdSet(bdPos)%varSet(k)
-
-        ! format presets
-        mfmt=tpFill(mfmt)
-        select case (variableSet(j)%kind)
-            case ( 0); uReal=variableSet(j)%pntr16
-            case ( 1); uReal=variableSet(j)%pntr8
-            case ( 2); uReal=variableSet(j)%pntr4
-            case ( 3); uInt =variableSet(j)%pnti8
-            case ( 4); uInt =variableSet(j)%pnti4
-            case ( 5); uInt =variableSet(j)%pnti2
-            case ( 6); uInt =variableSet(j)%pnti1
-            case ( 7); uLog =variableSet(j)%pntl8
-            case ( 8); uLog =variableSet(j)%pntl4
-            case ( 9); uLog =variableSet(j)%pntl2
-            case (10); uLog =variableSet(j)%pntl1
-        end select
-
-        select case (shortKindLabels(variableSet(j)%kind))
-            case ('re')
-                select case (variableSet(j)%kind)
-                    case (0); accuracy=31
-                    case (1); accuracy=15
-                    case (2); accuracy=7
-                end select
-
-                if ((mid(abs(uReal)).GT.6).OR.(mid(uReal).LT.1D-5)) then
-                    mfmt='0.'//tpFill(accuracy,'0')//'E00'
-                else
-                    mfmt='^.'//tpFill(accuracy-mid(uReal),'0')
-                endif
-
-                if (abs(uReal)-abs(int(uReal)).LT.10.**(-accuracy)) then
-                    mfmt=tpFill(mfmt); mfmt='^.'
-                endif
-
-            case ('in'); mfmt='^'
-        end select
-
-        valueString=tpFill(valueString)
-
-        select case(shortKindLabels(variableSet(j)%kind))
-            case ('re'); valueString=trim(adjustl(prStrByVal(uReal,trim(mfmt))))
-            case ('in'); valueString=trim(adjustl(prStrByVal(uInt ,trim(mfmt))))
-            case ('lo'); valueString=trim(adjustl(prStrByVal(uLog)))
-            case ('ch'); valueString=trim(variableSet(j)%pntch(1:variableSet(j)%vlen))
-            case ('uc'); valueString=variableSet(j)%pntuch%get()
-        end select
-
-        if (shortKindLabels(variableSet(j)%kind).EQ.'re') then
-            pos=tpIndex(valueString,'E')
-            if (pos.EQ.0) then
-                do while (tpEndsWith(trim(valueString),'0'))
-                    ln=len_trim(valueString)
-                    valueString(ln:ln)=' '
-                enddo
-            else
-                do while ( tpEndsWith(valueString(:pos-1),'0') )
-                    ln=len_trim(valueString)
-                    valueString=valueString(:pos-2)//valueString(pos:ln)//tpFill(len(valueString)-ln+1)
-                    pos=pos-1
-                enddo
-            endif
-        endif
-
-        resStr=trim(resStr)//trim( variableSet(j)%name%get() )//'='//trim(valueString)
-        if (k.NE.bdSet(bdPos)%arrayLen) resStr=trim(resStr)//','
-    enddo
-
-    call prTable(trim(resStr),trgt,adjust='left',width=dwidth,indent=2,spacer=' ',interColWidth=2,saveOrder=false,equalWidth=false)
-
-    return
-    end function bdPrintBlockData
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     integer*8 function shareVariable_r16(var,name,opt,def,vary,expect,potentiate,description) result(rcode)
@@ -2557,21 +2434,21 @@
     if (i.GT.0) then
         if (variableSet(i)%opt) then
             select case(variableSet(i)%kind)
-                case ( 0); variableSet(i)%pntr8=transfer(variableSet(i)%defstor,variableSet(i)%pntr16)
-                case ( 1); variableSet(i)%pntr8=transfer(variableSet(i)%defstor,variableSet(i)%pntr8 )
-                case ( 2); variableSet(i)%pntr4=transfer(variableSet(i)%defstor,variableSet(i)%pntr4 )
-                case ( 3); variableSet(i)%pnti8=transfer(variableSet(i)%defstor,variableSet(i)%pnti8 )
-                case ( 4); variableSet(i)%pnti4=transfer(variableSet(i)%defstor,variableSet(i)%pnti4 )
-                case ( 5); variableSet(i)%pnti2=transfer(variableSet(i)%defstor,variableSet(i)%pnti2 )
-                case ( 6); variableSet(i)%pnti1=transfer(variableSet(i)%defstor,variableSet(i)%pnti1 )
-                case ( 7); variableSet(i)%pntl8=transfer(variableSet(i)%defstor,variableSet(i)%pntl8 )
-                case ( 8); variableSet(i)%pntl4=transfer(variableSet(i)%defstor,variableSet(i)%pntl4 )
-                case ( 9); variableSet(i)%pntl2=transfer(variableSet(i)%defstor,variableSet(i)%pntl2 )
-                case (10); variableSet(i)%pntl1=transfer(variableSet(i)%defstor,variableSet(i)%pntl1 )
+                case ( 0); variableSet(i)%pntr16=transfer(variableSet(i)%defstor,variableSet(i)%pntr16)
+                case ( 1); variableSet(i)%pntr8 =transfer(variableSet(i)%defstor,variableSet(i)%pntr8 )
+                case ( 2); variableSet(i)%pntr4 =transfer(variableSet(i)%defstor,variableSet(i)%pntr4 )
+                case ( 3); variableSet(i)%pnti8 =transfer(variableSet(i)%defstor,variableSet(i)%pnti8 )
+                case ( 4); variableSet(i)%pnti4 =transfer(variableSet(i)%defstor,variableSet(i)%pnti4 )
+                case ( 5); variableSet(i)%pnti2 =transfer(variableSet(i)%defstor,variableSet(i)%pnti2 )
+                case ( 6); variableSet(i)%pnti1 =transfer(variableSet(i)%defstor,variableSet(i)%pnti1 )
+                case ( 7); variableSet(i)%pntl8 =transfer(variableSet(i)%defstor,variableSet(i)%pntl8 )
+                case ( 8); variableSet(i)%pntl4 =transfer(variableSet(i)%defstor,variableSet(i)%pntl4 )
+                case ( 9); variableSet(i)%pntl2 =transfer(variableSet(i)%defstor,variableSet(i)%pntl2 )
+                case (10); variableSet(i)%pntl1 =transfer(variableSet(i)%defstor,variableSet(i)%pntl1 )
 
                 ! Please, let me 'shoot myself in the foot'.
                 ! Will raise 'array bounds exceeded', but works fine without boundary check.
-                ! Source file should be compiled without "-CB" (for ifort) and "-fbounds-check" for GNU fortran
+                ! Source file should be compiled without "-CB" for ifort and "-fbounds-check" for gfortran
                 case (11)
                     variableSet(i)%pntch(1:variableSet(i)%vlen)=tpFill(variableSet(i)%vlen)
                     variableSet(i)%pntch(1:variableSet(i)%defc%ln)=variableSet(i)%defc%get()

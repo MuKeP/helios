@@ -15,8 +15,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: lrVersion='3.000'       !5
-    character (len=*), parameter :: lrDate   ='2017.08.13'  !10
+    character (len=*), parameter :: lrVersion='3.100'       !5
+    character (len=*), parameter :: lrDate   ='2017.12.10'  !10
     character (len=*), parameter :: lrAuthor ='Vladimir V. Ivanov' !18
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -249,7 +249,7 @@
     !$omp do
     do i=1,Nel
     do a=Nel+1,No
-        r1(i,a)=r1(i,a)-lrbd%iterStep*d1(i,a)
+        r1(i,a)=r1(i,a)-lrbd%iterStep(1)*d1(i,a)
     enddo
     enddo
     !$omp end parallel
@@ -274,7 +274,7 @@
     do a=Nel+1,No
     do j=1,Nel
     do b=Nel+1,No
-        r2(i,j,a,b)=r2(i,j,a,b)-lrbd%iterStep*d2(i,j,a,b)
+        r2(i,j,a,b)=r2(i,j,a,b)-lrbd%iterStep(2)*d2(i,j,a,b)
     enddo
     enddo
     enddo

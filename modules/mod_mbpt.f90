@@ -11,8 +11,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: ptVersion='1.000'
-    character (len=*), parameter :: ptDate   ='2017.08.11'
+    character (len=*), parameter :: ptVersion='1.100'
+    character (len=*), parameter :: ptDate   ='2017.12.10'
     character (len=*), parameter :: ptAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

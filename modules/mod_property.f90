@@ -103,7 +103,7 @@
                     endif
                     lastPerturbationID=perturbationID
 
-                case ('hf') !done
+                case ('rhf') !done
                     call setSCFParameters
                     call initSCF
                     call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,false)
@@ -199,7 +199,7 @@
                         endif
                         lastPerturbationID=perturbationID
 
-                    case ('hf') !done
+                    case ('rhf') !done
                         !call setSCFParameters
                         call initSCF
                         call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,false)
@@ -285,7 +285,7 @@
                     case ('huckel')
                         continue
 
-                    case ('hf')
+                    case ('rhf')
                         call finalizeSCF
 
                     case ('mp2','mp3')
