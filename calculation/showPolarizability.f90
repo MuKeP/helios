@@ -1,16 +1,18 @@
-    subroutine showPolarizability(method,ou,width)
+    subroutine showPolarizability(method,state,ou,width)
 
-    use glob     , only: rspu,r16kind,iglu,rglu,lglu,void,true,false,uch
+    use glob     , only: rspu,r16kind,r8kind,i4kind,iglu,rglu,lglu,void,true,false,uch,purifyValues
     use txtParser, only: tpLowerCase,tpUpperCase,tpFill,tpAdjustc
     use printmod , only: prStrByVal
-    use hdb      , only: HartreeEnergy,BohrRadius,dipoleToDeby,gammaToesu
-    use hdb      , only: Et,MEt,MMEt,mol,polarizbd
-    use derivat  , only: deShareParams,deLagDeriv,deLSMDeriv,deFinalize
+    use harvester, only: hpolariz,init_harvester,store_harvester
+    use hdb      , only: HartreeEnergy,BohrRadius,dipoleToDeby,gammaToesu,GlEt
+    use hdb      , only: Et,MEt,MMEt,mol,polarizbd,heVersion,generalbd,systembd
+    use derivat  , only: deShareParams,deLagDeriv,deLSMDeriv,deFinalize,crt
 
     implicit none
 
     character (len=*) , intent(in) :: method
-    integer(kind=iglu), intent(in) :: ou,width
+    integer(kind=iglu), intent(in) :: ou,width,state
+    type(hpolariz)                 :: harv
 
     real   (kind=rglu), parameter  :: sigmaBondAlpha=3.48_rglu,CCsigmaBondGamma=220,CHsigmaBondGamma=240
     real   (kind=rglu), parameter  :: derivThreshold(4)=[0.001_rglu,0.01_rglu,0.1_rglu,1._rglu]
@@ -19,9 +21,10 @@
     character (len=2)  ::   sXX,  sYY
     character (len=3)  ::  sXXX, sYYY, sXYY, sYXX
     character (len=4)  :: sXXXX,sYYYY,sXXYY,sYYXX
-    character          :: scale*3
+    character (len=3)  :: scale
 
-    integer(kind=iglu) :: i,j,k,l,Nel,Nat,Np,pp,ppp,sta,sto
+    integer(kind=iglu) :: i,j,k,l,Nel,Nat,Np,pp,sta,sto
+    logical(kind=lglu) :: doharvest
 
     real   (kind=rglu) :: bstDeriv(4,10)
     real   (kind=rglu) :: dx,dy,dz,dmod
@@ -32,12 +35,13 @@
     real   (kind=rglu) :: esu,PDip,PPol,PHpl1,PHpl2,transition(0:8)
 
 
+    doharvest = systembd%harvest
+
     Nel=mol%nEls; Nat=mol%uniqueAtoms; scale=polarizbd%scales%get(); Np=polarizbd%nPoints
 
     sigmaContributionAlpha=  sigmaBondAlpha*(mol%uniqueBonds+mol%chBonds)
     sigmaContributionGamma=CCsigmaBondGamma*mol%uniqueBonds+CHsigmaBondGamma*mol%chBonds
 
-    ppp=5; pp=len(method)+2+ppp*2
     sta=-(Np-1)/2; sto= (Np-1)/2
 
     transition(0)=1; transition(1)=-dipoleToDeby
@@ -49,34 +53,86 @@
 
     void=deShareParams(Np,polarizbd%derivStep,MMEt)
 
-    write (ou,111) tpFill(pp,'~'),tpFill(ppp,'~'),method,tpFill(ppp,'~'),tpFill(pp,'~')
+    if (state.NE.0) then
+        write (ou,'(/A//)') tpAdjustc(' Polarizability results for '//method//' State #'//prStrByVal(state)//' ', width, '#')
+    else
+        write (ou,'(/A//)') tpAdjustc(' Polarizability results for '//method//' ', width, '#')
+    endif
+
+    if (doharvest) then
+        call init_harvester(harv,heVersion,&
+                            method,int(state,i4kind),&
+                            int(mol%nAtoms,i4kind),int(mol%nEls,i4kind),&
+                            int(polarizbd%nPoints,i4kind),real(polarizbd%derivStep,r8kind),&
+                            polarizbd%scales%get())
+    endif
+    harv%Energies=GlEt
+
+    harv%sigmaContributionAlpha=sigmaContributionAlpha
+    harv%sigmaContributionGamma=sigmaContributionGamma
+
+    bstDeriv=0
 
     select case ( len_trim(polarizbd%scales%get()) )
 
         case (1)
-            sX=scale(1:1); sXX=sX//sX; sXXX=sX//sXX; sXXXX=sXX//sXX
-            do i = sta,sto
-                write (ou,101) i,Et(i)
+            do
+                sX=scale(1:1); sXX=sX//sX; sXXX=sX//sXX; sXXXX=sXX//sXX
+                do i = sta,sto
+                    write (ou,101) i,Et(i)
+                enddo
+
+                write (ou,200) sX
+                write (ou,201) (l, l=3,Np,2)
+                write (ou,211) [(deLagDeriv(j,tpLowerCase(sX)   ),j=3,Np,2)]*PDip
+                write (ou,212) [(deLagDeriv(j,tpLowerCase(sXX)  ),j=3,Np,2)]*PPol
+                write (ou,213) [(deLagDeriv(j,tpLowerCase(sXXX) ),j=5,Np,2)]*PHpl1
+                write (ou,214) [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2,&
+                               [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2*esu
+
+                write (ou,281) deLagDeriv(Np,tpLowerCase(sXX))*PPol/3,&
+                               deLagDeriv(Np,tpLowerCase(sXX))*PPol/(3*Nel)
+
+                if (doharvest) then
+                    select case(polarizbd%scales%get())
+                        case('x')
+                            harv%m(1)=deLagDeriv(Np,tpLowerCase(sX))*PDip
+                            harv%a(1)=deLagDeriv(Np,tpLowerCase(sXX))*PPol
+                        case('y')
+                            harv%m(2)=deLagDeriv(Np,tpLowerCase(sX))*PDip
+                            harv%a(2)=deLagDeriv(Np,tpLowerCase(sXX))*PPol
+                        case('z')
+                            harv%m(3)=deLagDeriv(Np,tpLowerCase(sX))*PDip
+                            harv%a(3)=deLagDeriv(Np,tpLowerCase(sXX))*PPol
+                    end select
+                endif
+
+                if (Np.LE.3) exit
+
+                if (Nat.NE.Nel) write (ou,282) deLagDeriv(Np,tpLowerCase(sXX))*PPol/(3*Nat)
+                write (ou,500) sigmaContributionAlpha,sigmaBondAlpha
+                write (ou,283) deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2/5,&
+                               deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2/(5*Nel)
+
+                if (Nat.NE.Nel) write (ou,284) deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2/(5*Nat)
+                write (ou,501) sigmaContributionGamma,CCsigmaBondGamma,CHsigmaBondGamma
+
+                if (doharvest) then
+                    select case(polarizbd%scales%get())
+                        case('x')
+                            harv%b(1)=deLagDeriv(Np,tpLowerCase(sXXX))*PHpl1
+                            harv%g(1)=deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2
+                        case('y')
+                            harv%b(2)=deLagDeriv(Np,tpLowerCase(sXXX))*PHpl1
+                            harv%g(2)=deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2
+                        case('z')
+                            harv%b(3)=deLagDeriv(Np,tpLowerCase(sXXX))*PHpl1
+                            harv%g(3)=deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2
+                    end select
+                endif
+
+                exit
             enddo
-
-            write (ou,200) sX
-            write (ou,201) (l, l=3,Np,2)
-            write (ou,211) [(deLagDeriv(j,tpLowerCase(sX)   ),j=3,Np,2)]*PDip
-            write (ou,212) [(deLagDeriv(j,tpLowerCase(sXX)  ),j=3,Np,2)]*PPol
-            write (ou,213) [(deLagDeriv(j,tpLowerCase(sXXX) ),j=5,Np,2)]*PHpl1
-            write (ou,214) [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2,&
-                           [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2*esu
-
-            write (ou,281) deLagDeriv(Np,tpLowerCase(sXX))*PPol/3,&
-                           deLagDeriv(Np,tpLowerCase(sXX))*PPol/(3*Nel)
-
-            if (Nat.NE.Nel) write (ou,282) deLagDeriv(Np,tpLowerCase(sXX))*PPol/(3*Nat)
-            write (ou,500) sigmaContributionAlpha,sigmaBondAlpha
-            write (ou,283) deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2/5,&
-                           deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2/(5*Nel)
-
-            if (Nat.NE.Nel) write (ou,284) deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2/(5*Nat)
-            write (ou,501) sigmaContributionGamma,CCsigmaBondGamma,CHsigmaBondGamma
 
         case (2)
             scale=tpUpperCase(scale); sX=scale(1:1); sY=scale(2:2)
@@ -88,9 +144,10 @@
             scale=tpLowerCase(scale)
 
             do i = sta,sto
-            do j = sta,sto
-                write (ou,102) i,j,MEt(i,j)
-            enddo; write (ou,*)
+                do j = sta,sto
+                    write (ou,102) i,j,MEt(i,j)
+                enddo
+                write (ou,*)
             enddo
 
             do ! ~~~~~~~~~ Dipole moment ~~~~~~~~~ !
@@ -102,7 +159,7 @@
                     dy=deLagDeriv(k,tpLowerCase(sY))*PDip
                     dmod=sqrt(dx**2+dy**2)
 
-                    void=purifyDerivative(derivThreshold(1),dx,dy,dmod)
+                    void=purifyValues(derivThreshold(1),dx,dy,dmod)
 
                     write (ou,311) k,sX,dx,sY,dy,dmod
 
@@ -120,7 +177,7 @@
                     ayy=deLagDeriv(k,tpLowerCase(sYY))*PPol
                     avA=(axx+ayy)/3
 
-                    void=purifyDerivative(derivThreshold(2),axx,ayy,ava)
+                    void=purifyValues(derivThreshold(2),axx,ayy,ava)
 
                     write (ou,331) k,sXX,axx,sYY,ayy,avA
 
@@ -144,7 +201,7 @@
                     byxx=deLagDeriv(k,tpLowerCase(sYXX))*PHpl1
                     bmod=sqrt((bxxx+bxyy)**2+(byyy+byxx)**2)
 
-                    void=purifyDerivative(derivThreshold(3),bxxx,byyy,bxyy,byxx,bmod)
+                    void=purifyValues(derivThreshold(3),bxxx,byyy,bxyy,byxx,bmod)
 
                     write (ou,351) k,sXXX,bxxx,sYYY,byyy,sXYY,bxyy,sYXX,byxx,bmod
 
@@ -165,7 +222,7 @@
                     gyyxx=deLagDeriv(k,tpLowerCase(sYYXX))*PHpl2
                     averg=(gxxxx+gyyyy+gxxyy+gyyxx)/5
 
-                    void=purifyDerivative(derivThreshold(4),gxxxx,gyyyy,gxxyy,gyyxx,averg)
+                    void=purifyValues(derivThreshold(4),gxxxx,gyyyy,gxxyy,gyyxx,averg)
 
                     bstDeriv(4,1)=gxxxx; bstDeriv(4,2)=gyyyy; bstDeriv(4,4)=gxxyy
                     bstDeriv(4,5)=gyyxx; bstDeriv(4,10)=averg
@@ -178,6 +235,70 @@
                 write (ou,501) sigmaContributionGamma,CCsigmaBondGamma,CHsigmaBondGamma
                 exit
             enddo
+
+            if (doharvest) then
+                do
+                    dx=deLagDeriv(Np,tpLowerCase(sX))*PDip
+                    dy=deLagDeriv(Np,tpLowerCase(sY))*PDip
+                    dmod=sqrt(dx**2+dy**2)
+                    void=purifyValues(derivThreshold(1),dx,dy,dmod)
+
+                    axx=deLagDeriv(Np,tpLowerCase(sXX))*PPol
+                    ayy=deLagDeriv(Np,tpLowerCase(sYY))*PPol
+                    avA=(axx+ayy)/3
+                    void=purifyValues(derivThreshold(2),axx,ayy,ava)
+
+                    select case(polarizbd%scales%get())
+                        case('xy')
+                            harv%m(1)=dx;  harv%m(2)=dy;  harv%m(4)=dmod
+                            harv%a(1)=axx; harv%a(2)=ayy; harv%a(4)=ava
+
+                        case('xz')
+                            harv%m(1)=dx;  harv%m(3)=dy;  harv%m(4)=dmod
+                            harv%a(1)=axx; harv%a(3)=ayy; harv%a(4)=ava
+
+                        case('yz')
+                            harv%m(2)=dx;  harv%m(3)=dy;  harv%m(4)=dmod
+                            harv%a(2)=axx; harv%a(3)=ayy; harv%a(4)=ava
+
+                    end select
+
+                    if (Np.LT.5) exit
+
+                    bxxx=deLagDeriv(Np,tpLowerCase(sXXX))*PHpl1
+                    byyy=deLagDeriv(Np,tpLowerCase(sYYY))*PHpl1
+                    bxyy=deLagDeriv(Np,tpLowerCase(sXYY))*PHpl1
+                    byxx=deLagDeriv(Np,tpLowerCase(sYXX))*PHpl1
+                    bmod=sqrt((bxxx+bxyy)**2+(byyy+byxx)**2)
+
+                    void=purifyValues(derivThreshold(3),bxxx,byyy,bxyy,byxx,bmod)
+
+                    gxxxx=deLagDeriv(Np,tpLowerCase(sXXXX))*PHpl2
+                    gyyyy=deLagDeriv(Np,tpLowerCase(sYYYY))*PHpl2
+                    gxxyy=deLagDeriv(Np,tpLowerCase(sXXYY))*PHpl2
+                    gyyxx=deLagDeriv(Np,tpLowerCase(sYYXX))*PHpl2
+                    averg=(gxxxx+gyyyy+gxxyy+gyyxx)/5
+
+                    void=purifyValues(derivThreshold(4),gxxxx,gyyyy,gxxyy,gyyxx,averg)
+
+                    select case(polarizbd%scales%get())
+                        case('xy')
+                            harv%b(1)=bxxx;  harv%b(2)=byyy;  harv%b(4)=bxyy;  harv%b(5)=byxx;  harv%b(10)=bmod
+                            harv%g(1)=gxxxx; harv%g(2)=gyyyy; harv%g(4)=gxxyy; harv%g(5)=gyyxx; harv%g(10)=averg
+
+                        case('xz')
+                            harv%b(1)=bxxx;  harv%b(3)=byyy;  harv%b(6)=bxyy;  harv%b(7)=byxx;  harv%b(10)=bmod
+                            harv%g(1)=gxxxx; harv%g(3)=gyyyy; harv%g(6)=gxxyy; harv%g(7)=gyyxx; harv%g(10)=averg
+
+                        case('yz')
+                            harv%b(2)=bxxx;  harv%b(3)=byyy;  harv%b(8)=bxyy;  harv%b(9)=byxx;  harv%b(10)=bmod
+                            harv%g(2)=gxxxx; harv%g(3)=gyyyy; harv%g(8)=gxxyy; harv%g(9)=gyyxx; harv%g(10)=averg
+
+                    end select
+
+                    exit
+                enddo
+            endif
 
         case (3)
             do k = sta,sto
@@ -200,7 +321,7 @@
                     dz=deLagDeriv(k,'z')*PDip
                     dmod=sqrt(dx**2+dy**2+dz**2)
 
-                    void=purifyDerivative(derivThreshold(1),dx,dy,dz,dmod)
+                    void=purifyValues(derivThreshold(1),dx,dy,dz,dmod)
 
                     write (ou,411) k,dx,dy,dz,dmod
                     bstDeriv(1,1)=dx; bstDeriv(1,2)=dy; bstDeriv(1,3)=dz; bstDeriv(1,4)=dmod
@@ -218,7 +339,7 @@
                     azz=deLagDeriv(k,'zz')*PPol
                     avA=(axx+ayy+azz)/3
 
-                    void=purifyDerivative(derivThreshold(2),axx,ayy,azz,ava)
+                    void=purifyValues(derivThreshold(2),axx,ayy,azz,ava)
 
                     write (ou,431) k,axx,ayy,azz,avA
 
@@ -250,7 +371,7 @@
                     bzyy = deLagDeriv(k,'zyy')*PHpl1
                     bmod=sqrt((bxxx+bxyy+bxzz)**2+(byyy+byxx+byzz)**2+(bzzz+bzxx+bzyy)**2)
 
-                    void=purifyDerivative(derivThreshold(3),bxxx,byyy,bzzz,bxyy,byxx,bxzz,bzxx,byzz,bzyy,bmod)
+                    void=purifyValues(derivThreshold(3),bxxx,byyy,bzzz,bxyy,byxx,bxzz,bzxx,byzz,bzyy,bmod)
 
                     write (ou,451) k,bxxx,byyy,bzzz,bxyy,byxx,bxzz,bzxx,byzz,bzyy,bmod
 
@@ -277,7 +398,7 @@
                     gzzyy=deLagDeriv(k,'zzyy')*PHpl2
                     averg=(gxxxx+gyyyy+gzzzz+gxxyy+gyyxx+gxxzz+gzzxx+gyyzz+gzzyy)/5
 
-                    void=purifyDerivative(derivThreshold(4),gxxxx,gyyyy,gzzzz,gxxyy,gyyxx,gxxzz,gzzxx,gyyzz,gzzyy,averg)
+                    void=purifyValues(derivThreshold(4),gxxxx,gyyyy,gzzzz,gxxyy,gyyxx,gxxzz,gzzxx,gyyzz,gzzyy,averg)
 
                     write (ou,471) k,gxxxx,gyyyy,gzzzz,gxxyy,gyyxx,gxxzz,gzzxx,gyyzz,gzzyy,averg,averg*esu
 
@@ -294,6 +415,62 @@
                 exit
             enddo
 
+            if (doharvest) then
+                do
+                    dx=deLagDeriv(Np,'x')*PDip
+                    dy=deLagDeriv(Np,'y')*PDip
+                    dz=deLagDeriv(Np,'z')*PDip
+                    dmod=sqrt(dx**2+dy**2+dz**2)
+
+                    void=purifyValues(derivThreshold(1),dx,dy,dz,dmod)
+
+                    axx=deLagDeriv(Np,'xx')*PPol
+                    ayy=deLagDeriv(Np,'yy')*PPol
+                    azz=deLagDeriv(Np,'zz')*PPol
+                    avA=(axx+ayy+azz)/3
+
+                    void=purifyValues(derivThreshold(2),axx,ayy,azz,ava)
+
+                    harv%m(1)=dx;  harv%m(2)=dy;  harv%m(3)=dz;  harv%m(4)=dmod
+                    harv%a(1)=axx; harv%a(2)=ayy; harv%a(3)=azz; harv%a(4)=ava
+
+                    if (Np.LT.5) exit
+
+                    bxxx = deLagDeriv(Np,'xxx')*PHpl1
+                    byyy = deLagDeriv(Np,'yyy')*PHpl1
+                    bzzz = deLagDeriv(Np,'zzz')*PHpl1
+                    bxyy = deLagDeriv(Np,'xyy')*PHpl1
+                    byxx = deLagDeriv(Np,'yxx')*PHpl1
+                    bxzz = deLagDeriv(Np,'xzz')*PHpl1
+                    bzxx = deLagDeriv(Np,'zxx')*PHpl1
+                    byzz = deLagDeriv(Np,'yzz')*PHpl1
+                    bzyy = deLagDeriv(Np,'zyy')*PHpl1
+                    bmod=sqrt((bxxx+bxyy+bxzz)**2+(byyy+byxx+byzz)**2+(bzzz+bzxx+bzyy)**2)
+
+                    void=purifyValues(derivThreshold(3),bxxx,byyy,bzzz,bxyy,byxx,bxzz,bzxx,byzz,bzyy,bmod)
+
+                    gxxxx=deLagDeriv(Np,'xxxx')*PHpl2
+                    gyyyy=deLagDeriv(Np,'yyyy')*PHpl2
+                    gzzzz=deLagDeriv(Np,'zzzz')*PHpl2
+                    gxxyy=deLagDeriv(Np,'xxyy')*PHpl2
+                    gyyxx=deLagDeriv(Np,'yyxx')*PHpl2
+                    gxxzz=deLagDeriv(Np,'xxzz')*PHpl2
+                    gzzxx=deLagDeriv(Np,'zzxx')*PHpl2
+                    gyyzz=deLagDeriv(Np,'yyzz')*PHpl2
+                    gzzyy=deLagDeriv(Np,'zzyy')*PHpl2
+                    averg=(gxxxx+gyyyy+gzzzz+gxxyy+gyyxx+gxxzz+gzzxx+gyyzz+gzzyy)/5
+
+                    void=purifyValues(derivThreshold(4),gxxxx,gyyyy,gzzzz,gxxyy,gyyxx,gxxzz,gzzxx,gyyzz,gzzyy,averg)
+
+                    harv%b( 1)=bxxx; harv%b( 2)=byyy; harv%b( 3)=bzzz; harv%b( 4)=bxyy; harv%b( 5)=byxx
+                    harv%b( 6)=bxzz; harv%b( 7)=bzxx; harv%b( 8)=byzz; harv%b( 9)=bzyy; harv%b(10)=bmod
+
+                    harv%g( 1)=gxxxx; harv%g( 2)=gyyyy; harv%g( 3)=gzzzz; harv%g( 4)=gxxyy; harv%g( 5)=gyyxx
+                    harv%g( 6)=gxxzz; harv%g( 7)=gzzxx; harv%g( 8)=gyyzz; harv%g( 9)=gzzyy; harv%g(10)=averg
+                    exit
+                enddo
+            endif
+
     end select
 
     if (Np.GE.5) void=lsmInterpolation( len_trim(polarizbd%scales%get()) )
@@ -301,17 +478,21 @@
     if (Np.GE.5) write (ou,503)
 
     call deFinalize
+
+    write (ou,'(/A)') tpFill(width, '#')
+
+    call store_harvester(harv,generalbd%harvestfile%get())
     return
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 101 format ( 4X,'Field',1X,i2,1X            ,F25.16)
 102 format ( 4X,'Field',1X,i2,1X,i2,1X      ,F25.16)
 104 format ( 4X,'Field',1X,i2,1X,i2,1X,i2,1X,F25.16)
 105 format (/4X,'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'/)
-111 format (//4X,A/4X,A,1X,A,1X,A/4X,A//)
+111 format (//4X,A/4X,A,1X,'polarizability',1X,A,1X,A/4X,A//)
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 200 format (///4X,'~~~~~~~~~~ Axis ',A1,' ~~~~~~~~~~'/)
 
@@ -330,7 +511,7 @@
              'Specific average 2nd hyperpolarizability (per electron) =',1X,ES14.7,1X,'au')
 284 format ( 'Specific average 2nd hyperpolarizability (per atom)     =',1X,ES14.7,1X,'au')
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 301 format (/ 7X,'Dipole moment (deby)'/)
 311 format (  2X,i2,' points',3X,A1,' =',1X,F7.3,4X,A1,' =',1X,F7.3,4X,'|D| =',1X,F7.3)
@@ -355,7 +536,7 @@
 394 format (/2X,'Specific average 2nd hyperpolarizability (per electron) =',9X,ES14.7,1X,'au'/&
              2X,'Contribution of general component =',3X,F6.2,'%')
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 401 format (/ 7X,'Dipole moment (deby)'/)
 411 format (  2X,i2,' points',3X,'X = ',F7.3,4X,'Y = ',F7.3,4X,'Z = ',F7.3,4X,'|D| = ',F7.3)
@@ -395,18 +576,18 @@
              2X,'    (Donetsk, DonGuet, 2004), p. 207, in Russian.')
 503 format ( 2X,'[2] B.M. Pierce, J. Chem. Phys. 91, 791 (1989).')
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     contains
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     integer(kind=iglu) function lsmInterpolation(scl) result(ret)
 
     implicit none
 
     integer(kind=iglu), intent(in) :: scl
-    character                      :: line*510,value*100,pFormat*9,tmplt*4,crt*3
+    character                      :: line*510,value*100,pFormat*9,tmplt*4
 
     integer(kind=iglu)             :: j,k,l,m,sc1,sc2,sc3,pAccuracy,overAllLen,cLen,scSet(3,3)
     real   (kind=rglu)             :: cofs(0:4),avar
@@ -421,7 +602,7 @@
     pAccuracy=5; overAllLen=4+4+pAccuracy
     pFormat='(ES'//prStrByVal(overAllLen)//'.'//prStrByVal(pAccuracy)//')'
     overAllLen=overAllLen+1
-    crt='xyz'
+
     select case (scl)
 
         case(1)
@@ -429,7 +610,8 @@
             line=tpFill(line)
             do k = 0,4
                 line(5+1+k*overAllLen:5+(k+1)*overAllLen)=tpAdjustc( tpFill(k,crt(sc1:sc1)),overAllLen )
-            enddo; cLen=5+5*overAllLen
+            enddo
+            cLen=5+5*overAllLen
             write (ou,'(A)') line(1:cLen)
 
             do k = 0,4
@@ -454,7 +636,8 @@
 
             do k = 0,4
                 line(5+1+k*overAllLen:5+(k+1)*overAllLen)=tpAdjustc( tpFill(k,crt(sc1:sc1)),overAllLen )
-            enddo; cLen=5+5*overAllLen
+            enddo
+            cLen=5+5*overAllLen
 
             write (ou,'(A)') line(1:cLen)
 
@@ -499,7 +682,7 @@
                     line(2:5)=adjustr( tmplt )
                     do k = 0,4
                         if (k+l.LE.4) then
-                            avar=transition(k+l)*deLSMDeriv(tpFill(k,crt(1:1))//tpFill(l,crt(2:2))//tpFill(m,crt(3:3)))
+                            avar=transition(k+l)*deLSMDeriv(tpFill(k,crt(sc1:sc1))//tpFill(l,crt(sc2:sc2))//tpFill(m,crt(sc3:sc3)))
                             if (abs(avar).LT.1D-5) avar=0
                             value=tpFill(value); write (value,fmt=pFormat) avar
                             line(5+1+k*overAllLen:5+(k+1)*overAllLen)=value(1:overAllLen)
@@ -519,7 +702,7 @@
     return
     end function lsmInterpolation
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     real(kind=rglu) function myCont(arr,divisor) result(ret)
     implicit none
@@ -528,34 +711,11 @@
     integer(kind=iglu), intent(in) :: divisor
 
 
-    ret=100*maxval( abs(arr) )/ sum( abs(arr) )
+    ret=100*maxval(abs(arr))/ sum(abs(arr))
 
     return
     end function myCont
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
-
-    integer(kind=iglu) function purifyDerivative(threshold,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10) result(ret)
-    implicit none
-
-    real   (kind=rglu)           :: threshold
-    real   (kind=rglu), optional :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10
-
-
-    if (present(a1 )) then; if (abs(a1 ).LT.threshold) a1 =0; endif
-    if (present(a2 )) then; if (abs(a2 ).LT.threshold) a2 =0; endif
-    if (present(a3 )) then; if (abs(a3 ).LT.threshold) a3 =0; endif
-    if (present(a4 )) then; if (abs(a4 ).LT.threshold) a4 =0; endif
-    if (present(a5 )) then; if (abs(a5 ).LT.threshold) a5 =0; endif
-    if (present(a6 )) then; if (abs(a6 ).LT.threshold) a6 =0; endif
-    if (present(a7 )) then; if (abs(a7 ).LT.threshold) a7 =0; endif
-    if (present(a8 )) then; if (abs(a8 ).LT.threshold) a8 =0; endif
-    if (present(a9 )) then; if (abs(a9 ).LT.threshold) a9 =0; endif
-    if (present(a10)) then; if (abs(a10).LT.threshold) a10=0; endif
-
-    ret=0; return
-    end function purifyDerivative
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     end subroutine showPolarizability

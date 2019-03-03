@@ -1,19 +1,19 @@
     subroutine controlVersions
 
-    use approx      , only: axVersion,axDate,axAuthor
-    use datablock   , only: bdVersion,bdDate,bdAuthor
-    use derivat     , only: deVersion,deDate,deAuthor
-    use fci         , only: ciVersion,ciDate,ciAuthor
-    use fcontrol    , only: fcVersion,fcDate,fcAuthor
-    use glob        , only: glVersion,glDate,glAuthor,iglu
-    use hdb         , only: heVersion,heDate,heAuthor,ou
+    use approx,       only: axVersion,axDate,axAuthor
+    use datablock,    only: bdVersion,bdDate,bdAuthor
+    use derivat,      only: deVersion,deDate,deAuthor
+    use fci,          only: ciVersion,ciDate,ciAuthor
+    use fcontrol,     only: fcVersion,fcDate,fcAuthor
+    use glob,         only: glVersion,glDate,glAuthor,iglu
+    use hdb,          only: heVersion,heDate,heAuthor,ou
     use lrccsdModule, only: lrVersion,lrDate,lrAuthor
-    use math        , only: maVersion,maDate,maAuthor
-    use orientation , only: orVersion,orDate,orAuthor
-    use painter     , only: tdVersion,tdDate,tdAuthor
-    use argsParser  , only: apVersion,apDate,apAuthor
-    use printmod    , only: prVersion,prDate,prAuthor
-    use txtParser   , only: tpVersion,tpDate,tpAuthor
+    use math,         only: maVersion,maDate,maAuthor
+    use orientation,  only: orVersion,orDate,orAuthor
+    use painter,      only: tdVersion,tdDate,tdAuthor
+    use argsParser,   only: apVersion,apDate,apAuthor
+    use printmod,     only: prVersion,prDate,prAuthor
+    use txtParser,    only: tpVersion,tpDate,tpAuthor
 
     implicit none
 

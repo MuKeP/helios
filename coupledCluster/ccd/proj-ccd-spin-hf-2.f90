@@ -1,6 +1,6 @@
     subroutine projection_ccd_doubles_spin_hf
 
-    use glob          , only: rglu,iglu,lglu
+    use glob,           only: rglu,iglu,lglu
     use coupledCluster, only: No,Nel
     use coupledCluster, only: R,F
     use coupledCluster, only: t2,d2

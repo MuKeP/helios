@@ -2,10 +2,11 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob    , only: true,false,rglu,iglu,lglu,void,glControlMemory,i8kind
-    use math    , only: tred4
+    use glob,     only: assignment(=)
+    use glob,     only: true,false,rglu,iglu,lglu,void,glControlMemory,i8kind
+    use math,     only: tred4
     use fcontrol, only: fcNewID,fcNullID
-    use hdb     , only: mol,fcibd,statesbd,densitybd,ou
+    use hdb,      only: mol,fcibd,statesbd,densitybd,ou,ierror
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -41,7 +42,7 @@
     integer(kind=iglu) :: N,Nocca,Noccb,Nel,KF
     integer(kind=iglu) :: NN,NN1,currentState,GIJ
 
-    logical(kind=lglu) :: doOffDiagonal
+    logical(kind=lglu) :: doOffDiagonal,converged
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -71,7 +72,10 @@
 
     KF=(NOCCA+NOCCB)/2
 
-    if (N.GT.maxAtoms) then; write (iount,'(A)') ' Too big molecule.'; stop; endif
+    if (N.GT.maxAtoms) then
+        ierror='FCI module error. Too big molecule.'
+        call primaryInformation('error')
+    endif
 
     if (N.EQ.maxAtoms) then
         if (fciNSteps.GT.maxSteps) then
@@ -160,9 +164,7 @@
         endif
         AN0=ANOR(X,NN,NN1)
 
-        call iterator(iteractionFCI,energyFCI,fcibd%maxiters,fcibd%accuracy*real(2**istate,rglu),false)
-
-        !write (*,*) 'fci state',istate,currentEnergy
+        call iterator(iteractionFCI,energyFCI,fcibd%maxiters,fcibd%accuracy*real(2**istate,rglu),false,converged)
 
         fciHoldStateEnergy(  istate)=currentEnergy
         fciHoldStateVector(:,istate)=X
@@ -172,11 +174,11 @@
 
     if (fciNStates.GT.2) call resortStates
 
+    if (.NOT.densitybd%forceNumerical) call prepareRDM
+
     call controlMemoryFCI('init','deallocate')
 
-    call prepareRDM
-
-100 format (/18X,'   ==========Ground state==========    '/)
+100 format (/18X,'===============Ground state==============='/)
 101 format (/18X,'==========Excited state # ',i1,'=========='/)
 
     return
@@ -195,7 +197,7 @@
 
     accuracy=-1
     call operg(X,Z,energy,accur); accuracy(1)=accur; currentEnergy=energy+coreEnergy
-    if(accur.LT.epsilon*real(2**currentState,rglu)) return
+    if(accur.LT.fcibd%accuracy*real(2**currentState,rglu)) return
     call stepms(X,Z,energy); currentEnergy=energy+coreEnergy
     call orthogonalization(currentState)
 
@@ -216,10 +218,6 @@
     !    energy(k+1)=fciHoldStateEnergy(k)
     !enddo
     energy(1)=currentEnergy
-
-    !do k = 1,UBound(fciHoldStateEnergy,1)+1
-    !    write (*,*) 'fci energy ready',k,energy(k)
-    !enddo
 
     return
     end subroutine energyFCI
@@ -353,7 +351,7 @@
 
     if (state.EQ.0) return
 
-    do k = 0,state
+    do k = 0,state-1
         IJ=0; spr=0
         do I=1,NN
         do J=1,I
@@ -365,9 +363,6 @@
         enddo
         fciHoldStateOrthog(k)=spr
     enddo
-
-!    spr=maxval(abs(fciHoldStateOrthog(1:state))); if (spr.LT.fciTol) return
-!    write (iount,"(5X,'orthogonality=',1X,ES12.4)") spr
 
     do k = 0,state
         do I=1,NN1
@@ -389,7 +384,7 @@
 
 
     fciHoldStateRDM(:,:,state)=0
-    write (iount,'(/4X,A,L/)') 'RDM preparation. Do off-diagonal elemnts:',doOffDiagonal
+    write (iount,'(/4X,A,L/)') 'RDM preparation. Do off-diagonal elements:',doOffDiagonal
     do I=1,NN
         if (mod(I,200).EQ.0) write(iount,'(1X,F5.1\)') 100.*I/NN
         do J=I,NN
@@ -731,8 +726,8 @@
     subroutine multi
     implicit none
 
-    integer(kind=iglu)              :: I,L,P
-    integer(kind=iglu)              :: fileid
+    integer(kind=iglu) :: I,L,P
+    integer(kind=iglu) :: fileid
 
 
     fileid=fcNewID(); open (fileid,status='scratch',form='binary')

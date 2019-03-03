@@ -2,11 +2,11 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob      , only: iglu,rglu,void,true,false,uch,i8kind,glControlMemory
+    use glob      , only: iglu,rglu,lglu,void,true,false,uch,i8kind,glControlMemory
     use hdb       , only: mol,scfbd,ou,ouWidth
     use txtParser , only: tpFill
     use math      , only: tred4
-    use printmod  , only: prEigenProblem
+    use printmod  , only: prEigenProblem,prMatrix
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -22,12 +22,13 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     integer(kind=iglu) :: N,Nocc
+    logical(kind=lglu) :: hasGuess
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     private
     public :: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFResult,&
-              finalizeSCF,printSCFSolution
+              finalizeSCF,printSCFSolution,getSCFRDMElement
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -42,6 +43,7 @@
     N=mol%nAtoms; Nocc=mol%nEls/2
 
     call controlMemorySCF('general','allocate')
+    hasGuess=false
 
     return
     end subroutine setSCFParameters
@@ -60,10 +62,33 @@
         call guessSCF
     endif
 
+    hasGuess=true
+
     call prepareFockian
 
     return
     end subroutine initSCF
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+!    subroutine showGuess
+!    implicit none
+
+!    real(kind=rglu), allocatable :: V(:,:),E(:)
+
+
+!    allocate (V(N,N),E(N)); V=0; E=0
+
+!    call tred4(mol%huckelCore,V,E,N,1.e-100_rglu,1.e-300_rglu)
+!    call prepareDensity(V)
+
+!    call prMatrix(V,100,'MO LKAO','^.0000',maxwidth=200)
+!    call prMatrix(D,100,'Density','^.0000',maxwidth=200)
+
+!    deallocate(V,E)
+
+!    return
+!    end subroutine showGuess
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -140,43 +165,84 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    subroutine getSCFResult(fockian,vectors,energies)
+    subroutine getSCFResult(fockian,vectors,energies,density)
     implicit none
 
-    real   (kind=rglu), optional :: fockian(:,:),vectors(:,:),energies(:)
+    real   (kind=rglu), optional :: fockian(:,:),vectors(:,:),energies(:),density(:,:)
     integer(kind=iglu)           :: i,j
 
 
     if (present(fockian)) then
-        if (UBound(fockian,1).NE.N) stop 'Incorrect size of Fockian matrix.'
+        if (UBound(fockian,1).NE.N) then
+            stop 'Internal error (scf:: getSCFResult): Incorrect size of Fockian matrix.'
+        endif
 
+        !$omp parallel default(shared) private(i,j)
+        !$omp do
         do i = 1,N
             do j = 1,N
                 fockian(i,j)=F(i,j)
             enddo
         enddo
+        !$omp end parallel
     endif
 
     if (present(vectors)) then
-        if (UBound(vectors,1).NE.N) stop 'Incorrect size of Fockian eigenvectors.'
+        if (UBound(vectors,1).NE.N) then
+            stop 'Internal error (scf:: getSCFResult): Incorrect size of Fockian eigenvectors.'
+        endif
 
+        !$omp parallel default(shared) private(i,j)
+        !$omp do
         do i = 1,N
             do j = 1,N
                 vectors(i,j)=V(i,j)
             enddo
         enddo
+        !$omp end parallel
     endif
 
     if (present(energies)) then
-        if (UBound(energies,1).NE.N) stop 'Incorrect size of Fockian eigenvalues.'
+        if (UBound(energies,1).NE.N) then
+            stop 'Internal error (scf:: getSCFResult): Incorrect size of Fockian eigenvalues.'
+        endif
 
+        !$omp parallel default(shared) private(i)
+        !$omp do
         do i = 1,N
             energies(i)=E(i)
         enddo
+        !$omp end parallel
+    endif
+
+    if (present(density)) then
+        if (UBound(density,1).NE.N) then
+            stop 'Internal error (scf:: getSCFResult): Incorrect size of Fockian eigenvalues.'
+        endif
+
+        !$omp parallel default(shared) private(i,j)
+        !$omp do
+        do i = 1,N
+            do j = 1,N
+                density(i,j)=2*D(i,j)
+            enddo
+        enddo
+        !$omp end parallel
     endif
 
     return
     end subroutine getSCFResult
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    real(kind=rglu) function getSCFRDMElement(i,j) result(ret)
+    implicit none
+
+    integer(kind=iglu), intent(in) :: i,j
+
+
+    ret=2*D(i,j); return
+    end function getSCFRDMElement
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -196,6 +262,7 @@
 
 
     call controlMemorySCF('general','deallocate')
+    hasGuess=false
 
     return
     end subroutine finalizeSCF
@@ -215,21 +282,26 @@
         guess=tpFill(guess); guess='defined'
     endif
 
-    select case (guess)
-        case ('huckel')
-            call tred4(mol%huckelCore,V,E,N,1.e-100_rglu,1.e-300_rglu)
-            call prepareDensity(V)
+    if ((.NOT.scfbd%keep).OR.(.NOT.hasGuess)) then
+        select case (guess)
+            case ('huckel')
+                call tred4(mol%huckelCore,V,E,N,1.e-100_rglu,1.e-300_rglu)
+                call prepareDensity(V)
 
-        case ('unitmatrix')
-            D=0
-            do mu = 1,N
-                D(mu,mu)=1
-            enddo
+            case ('unitmatrix')
+                D=0
+                !$omp parallel default(shared) private(mu)
+                !$omp do
+                do mu = 1,N
+                    D(mu,mu)=0.5_rglu
+                enddo
+                !$omp end parallel
 
-        case ('defined')
-            call prepareDensity(vecs)
+            case ('defined')
+                call prepareDensity(vecs)
 
-    end select
+        end select
+    endif
 
     return
     end subroutine guessSCF

@@ -1,14 +1,14 @@
     subroutine readMoleculeInformation
 
-    use glob     , only: assignment(=)
-    use glob     , only: iglu,rglu,lglu,true,false,void,i8kind,glControlMemory
-    use glob     , only: uch
-    use glob     , only: mid,rangen
-    use hdb      , only: in,ou,ouWidth
-    use hdb      , only: BohrRadius,HartreeEnergy
-    use hdb      , only: mol,generalbd,geometrybd
+    use glob,      only: assignment(=)
+    use glob,      only: iglu,rglu,lglu,true,false,void,i8kind,glControlMemory
+    use glob,      only: uch
+    use glob,      only: mid,rangen
+    use hdb,       only: in,ou,ouWidth,ierror
+    use hdb,       only: BohrRadius,HartreeEnergy
+    use hdb,       only: mol,generalbd,geometrybd
     use txtParser, only: operator(.in.)
-    use printmod , only: prMatrix
+    use printmod,  only: prMatrix
 
     implicit none
 
@@ -23,6 +23,8 @@
     read (in,*,err=666) mol%naEls
     read (in,*,err=666) mol%nbEls
 
+    call checkInput
+
     N=mol%nAtoms; M=mol%nBonds
 
     mol%nEls=mol%naEls+mol%nbEls
@@ -31,11 +33,12 @@
 
     Nel=mol%nEls; No=mol%nOrbs
 
-    void=glControlMemory(int( 4*rglu*N*N + N*(3*iglu+6*rglu+2) + M*(3*iglu+5*rglu+6) + N*(6*iglu+3*rglu) ,kind=i8kind),'Molecule information')
+    void=glControlMemory(int( 4*rglu*N*N + N*(3*iglu+6*rglu+2) + M*(3*iglu+5*rglu+6) + N*(7*iglu+3*rglu) ,kind=i8kind),'Molecule information')
     allocate (mol%atm(N),mol%bnd(M),mol%orb(N))
     allocate (mol%g(N,N),mol%connect(N,N),mol%atmDist(N,N),mol%cueDist(N,N))
+    allocate (mol%inverse(N))
 
-    mol%connect=0; mol%atmDist=0; mol%cueDist=0
+    mol%connect=0; mol%atmDist=0; mol%cueDist=0; mol%inverse=0
 
     do i = 1,N
         read (in,*,err=667) mol%atm(i)%symbol,&
@@ -185,14 +188,14 @@
 103 format (/2X,'bond',8X,'mu',10X,'nu',4X,'distance',8X,'beta',8X,'kind'/)
 104 format ( 2X,i4,6X,i4,1X,'----->',1X,i4,2X,F10.5,2X,F10.5,1X,'eV',4X,A)
 
-666 continue
-    stop
+666 ierror='Molecule block. FileFormatError. Incorrect header.'
+    call primaryInformation('error')
 
-667 continue
-    stop
+667 ierror='Molecule block. FileFormatError. Incorrect atoms information.'
+    call primaryInformation('error')
 
-668 continue
-    stop
+668 ierror='Molecule block. FileFormatError. Incorrect bonds information.'
+    call primaryInformation('error')
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
 
@@ -208,7 +211,7 @@
 
 
         trConst=1/(BohrRadius*HartreeEnergy) !real coefficient
-        trConst=0.0694589_rglu               !old value for compatibility
+        !trConst=0.0694589_rglu               !old value for compatibility
 
         N=mol%nAtoms; mol%G=0
         select case (generalbd%coulombType%get())

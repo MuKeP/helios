@@ -1,7 +1,7 @@
     subroutine projection_ccsd_singles_spin_cue_spare
 
-    use glob                , only: iglu,rglu,timecontrol
-    use coupledCluster      , only: Nel,No,Ne,iapairs,notFitRadius,R=>spin_cue_int
+    use glob,                only: iglu,rglu,timecontrol
+    use coupledCluster,      only: Nel,No,Ne,iapairs,notFitRadius,R=>spin_cue_int
     use coupledClusterSparse
 
     implicit none
@@ -129,9 +129,11 @@
         enddo
     enddo
 
-    do i = 1,Nel; do a = Nel+1,No
+    do i = 1,Nel
+    do a = Nel+1,No
         d1(i,a)=d1(i,a)/4
-    enddo; enddo
+    enddo
+    enddo
 
     do i = 1,Nel ! F(i,a)
         sta1=whOVf(i)

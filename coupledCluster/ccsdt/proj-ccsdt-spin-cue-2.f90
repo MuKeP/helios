@@ -1,6 +1,6 @@
     subroutine projection_ccsdt_doubles_spin_cue
 
-    use glob          , only: rglu,iglu,lglu
+    use glob,           only: rglu,iglu,lglu
     use coupledCluster, only: No,Nel,NFnz
     use coupledCluster, only: R,F,Fnz
     use coupledCluster, only: t1,t2,t3,d2,iapairs

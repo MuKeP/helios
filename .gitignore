@@ -1,10 +1,12 @@
-.chrono
 *.exe
 *.bat
 *.out
 *.txt
 *.obj
 *.mod
+*.inp
+*.dat
 *.bak*
 fort.*
 _tmp/
+\!bk/

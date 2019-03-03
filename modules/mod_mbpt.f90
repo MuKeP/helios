@@ -17,13 +17,21 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    real   (kind=rglu), allocatable :: density(:,:),V(:,:),Vs(:,:),F(:,:),R(:,:,:,:)
+    ! general
+    real(kind=rglu), allocatable :: V(:,:)
+
+    ! mp2
+    real(kind=rglu), allocatable :: Vij(:,:),Vab(:,:),E(:)
+
+    ! mp3
+    real(kind=rglu), allocatable :: density(:,:),Vs(:,:),F(:,:),R(:,:,:,:)
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     type(uch)          :: umethod
     integer(kind=iglu) :: N,Nel,No,Nocc,Nth
-    real   (kind=rglu) :: accuracy(5),refeEnergy
+    real   (kind=rglu) :: accuracy(5),refeEnergy,scfEnergy(5)
+    logical(kind=lglu) :: converged
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -49,12 +57,12 @@
             umethod=method
 
         case default
-            stop 'MBPT: Unknown method'
+            stop 'Internal error (mbpt::setMBPTParameters): Unknown method.'
 
     end select
 
     N=mol%nAtoms; Nel=mol%nEls; Nth=systembd%nNodes; No=2*N; Nocc=Nel/2
-    call controlMemoryMBPT('general','allocate')
+    call controlMemoryMBPT(method,'allocate')
     call setSCFParameters
 
     return
@@ -69,32 +77,40 @@
 
 
     call initSCF
-    call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
-    call getSCFResult(vectors=V)
+    call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
+    call getSCFResult(vectors=V, energies=E)
 
-    call printSCFSolution
-    call prepareDensity(V)
-    call prepareFock
+    !call printSCFSolution
 
-    do i = 1,N
-    do j = 1,N
-        Vs(i,2*j-1)=V(i,j)
-        Vs(i,2*j  )=V(i,j)
-    enddo
-    enddo
+    select case(umethod%get())
+        case('mp2')
+            call energySCF(scfEnergy)
+            refeEnergy=scfEnergy(1)
 
-    !$omp parallel default(shared) private(i,j,a,b)
-    !$omp do
-    do i = 1,No
-    do j = 1,No
-    do a = 1,No
-    do b = 1,No
-        R(i,j,a,b)=spin_hf_int(i,j,a,b)
-    enddo
-    enddo
-    enddo
-    enddo
-    !$omp end parallel
+        case('mp3')
+            call prepareDensity(V)
+            call prepareFock
+            do i = 1,N
+            do j = 1,N
+                Vs(i,2*j-1)=V(i,j)
+                Vs(i,2*j  )=V(i,j)
+            enddo
+            enddo
+
+            !$omp parallel default(shared) private(i,j,a,b)
+            !$omp do
+            do i = 1,No
+            do j = 1,No
+            do a = 1,No
+            do b = 1,No
+                R(i,j,a,b)=spin_hf_int(i,j,a,b)
+            enddo
+            enddo
+            enddo
+            enddo
+            !$omp end parallel
+
+    end select
 
     return
     end subroutine initMBPT
@@ -107,25 +123,53 @@
 
     real   (kind=rglu), intent(out) :: energy(5)
     real   (kind=rglu)              :: Ax,sum0,sum1,sum2,sum3,sum4
-    integer(kind=iglu)              :: i,j,a,b,k,c,l,d
+    integer(kind=iglu)              :: i,j,a,b,k,c,l,d,mu,nu
 
 
     energy=0
     select case (umethod%get())
         case ('mp2')
             sum1=0
-            !$omp parallel default(shared) private(i,j,a,b) reduction(+:sum1)
-            !$omp do
-            do i = 1,Nel-1
-            do j = i+1,Nel
-                do a = Nel+1,No-1
-                do b = a+1,No
-                    sum1=sum1+R(i,a,j,b)**2/(F(i,i)+F(j,j)-F(a,a)-F(b,b))
-                enddo
+            do i = 1,Nocc
+                do j = 1,Nocc
+
+                    !$omp parallel default(shared) private(mu,nu)
+                    !$omp do
+                    do mu = 1,N
+                        do nu = 1,N
+                            Vij(mu,nu)=V(mu,i)*V(nu,j)*mol%G(mu,nu)
+                        enddo
+                    enddo
+                    !$omp end parallel
+
+                    !$omp parallel default(shared) private(a,b,mu,nu,sum0)
+                    !$omp do
+                    do a = Nocc+1,N
+                        do b = Nocc+1,N
+                            sum0=0
+                            do mu = 1,N
+                                do nu = 1,N
+                                    sum0=sum0+V(mu,a)*V(nu,b)*Vij(mu,nu)
+                                enddo
+                            enddo
+                            Vab(a,b)=sum0
+                        enddo
+                    enddo
+                    !$omp end parallel
+
+                    sum0=0
+                    !$omp parallel default(shared) private(a,b) reduction(+:sum0)
+                    !$omp do
+                    do a = Nocc+1,N
+                        do b = Nocc+1,N
+                            sum0=sum0+((2*Vab(a,b)-Vab(b,a))*Vab(a,b))/(E(i)+E(j)-E(a)-E(b))
+                        enddo
+                    enddo
+                    !$omp end parallel
+                    sum1=sum1+sum0
                 enddo
             enddo
-            enddo
-            !$omp end parallel
+
             energy(1)=sum1+refeEnergy
             energy(2)=refeEnergy
             energy(3)=sum1
@@ -205,8 +249,7 @@
 
     implicit none
 
-
-    call controlMemoryMBPT('general','deallocate')
+    call controlMemoryMBPT(umethod%get(),'deallocate')
     call finalizeSCF
 
     return
@@ -363,15 +406,25 @@
 
 
     select case (section)
-        case ('general')
+        case ('mp2')
             select case (action)
                 case ('allocate')
-                    void=glControlMemory(int( rglu*(N*No+N*N+No*No*No*No+No*No) ,kind=i8kind),'MBPT module')
-                    allocate (Vs(N,No),V(N,N),density(N,N),R(No,No,No,No),F(No,No))
+                    void=glControlMemory(int( rglu*(2*N*N+N+Nocc*Nocc) ,kind=i8kind),'MBPT module')
+                    allocate (V(N,N),E(N),Vij(N,N),Vab(Nocc+1:N,Nocc+1:N))
+                    V=0; E=0; Vij=0; Vab=0
+                case ('deallocate')
+                    deallocate (V,E,Vij,Vab, stat=err)
+                    void=glControlMemory(int( rglu*(2*N*N+N+Nocc*Nocc) ,kind=i8kind),'MBPT module','free')
+            end select
+        case ('mp3')
+            select case (action)
+                case ('allocate')
+                    void=glControlMemory(int( rglu*(N*No+N*N+N+No*No*No*No+No*No) ,kind=i8kind),'MBPT module')
+                    allocate (Vs(N,No),E(N),V(N,N),density(N,N),R(No,No,No,No),F(No,No))
                     Vs=0; V=0; density=0; R=0; F=0
                 case ('deallocate')
-                    deallocate (Vs,V,density,R,F, stat=err)
-                    void=glControlMemory(int( rglu*(N*No+N*N+No*No*No*No+No*No) ,kind=i8kind),'MBPT module','free')
+                    deallocate (Vs,E,V,density,R,F, stat=err)
+                    void=glControlMemory(int( rglu*(N*No+N*N+N+No*No*No*No+No*No) ,kind=i8kind),'MBPT module','free')
             end select
     end select
 

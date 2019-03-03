@@ -5,17 +5,17 @@
     use glob     , only: assignment (=)
     use glob     , only: iglu,rglu,lglu,true,false,void,gluCompare,i8kind
     use glob     , only: uch,timecontrol,glControlMemory
-    use txtParser, only: operator(.in.)
+    use txtParser, only: operator(.in.),tpAdjustc,tpFill
     use printmod , only: prMatrix,prStrByVal
     use math     , only: tred4
     use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
     use scf      , only: energySCF,finalizeSCF,printSCFSolution
-    use hdb      , only: mol,ccbd,diisbd,cuebd,systembd,scfbd,ou,ouWidth
+    use hdb      , only: mol,ccbd,cuebd,systembd,scfbd,ou,ouWidth,cueConstant1
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: ccVersion='1.100'
-    character (len=*), parameter :: ccDate   ='2017.12.10'
+    character (len=*), parameter :: ccVersion='1.101'
+    character (len=*), parameter :: ccDate   ='2018.02.10'
     character (len=*), parameter :: ccAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -46,7 +46,7 @@
     type(uch)          :: umethod
     integer(kind=iglu) :: N,Nel,No,Nocc,Ne,NFnz,Nth,Nd
     real   (kind=rglu) :: accuracy(5),Enuc,Eel,refeEnergy
-    logical(kind=lglu) :: onceEnergyPrinted
+    logical(kind=lglu) :: onceEnergyPrinted,converged
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -56,7 +56,14 @@
     public :: ccVersion,ccDate,ccAuthor
 
     ! globally used routines
-    public :: setCCParameters,initCC,guessCC,iterationCC,energyCC,finalizeCC
+    public :: setCCParameters,initCC,guessCC,iterationCC,energyCC,finalizeCC,analizewfCC,&
+              getCCResults
+
+    ! for special use (lr module or analize)
+    public :: convertSpatialToSpinCC
+
+    ! for different purposes
+    public :: putCUEMOs
 
     ! access for projection routines
     public :: N,Nel,No,Nocc,Ne,NFnz,NTh
@@ -79,8 +86,10 @@
     integer(kind=iglu)            :: i,j,k,l,a,b
 
 
+    ccbd%dcue=false
     select case (method)
         case ('cue-ccs','cue-ccsd','cue-ccsdt')
+            ccbd%dcue=true
             do
                 if (cuebd%sparse .AND. (method.EQ.'cue-ccsd')) then
                     umethod='spare-'//method; exit
@@ -118,7 +127,7 @@
 
     !write (*,*) 'METHOD: ',umethod%get()
 
-    N=mol%nAtoms; Nel=mol%nEls; Nth=systembd%nNodes; Nd=diisbd%steps
+    N=mol%nAtoms; Nel=mol%nEls; Nth=systembd%nNodes; Nd=ccbd%diisSteps
     onceEnergyPrinted=false
 
     select case (umethod%get())
@@ -380,7 +389,7 @@
 
             call setSCFParameters
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
 
@@ -432,7 +441,7 @@
 
             call setSCFParameters
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
 
@@ -528,10 +537,10 @@
 
         case ('r-ccd','r-ccsd')
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
-            call printSCFSolution
+            !call printSCFSolution
             call prepareFock('spatial')
 
             !$omp parallel default(shared) private(i,j,a,b)
@@ -553,10 +562,10 @@
 
         case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
-            call printSCFSolution
+            !call printSCFSolution
             call prepareFock('spin')
 
             do i = 1,N
@@ -581,19 +590,12 @@
 
     end select
 
-    if (.NOT.onceEnergyPrinted) then
-        write (ou,100) prStrByVal(Eel,0,14,'exp'),&
-                       prStrByVal(Enuc,0,14,'exp'),&
-                       prStrByVal(Eel+Enuc,0,14,'exp')
+!     if (.NOT.onceEnergyPrinted) then
+!         call getCCResults
+!         onceEnergyPrinted=true
+!     endif
 
-100 format ('Electronic energy:       ',1X,A/&
-            'Nuclear repulsion energy:',1X,A/&
-            'Reference state energy:  ',1X,A)
-
-        onceEnergyPrinted=true
-    endif
-
-    if (diisbd%enabled) call controlMemoryCC('diis','allocate')
+    if (ccbd%diisEnabled) call controlMemoryCC('diis','allocate')
     call guessCC
 
     return
@@ -665,6 +667,7 @@
             !$omp end parallel
 
         case ('spin-u-ccsdt','spin-r-ccsdt','spin-u-ccsd','spin-r-ccsd','spin-r-ccsd(t)')
+            t1=0
             !$omp parallel default(shared) private(i,a)
             !$omp do
             do i = 1,Nel
@@ -674,7 +677,8 @@
             enddo
             !$omp end parallel
 
-            !$omp parallel default(shared) private(i,a,j,b)
+            t2=0
+            !$omp parallel default(shared) private(Ax,i,a,j,b)
             !$omp do
             do i = 1,Nel-1
             do a = Nel+1,No-1
@@ -872,7 +876,7 @@
 
     if (maxval(accuracy).LT.epsilon) return
 
-    if (diisbd%enabled) then
+    if (ccbd%diisEnabled) then
         call pushCCVectors
 
         if (iteration.GT.Nd) then
@@ -1193,6 +1197,91 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    subroutine getCCResults
+    implicit none
+
+    real(kind=rglu) :: genergy(5)
+
+
+    call energyCC(genergy)
+
+    write (ou,'(//A/)') tpAdjustc(' '//umethod%get()//' Energy and Amplitudes ',ouWidth,'=')
+    select case (umethod%get())
+        case ('spare-cue-ccsd')
+
+        case ('cue-ccs','cue-ccsd')
+            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+                           prStrByVal(Enuc,0,14,'exp'),&
+                           prStrByVal(Eel+Enuc,0,14,'exp'),&
+                           prStrByVal(genergy(1),0,14,'exp')
+
+            call wfAnalize(umethod%get(), int4(2#000001), false)
+
+        case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
+            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+                           prStrByVal(Enuc,0,14,'exp'),&
+                           prStrByVal(Eel+Enuc,0,14,'exp'),&
+                           prStrByVal(genergy(1),0,14,'exp')
+            call wfAnalize(umethod%get(), int4(2#000001), false)
+
+        case ('u-ccd','u-ccsd')
+            call printSCFSolution
+            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+                           prStrByVal(Enuc,0,14,'exp'),&
+                           prStrByVal(Eel+Enuc,0,14,'exp'),&
+                           prStrByVal(genergy(1),0,14,'exp')
+            call wfAnalize(umethod%get(), int4(2#000001), false)
+
+        case ('r-ccd','r-ccsd')
+            call printSCFSolution
+            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+                           prStrByVal(Enuc,0,14,'exp'),&
+                           prStrByVal(Eel+Enuc,0,14,'exp'),&
+                           prStrByVal(genergy(1),0,14,'exp')
+            call wfAnalize(umethod%get(), int4(2#000001), false)
+
+        case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt')
+            call printSCFSolution
+            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+                           prStrByVal(Enuc,0,14,'exp'),&
+                           prStrByVal(Eel+Enuc,0,14,'exp'),&
+                           prStrByVal(genergy(1),0,14,'exp')
+            call wfAnalize(umethod%get(), int4(2#000001), false)
+
+        case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
+            call printSCFSolution
+            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+                           prStrByVal(Enuc,0,14,'exp'),&
+                           prStrByVal(Eel+Enuc,0,14,'exp'),&
+                           prStrByVal(genergy(1),0,14,'exp')
+            call wfAnalize(umethod%get(), int4(2#000001), false)
+
+    end select
+
+    write (ou,'(A//)') tpFill(ouWidth,'=')
+
+100 format ('Electronic energy:       ',1X,A/&
+            'Nuclear repulsion energy:',1X,A/&
+            'Reference state energy:  ',1X,A/&
+            'Total energy:            ',1X,A)
+
+    return
+    end subroutine getCCResults
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine analizewfCC
+    implicit none
+
+
+    call wfAnalize(umethod%get(), ccbd%wfSwitches, true)
+    !call analize_azulenes
+
+    return
+    end subroutine analizewfCC
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     subroutine pushCCVectors
     use coupledClusterSparse, only: vt,vd,spt1=>t1,spd1=>d1
 
@@ -1461,7 +1550,7 @@
     !call prMatrix(diisMatrix(1:ub,1:ub),6,'DIIS Matrix','^.0000',maxwidth=78)
     !read (*,*)
 
-    call tred4(diisMatrix(1:ub,1:ub),diisVectors(1:ub,1:ub),diisValues(1:ub),ub,1.e-100_rglu,1.e-300_rglu)
+    call tred4(diisMatrix,diisVectors,diisValues,ub,1.e-100_rglu,1.e-300_rglu)
 
     do k = 1,iteration
         diisCoefficients(k)=0
@@ -2303,7 +2392,7 @@
     enddo
     !$omp end parallel
 
-    call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
+    !call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
 
     deallocate (X)
     void=glControlMemory(int( sizeof(X) ,kind=i8kind),'tmp. Coupled Cluster Module', 'free')
@@ -2377,7 +2466,7 @@
     enddo
     !$omp end parallel
 
-    call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
+    !call prMatrix(F,ou,'Fockian in MO basis','^.0000',maxwidth=ouWidth)
 
     deallocate (X)
     void=glControlMemory(int( sizeof(X) ,kind=i8kind),'tmp. Coupled Cluster Module', 'free')
@@ -2464,6 +2553,134 @@
 
     return
     end function notFitRadius
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine putCUEMOs(dealloc)
+
+    implicit none
+
+    logical(kind=lglu), optional :: dealloc
+    integer(kind=iglu)           :: N,M,mu,i
+    logical(kind=lglu)           :: pair
+    real   (kind=rglu)           :: sig
+
+
+    if (present(dealloc)) then
+        if (dealloc .AND. ccbd%dcue) then
+            if (allocated(hV)) deallocate(hV)
+        endif
+        return
+    endif
+
+    if (ccbd%dcue) then
+        if (allocated(hV)) then
+            stop 'Internal error (coupledCluster::putCUEMOs): array have to be deallocated.'
+        endif
+
+        N=UBound(V,1); M=UBound(V,2)
+        allocate(hV(N,M)); hV=0
+
+        do i = 1,M ! MOs
+            pair=sum(V(:,i)).EQ.1
+            do mu = 1,N ! atoms
+                if (V(mu,i).NE.0) then
+                    if (pair) then
+                        hV(mu,i)=1._rglu
+                        exit
+                    endif
+                    sig=1._rglu
+                    if (V(mu,i).LT.0) sig=-1._rglu
+                    hV(mu,i)=sig*cueConstant1
+                endif
+            enddo
+        enddo
+        !call prMatrix(hV,ou,'putCUEMOs','^.0000',maxwidth=ouWidth)
+    endif
+
+    return
+    end subroutine putCUEMOs
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function convertSpatialToSpinCC(N1, N2, t1, t2, st1, st2, pattern) result(ret)
+    implicit none
+
+    integer(kind=iglu) :: N1,N2
+    character(len=*)   :: pattern
+    real(kind=rglu)    :: t1(1:,N1+1:), t2(1:,1:,N1+1:,N1+1:), st1(1:,N2+1:), st2(1:,1:,N2+1:,N2+1:)
+
+    integer(kind=iglu) :: i,j,a,b,mm,nn
+    real(kind=rglu)    :: Ax
+
+
+    ret=0
+    if ('spare' .in. umethod%get()) then
+        ret=-1
+        return
+    endif
+
+    if ('spin' .in. umethod%get()) then
+        if ('s' .in. pattern) then
+            st1=t1
+        endif
+
+        if ('d' .in. pattern) then
+            st2=t2
+        endif
+        return
+    endif
+
+    if ('s' .in. pattern) then
+        do mm = 1,Ne
+            i=excSet(mm,1); a=excSet(mm,2)
+            st1(2*i-1,2*a-1)=t1(i,a)
+            st1(2*i  ,2*a  )=t1(i,a)
+        enddo
+    endif
+
+    if ('d' .in. pattern) then
+        do mm = 1,Ne
+            i=excSet(mm,1); a=excSet(mm,2)
+            do nn = 1,Ne
+                j=excSet(nn,1); b=excSet(nn,2)
+
+                Ax=t2(i,j,a,b)
+
+                st2(2*i-1,2*j  ,2*a-1,2*b  )= Ax
+                st2(2*j  ,2*i-1,2*a-1,2*b  )=-Ax
+                st2(2*i-1,2*j  ,2*b,2*a-1  )=-Ax
+                st2(2*j  ,2*i-1,2*b  ,2*a-1)= Ax
+
+                st2(2*i  ,2*j-1,2*a  ,2*b-1)= Ax
+                st2(2*j-1,2*i  ,2*a  ,2*b-1)=-Ax
+                st2(2*i  ,2*j-1,2*b-1,2*a  )=-Ax
+                st2(2*j-1,2*i  ,2*b-1,2*a  )= Ax
+            enddo
+        enddo
+
+        do mm = 1,Ne
+            i=excSet(mm,1); a=excSet(mm,2)
+            do nn = 1,Ne
+                j=excSet(nn,1); b=excSet(nn,2)
+
+                Ax=-t2(j,i,a,b)+t2(i,j,a,b)
+
+                st2(2*i  ,2*j  ,2*a  ,2*b  )= Ax
+                st2(2*j  ,2*i  ,2*a  ,2*b  )=-Ax
+                st2(2*i  ,2*j  ,2*b  ,2*a  )=-Ax
+                st2(2*j  ,2*i  ,2*b  ,2*a  )= Ax
+
+                st2(2*i-1,2*j-1,2*a-1,2*b-1)= Ax
+                st2(2*j-1,2*i-1,2*a-1,2*b-1)=-Ax
+                st2(2*i-1,2*j-1,2*b-1,2*a-1)=-Ax
+                st2(2*j-1,2*i-1,2*b-1,2*a-1)= Ax
+            enddo
+        enddo
+    endif
+
+    return
+    end function convertSpatialToSpinCC
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

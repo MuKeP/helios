@@ -16,6 +16,12 @@
             write (su,'(2X,i2,")",1X,A)') k,bdNames(k)
         enddo
         write (su,'(/2X,A)') 'To show help on every block type "-i %blockname"'
+    elseif (showInputHelp%get().EQ.'full') then
+        do k = 1,UBound(bdNames,1)
+            void=bdPrintHelp(bdNames(k),su,78)
+        enddo
+
+    ! aliases first ^
     elseif (.NOT. (showInputHelp%get() .in. bdNames)) then
         write (su,'(/2X,A)') 'Undefined block name '//showInputHelp%get()//' found. type "-i all" to see available.'
     else

@@ -9,8 +9,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: apVersion='4.300'
-    character (len=*), parameter :: apDate   ='2017.12.10'
+    character (len=*), parameter :: apVersion='4.301'
+    character (len=*), parameter :: apDate   ='2018.02.27'
     character (len=*), parameter :: apAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: maxArgsListLen=128  ! maximum number of defined arguments
@@ -282,7 +282,11 @@
     do j = 1,argsListLen
         if (arg(j)%expect.AND.arg(j)%found) then
             i=arg(j)%position+1
-            if ( (i.GT.argsCount) .OR. (argumentUsed(i)) ) then
+            if (i.GT.argsCount) then ! fortran cannot into short-circuit evaluation
+                write (iounit,99) arg(j)%str(arg(j)%synonym)%get()
+                void=showHelp(); stop
+            endif
+            if (argumentUsed(i)) then
                 write (iounit,99) arg(j)%str(arg(j)%synonym)%get()
                 void=showHelp(); stop
             endif

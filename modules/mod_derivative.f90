@@ -2,14 +2,14 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob     , only: true,false,rglu,rspu,iglu,lglu,r16kind,find,glControlMemory,void,i8kind
-    use math     , only: LagrangeDerivative,factorial,tred4
+    use glob,      only: true,false,rglu,rspu,iglu,lglu,r16kind,find,glControlMemory,void,i8kind
+    use math,      only: LagrangeDerivative,factorial,tred4
     use txtParser, only: tpCount
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: deVersion='1.100'
-    character (len=*), parameter :: deDate   ='2017.12.10'
+    character (len=*), parameter :: deVersion='1.200'
+    character (len=*), parameter :: deDate   ='2018.08.05'
     character (len=*), parameter :: deAuthor ='Anton B. Zakharov'
 
     character (len=*), parameter :: crt='xyz'
@@ -28,7 +28,7 @@
 
     private
     public :: deVersion,deDate,deAuthor
-    public :: deShareParams,deLSMShareData,deLagDeriv,deLSMDeriv,deFinalize
+    public :: deShareParams,deLSMShareData,deLagDeriv,deLSMDeriv,deFinalize,crt
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -118,7 +118,7 @@
 
     real   (kind=rglu) :: ret
     character  (len=*) :: str
-    integer(kind=iglu) :: k,l,m,i,j,a,pshft
+    integer(kind=iglu) :: k,l,m,i,j,a,pshft,switch
 
 
     !if (.NOT.lsmPrepared) then; write (iounit,'(4X,A)') 'LSM data required. call deLSMShareData.'; ret=0; return; endif
@@ -127,14 +127,64 @@
     k=tpCount(str,crt(1:1)); l=tpCount(str,crt(2:2)); m=tpCount(str,crt(3:3))
 
     pshft=(dePnts-1)/2+1
+
+    switch=0
+    if ((k.NE.0).AND.(l.EQ.0).AND.(m.EQ.0)) switch=1 ! x
+    if ((k.EQ.0).AND.(l.NE.0).AND.(m.EQ.0)) switch=2 ! y
+    if ((k.EQ.0).AND.(l.EQ.0).AND.(m.NE.0)) switch=3 ! z
+
+    if ((k.NE.0).AND.(l.NE.0).AND.(m.EQ.0)) switch=4 ! xy
+    if ((k.NE.0).AND.(l.EQ.0).AND.(m.NE.0)) switch=5 ! xz
+    if ((k.EQ.0).AND.(l.NE.0).AND.(m.NE.0)) switch=6 ! yz
+    if ((k.NE.0).AND.(l.NE.0).AND.(m.NE.0)) switch=7 ! xyz
+
     ret=0
-    do i = 1,dePnts
-    do j = 1,dePnts
-    do a = 1,dePnts
-        ret=ret+lsmReady(k,i)*lsmReady(l,j)*lsmReady(m,a)*im3(i-pshft,j-pshft,a-pshft)
-    enddo
-    enddo
-    enddo
+    select case(switch)
+        case(0)
+            ret=im3(0,0,0)
+        case(1)
+            do i = 1,dePnts
+                ret=ret+lsmReady(k,i)*im3(i-pshft,0,0)
+            enddo
+        case(2)
+            do i = 1,dePnts
+                ret=ret+lsmReady(l,i)*im3(0,i-pshft,0)
+            enddo
+        case(3)
+            do i = 1,dePnts
+                ret=ret+lsmReady(m,i)*im3(0,0,i-pshft)
+            enddo
+        case(4)
+            do i = 1,dePnts
+            do j = 1,dePnts
+                ret=ret+lsmReady(k,i)*lsmReady(l,j)*im3(i-pshft,j-pshft,0)
+            enddo
+            enddo
+        case(5)
+            do i = 1,dePnts
+            do a = 1,dePnts
+                ret=ret+lsmReady(k,i)*lsmReady(m,a)*im3(i-pshft,0,a-pshft)
+            enddo
+            enddo
+
+        case(6)
+            do j = 1,dePnts
+            do a = 1,dePnts
+                ret=ret+lsmReady(l,j)*lsmReady(m,a)*im3(0,j-pshft,a-pshft)
+            enddo
+            enddo
+
+        case(7)
+            do i = 1,dePnts
+            do j = 1,dePnts
+            do a = 1,dePnts
+                ret=ret+lsmReady(k,i)*lsmReady(l,j)*lsmReady(m,a)*im3(i-pshft,j-pshft,a-pshft)
+            enddo
+            enddo
+            enddo
+
+    end select
+
     ret=ret*factorial(k)*factorial(l)*factorial(m) !*transition(k+l+m)
 
     return
@@ -161,6 +211,7 @@
     allocate (lsEVec(maxpower,maxpower),lsEVal(maxpower))
     allocate (lsRez(maxpower))
     lsKof=0; lsWork=0; lsInv=0; lsEVal=0; lsEVec=0; lsRez=0
+
 
     do k = -(points-1)/2,(points-1)/2
         lsKof(k+points/2+1,2)=k*field
@@ -206,6 +257,8 @@
         enddo
     enddo
 
+    !call prMatrix(lsmReady,ou,'KOEF MATRIX','^.000000000',maxwidth=300)
+
     deallocate (lsKof,lsWork,lsInv,lsEVec,lsEVal,lsRez)
     void=glControlMemory(int( sizeof(lsKof)+sizeof(lsWork)+sizeof(lsInv)+sizeof(lsEVec)+sizeof(lsEVal)+sizeof(lsRez) ,kind=i8kind),'tmp. LSM', 'free')
 
@@ -218,7 +271,7 @@
     implicit none
 
     integer(kind=iglu) :: ppoints,aStart,aStop,sft
-    real   (kind=rglu) :: pstep,valSet(:,:,:)
+    real   (kind=rglu) :: pstep,valSet(1:,1:,1:)
 
 
     deStep=pstep; dePnts=ppoints
@@ -250,7 +303,9 @@
 
 
     deallocate(im1,im2,im3,lsmReady,stat=err)
-    void=glControlMemory(int( sizeof(im1)+sizeof(im2)+sizeof(im3)+sizeof(lsmReady) ,kind=i8kind),'tmp. LSM', 'free')
+    if (err.EQ.0) then
+        void=glControlMemory(int( sizeof(im1)+sizeof(im2)+sizeof(im3)+sizeof(lsmReady) ,kind=i8kind),'tmp. LSM', 'free')
+    endif
 
     return
     end subroutine deFinalize

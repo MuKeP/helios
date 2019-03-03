@@ -28,11 +28,12 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
 #   if (__COMPILER==1)
-        use ifport , only: signal,system,getpid,splitpathqq
-        use ifport , only: SIGABRT,SIGINT,SIGTERM
+        use ifport,  only: signal,system,getpid,getuid,splitpathqq,hostnam
+        use ifport,  only: SIGABRT,SIGINT,SIGTERM
         use ifposix, only: PXFSTRUCTCREATE
 #       if (__OS==2)
-            use ifposix, only: PXFSIGADDSET
+            use ifposix, only: PXFSIGADDSET,PXFCONST,PXFSYSCONF,PXFGETPPID
+            use ifposix, only: PXFGETPWUID,PXFSTRGET
 #       endif
 #   elif (__COMPILER==2)
         !
@@ -40,18 +41,19 @@
         !
 #   elif (__COMPILER==4)
         use DFPort, only: signal,system,getpid
-        use DFLib , only: splitpathqq
+        use DFLib,  only: splitpathqq
         use DFPort, only: SIGABRT,SIGINT,SIGTERM
 #   endif
 
 #   if(__opnmp==1)
         include "omp_lib.h"
+!        use omp_lib
 #   endif
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: glVersion='4.510'
-    character (len=*), parameter :: glDate   ='2017.12.10'
+    character (len=*), parameter :: glVersion='4.541'
+    character (len=*), parameter :: glDate   ='2018.12.17'
     character (len=*), parameter :: glAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: r16kind=16, r8kind=8, r4kind=4
@@ -62,8 +64,8 @@
     public :: i16kind, i8kind, i4kind, i2kind, i1kind
     public ::          l8kind, l4kind, l2kind, l1kind
 
-    ! glu = real for global use  (storage and non-accuracy-demanding procedures)
-    ! spu = real for special use (accuracy-demanding procedures)
+    ! *glu => for global use  (storage and non-accuracy-demanding procedures)
+    ! *spu => for special use (accuracy-demanding procedures)
     integer(kind=i4kind), parameter :: rglu=r8kind, rspu=r16kind
     integer(kind=i4kind), parameter :: iglu=i4kind, ispu=i8kind
     integer(kind=i4kind), parameter :: lglu=l1kind
@@ -71,8 +73,10 @@
     !   ~~~~ Global data settings ~~~~ !
 #   if(__OS==1)
         character (len=*), parameter :: os='win',osSeparator=char(92),osMove='move',osCopy='copy'
+        logical*1        , parameter :: isPosix=.FALSE.
 #   else
         character (len=*), parameter :: os='nix',osSeparator=char(47),osMove='mv'  ,osCopy='cp'
+        logical*1        , parameter :: isPosix=.TRUE.
 #   endif
 
     real(kind=rglu), parameter :: gluZero=0,gluUnity=1
@@ -83,7 +87,7 @@
     real(kind=rspu), parameter :: spuCompare=10._rspu**floor(log10(epsilon(spuUnity))+1._rspu)
 
     logical(kind=lglu), parameter :: true=.true., false=.false.
-    real   (kind=rglu), parameter :: NaN=0./0.
+    real   (kind=rglu), parameter :: NaN=0./0. !keep carefully since some compilers may show different behavior
     character  (len=*), parameter :: months(12)=['Jan','Feb','Mar','Apr','May','Jun',&
                                                  'Jul','Aug','Sep','Oct','Nov','Dec']
     integer(kind=iglu), parameter :: monthDays(12)=[31,28,31,30,31,30,31,31,30,31,30,31]
@@ -91,6 +95,20 @@
     character (len=*) , parameter :: days(7)   =['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TYPES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    abstract interface
+        subroutine outOfMemory(label, req, left)
+        character (len=*), intent(in) :: label
+        integer(kind=8)  , intent(in) :: req,left
+        end subroutine outOfMemory
+    end interface
+
+    abstract interface
+        subroutine changeMemory(label, size)
+        character (len=*), intent(in) :: label
+        integer(kind=8)  , intent(in) :: size
+        end subroutine changeMemory
+    end interface
 
     type uch
         character (len=1), allocatable :: ch(:)
@@ -126,7 +144,10 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer(kind=i8kind) :: glSharedMemory
+    procedure(outOfMemory),  pointer :: oomSub => null()
+    procedure(changeMemory), pointer :: cmemSub => null()
+
+    integer(kind=i8kind), protected :: glSharedMemory
     real   (kind=rglu)   :: lastTimerPoint=0
 
 
@@ -183,6 +204,10 @@
                          arrayAnalize4,arrayAnalize5,arrayAnalize6
     end interface arrayAnalize
 
+    interface compareReal
+        module procedure compare_r16,compare_r8,compare_r4
+    end interface compareReal
+
     interface assignment (=)
         module procedure assign_uchSet ,assign_uchGet, &
                          assign_ivarSet,assign_ivarGet,&
@@ -206,7 +231,7 @@
 
     ! module attributes
     public :: glVersion,glDate,glAuthor
-    public :: glSetIOunit
+    public :: glSetIOunit,glGetIOunit
     public :: glFinalize
 
     ! data type presets
@@ -227,7 +252,7 @@
     ! platform constants
     public :: os,osSeparator,osMove,osCopy
     ! platform functions
-    public :: getPath
+    public :: getPath,isPosix,getPOSIXinfo
 
     ! signals
     public :: signal,system,getpid
@@ -242,16 +267,18 @@
 
     ! tools
     public :: find,isEven,same,mid,lenTrimArray,collectArray,rangen
-    public :: compareStrings,arrayAnalize,definePi
+    public :: random_generate_array_r8,random_generate_array_r4
+    public :: random_generate_array_i8,random_generate_array_i4
+    public :: compareStrings,arrayAnalize,compareReal,purifyValues,definePi
 
     ! almost useless
-    public :: infiniteVoidLoop,nullSub
+    public :: infiniteVoidLoop,nullSub,screenProgress
 
     ! time and date
     public :: convertTime,timeControl,dayOfWeek,isLeapYear,timeStamp,date_time,timeControlCheckpoint
 
     ! memory
-    public :: glControlMemory,glShareMemory,glMemoryLeft
+    public :: glControlMemory,glShareMemory,glMemoryLeft,glFromBytes,glSharedMemory
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -277,25 +304,24 @@
         endif
     endif
 
-    if (glSharedMemory.LT.0) then
-        write (iounit,100) label,ubytes,glSharedMemory
-        stop
-    endif
     glSharedMemory=glSharedMemory-ubytes
+    call cmemSub(label,ubytes)
 
-100 format (A,': not enough memory. Required ',i<mid(ubytes)>,', left ', i<mid(glSharedMemory)>' bytes.')
+    if (glSharedMemory.LT.0) call oomSub(label, ubytes, glSharedMemory+ubytes)
 
     ret=0; return
     end function glControlMemory
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer(kind=iglu) function glShareMemory(bytes) result(ret)
+    integer(kind=iglu) function glShareMemory(bytes,violsub,chsub) result(ret)
     implicit none
 
     integer(kind=i8kind), intent(in) :: bytes
+    external                         :: violsub,chsub
 
 
+    oomSub => violsub; cmemSub => chsub
     glSharedMemory=bytes
 
     ret=0; return
@@ -303,33 +329,53 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    real(kind=rglu) function glMemoryLeft(units) result(ret)
+    real(kind=r16kind) function glMemoryLeft(units) result(ret)
     implicit none
 
-    character (len=*), optional :: units
+    character (len=*), optional    :: units
+    character (len=:), allocatable :: dunits
 
 
     if (present(units)) then
-        select case (units)
-            case ('B','b','BYTES','bytes','BYTE','byte')
-                ret=float(glSharedMemory)
-            case ('KB','kb','KILOBYTES','kilobytes','KILOBYTE','kilobyte')
-                ret=float(glSharedMemory)/1024.
-            case ('MB','mb','MEGABYTES','megabytes','MEGABYTE','megabyte')
-                ret=float(glSharedMemory)/(1024.*1024.)
-            case ('GB','gb','GIGABYTES','gigabytes','GIGABYTE','gigabyte')
-                ret=float(glSharedMemory)/(1024.*1024.*1024)
-            case default
-                ret=float(glSharedMemory)
-        end select
+        dunits=units
     else
-        ret=float(glSharedMemory)
+        dunits='none'
     endif
+
+    ret=glFromBytes(glSharedMemory, dunits)
 
     return
     end function glMemoryLeft
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ UCH METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    pure real(kind=r16kind) function glFromBytes(size, units) result(ret)
+    implicit none
+
+    integer(kind=i8kind), intent(in) :: size
+    character (len=*),    intent(in) :: units
+    real(kind=r16kind)               :: divisor
+
+
+    divisor=1024._r16kind
+
+    select case (units)
+        case ('B','b','BYTES','bytes','BYTE','byte')
+            ret=real(size, kind=r16kind)
+        case ('KB','kb','Kb','KILOBYTES','kilobytes','KILOBYTE','kilobyte')
+            ret=real(size, kind=r16kind)/divisor
+        case ('MB','mb','Mb','MEGABYTES','megabytes','MEGABYTE','megabyte')
+            ret=real(size, kind=r16kind)/(divisor*divisor)
+        case ('GB','gb','Gb','GIGABYTES','gigabytes','GIGABYTE','gigabyte')
+            ret=real(size, kind=r16kind)/(divisor*divisor*divisor)
+        case default
+            ret=real(size, kind=r16kind)
+    end select
+
+    return
+    end function glFromBytes
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     elemental subroutine assign_uchSet(this,str)
     implicit none
@@ -1681,6 +1727,98 @@
     ret=renum; return
     end function random_generate_r4
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine random_generate_array_r8(size,array,insta,insto)
+    implicit none
+    integer(kind=iglu)  , intent(in) :: size
+    real   (kind=r8kind)             :: array(size)
+
+    real   (kind=r8kind), intent(in) :: insta,insto
+    integer(kind=iglu)               :: k
+
+
+    if (insta.GT.insto) then; array=0; return; endif
+    if (insto-insta.LE.gluCompare) then; array=insta; return; endif
+
+    do k = 1,size
+        array(k)=random_generate_r8(insta,insto)
+    enddo
+
+    return
+    end subroutine random_generate_array_r8
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine random_generate_array_r4(size,array,insta,insto)
+    implicit none
+    integer(kind=iglu)  , intent(in) :: size
+    real   (kind=r4kind)             :: array(size)
+
+    real   (kind=r4kind), intent(in) :: insta,insto
+    integer(kind=iglu)               :: k
+
+
+    if (insta.GT.insto) then; array=0; return; endif
+    if (insto-insta.LE.gluCompare) then; array=insta; return; endif
+
+    do k = 1,size
+        array(k)=random_generate_r4(insta,insto)
+    enddo
+
+    return
+    end subroutine random_generate_array_r4
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine random_generate_array_i8(size,array,insta,insto)
+    implicit none
+    integer(kind=iglu)  , intent(in) :: size
+    integer(kind=i8kind), intent(in) :: insta,insto
+    integer(kind=i8kind)             :: array(size)
+    integer(kind=iglu)               :: k
+
+
+    if (insta.GT.insto) then
+        array=0; return
+    endif
+
+    if (insto-insta.EQ.0) then
+        array=insta; return
+    endif
+
+    do k = 1,size
+        array(k)=random_generate_i8(insta,insto)
+    enddo
+
+    return
+    end subroutine random_generate_array_i8
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine random_generate_array_i4(size,array,insta,insto)
+    implicit none
+    integer(kind=iglu)  , intent(in) :: size
+    integer(kind=i4kind), intent(in) :: insta,insto
+    integer(kind=i4kind)             :: array(size)
+    integer(kind=iglu)               :: k
+
+
+    if (insta.GT.insto) then
+        array=0; return
+    endif
+
+    if (insto-insta.EQ.0) then
+        array=insta; return
+    endif
+
+    do k = 1,size
+        array(k)=random_generate_i4(insta,insto)
+    enddo
+
+    return
+    end subroutine random_generate_array_i4
+
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ FIND FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     pure integer(kind=iglu) function find_uc(array,val) result(ret)
@@ -1836,6 +1974,52 @@
     ret=-1; return
     end function find_i1
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ POSIX FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine getPOSIXinfo(hostname,login,memory,ppid)
+    implicit none
+
+    type(uch),            intent(out) :: hostname, login
+    integer(kind=i4kind), intent(out) :: memory,ppid
+
+    character(len=64)                 :: chostname, clogin
+    integer(kind=i4kind)              :: ierr,pgsz,pgcnt,varnum,loglen,uid
+    integer(kind=i4kind)              :: upasswd_structure
+
+
+
+    chostname=repeat(' ', len(chostname)); clogin=repeat(' ', len(clogin))
+    hostname=''; login=''
+    memory=0; ppid=0
+#   if(__OS==2)
+        ! hostname
+        ierr=hostnam(chostname)
+        hostname=trim(chostname)
+
+        ! login
+        ! more safe way to get login, since PXFGETLOGIN sometimes leads to segmentation fault
+        call PXFSTRUCTCREATE('passwd',upasswd_structure,ierr)
+        call PXFGETPWUID(GETUID(),upasswd_structure,ierr)
+        call PXFSTRGET(upasswd_structure,'pw_name',clogin,loglen,ierr)
+
+        login=clogin(1:loglen)
+
+        ! memory
+        call PXFCONST('_SC_PAGESIZE',varnum,ierr)
+        call PXFSYSCONF(varnum,pgsz,ierr)
+        call PXFCONST('_SC_PHYS_PAGES',varnum,ierr)
+        call PXFSYSCONF(varnum,pgcnt,ierr)
+
+        memory=int(real(pgsz, kind=r8kind)*real(pgcnt, kind=r8kind)/1024.**2)
+
+        ! parental process PID
+        call PXFGETPPID(ppid,ierr)
+#   endif
+
+
+    return
+    end subroutine getPOSIXinfo
+
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ TIME AND DATE FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     real(kind=rglu) function timeControl(cputime) result(ret)
@@ -1877,7 +2061,7 @@
         ret=lastTimerPoint
         if (prnt) then
             if (uraw) then
-                write (iounit,"(' [',F13.3,' ] ',A)") 0,msg !fmt on more than 30 years.
+                write (iounit,"(' [ ',F13.3,' ] ',A)") 0.,msg !fmt on more than 30 years.
             else
                 write (iounit,'(A,1X,A)') msg,timeStamp()
             endif
@@ -2416,6 +2600,69 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    pure logical(kind=lglu) function compare_r16(a,b,add) result(ret)
+    implicit none
+    real   (kind=r16kind), intent(in)           :: a,b
+    integer(kind=iglu)   , intent(in), optional :: add
+    real   (kind=rglu)                          :: wa,wb,d
+    integer(kind=iglu)                          :: power
+
+
+    wa=abs(a); wb=abs(b)
+    if (present(add)) then
+        power=int(log10(float(int(max(wa,wb)))))+1+add
+    else
+        power=int(log10(float(int(max(wa,wb)))))+1
+    endif
+    d=epsilon(a)*10**(power-1)
+
+    ret=abs(a-b).LT.d; return
+    end function compare_r16
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    pure logical(kind=lglu) function compare_r8(a,b,add) result(ret)
+    implicit none
+    real   (kind=r8kind), intent(in)           :: a,b
+    integer(kind=iglu)  , intent(in), optional :: add
+    real   (kind=rglu)                         :: wa,wb,d
+    integer(kind=iglu)                         :: power
+
+
+    wa=abs(a); wb=abs(b)
+    if (present(add)) then
+        power=int(log10(float(int(max(wa,wb)))))+1+add
+    else
+        power=int(log10(float(int(max(wa,wb)))))+1
+    endif
+    d=epsilon(a)*10**(power-1)
+
+    ret=abs(a-b).LT.d; return
+    end function compare_r8
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    pure logical(kind=lglu) function compare_r4(a,b,add) result(ret)
+    implicit none
+    real   (kind=r4kind), intent(in)           :: a,b
+    integer(kind=iglu)  , intent(in), optional :: add
+    real   (kind=rglu)                         :: wa,wb,d
+    integer(kind=iglu)                         :: power
+
+
+    wa=abs(a); wb=abs(b)
+    if (present(add)) then
+        power=int(log10(float(int(max(wa,wb)))))+1+add
+    else
+        power=int(log10(float(int(max(wa,wb)))))+1
+    endif
+    d=epsilon(a)*10**(power-1)
+
+    ret=abs(a-b).LT.d; return
+    end function compare_r4
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     pure integer(kind=iglu) function compareStrings(fstr,sstr) result(ret)
     implicit none
 
@@ -2448,6 +2695,19 @@
 
     return
     end function compareStrings
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function screenProgress(string) result(ret)
+    implicit none
+
+    character (len=*) :: string
+
+
+    write (*, '(A\)') char(13)//string
+
+    ret=0; return
+    end function screenProgress
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -2615,6 +2875,31 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    integer(kind=iglu) function purifyValues(threshold,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10) result(ret)
+    implicit none
+
+    real(kind=rglu), optional :: threshold,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10
+    real(kind=rglu)           :: dthreshold
+
+
+    dthreshold=1E-10_rglu; if (present(threshold)) dthreshold=threshold
+
+    if (present(a1 )) then; if (abs(a1 ).LT.dthreshold) a1 =0; endif
+    if (present(a2 )) then; if (abs(a2 ).LT.dthreshold) a2 =0; endif
+    if (present(a3 )) then; if (abs(a3 ).LT.dthreshold) a3 =0; endif
+    if (present(a4 )) then; if (abs(a4 ).LT.dthreshold) a4 =0; endif
+    if (present(a5 )) then; if (abs(a5 ).LT.dthreshold) a5 =0; endif
+    if (present(a6 )) then; if (abs(a6 ).LT.dthreshold) a6 =0; endif
+    if (present(a7 )) then; if (abs(a7 ).LT.dthreshold) a7 =0; endif
+    if (present(a8 )) then; if (abs(a8 ).LT.dthreshold) a8 =0; endif
+    if (present(a9 )) then; if (abs(a9 ).LT.dthreshold) a9 =0; endif
+    if (present(a10)) then; if (abs(a10).LT.dthreshold) a10=0; endif
+
+    ret=0; return
+    end function purifyValues
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     function getPath() result(ret)
     implicit none
 
@@ -2630,6 +2915,15 @@
 
     return
     end function getPath
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function glGetIOunit() result(ret)
+    implicit none
+
+
+    ret=iounit; return
+    end function glGetIOunit
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

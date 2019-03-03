@@ -8,8 +8,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: fcVersion='2.101'
-    character (len=*), parameter :: fcDate   ='2017.07.07'
+    character (len=*), parameter :: fcVersion='2.102'
+    character (len=*), parameter :: fcDate   ='2018.03.14'
     character (len=*), parameter :: fcAuthor ='Anton B. Zakharov'
 
     logical*1        , parameter :: true=.true., false=.false.
@@ -170,25 +170,23 @@
 
     dact='keep'
     if (present(act)) then
-        if (act.EQ.'delete') then
-            dact=act
-        endif
+        if (act.EQ.'delete') dact=act
     endif
 
     !inquire(ID,opened=isOpened,name=fnm)
     !write (*,'(1X,L,1X,A,1X,i3,1X,A,1X,A)') isOpened,'CLOSED',ID,'NAME',trim(fnm)
 
-    iost=0
     select case (fileList(ID))
-        case (-1); iost=-3; continue !unable to close
-        case ( 0); iost=-4; continue !it is not connected
-        case ( 1); iost=-5; continue !it is not connected
-        case ( 2); close (ID,status=dact,iostat=iost); fileList(ID)=0
-        case ( 3); iost=-6; continue !it is not reserved
-        case ( 4); iost=-7; continue !it is not connected
-        case ( 5); iost=-8; continue !it is banned
+        case (-1); iost=-3 !unable to close
+        case ( 0); iost=-4 !it is not connected
+        case ( 1); iost= 0; close (ID,status=dact,iostat=iost); fileList(ID)=0 !it is not connected
+        case ( 2); iost= 0; close (ID,status=dact,iostat=iost); fileList(ID)=0 !it is connected
+        case ( 3); iost=-6 !it is not reserved
+        case ( 4); iost=-7 !it is not connected
+        case ( 5); iost=-8 !it is banned
+        case default; stop 'Internal error (fcontrol::fcNullID): Unknown file state.'
     end select
-    inquire(ID,opened=isOpened)
+    !inquire(ID,opened=isOpened)
     ret=iost
 
     return

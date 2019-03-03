@@ -21,8 +21,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: bdVersion='1.700'
-    character (len=*), parameter :: bdDate   ='2017.12.10'
+    character (len=*), parameter :: bdVersion='1.711'
+    character (len=*), parameter :: bdDate   ='2019.01.03'
     character (len=*), parameter :: bdAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: typeSetSize=12,mxKindNameLen=9,maxListSetLen=100
@@ -130,7 +130,7 @@
     public :: bdShareVariable,bdCollect,bdAddVariable,bdRemoveVariable,bdParseFile,&
               bdPrintBlockData,bdSetIOunit,bdSetERRunit,bdFinalize
 
-    public :: bdAddDescription,bdVariableAddDescription,bdPrintHelp
+    public :: bdAddDescription,bdVariableAddDescription,bdPrintHelp,bdCheckExternalParameter
 
     !public :: checkExpectFormat,checkOnExpect,variableSet,varAppend
 
@@ -514,7 +514,7 @@
     if (err.NE.0) then
         write (errunit,'(A)') 'bd: '//bdSet(bdPos)%name%get()//':'//" File does not exist: "//trim(filename)
 
-        rcode=-2
+        rcode=-2; void=fcNullID(i)
         return
     else
         close (i); void=fcNullID(i)
@@ -609,8 +609,10 @@
     !write (*,*) trim(holdBlockStr)
     bdSet(bdPos)%bdStr=trim(holdBlockStr)
 
-    !write (*,*) bdSet(bdPos)%bdStr%get()
-    !stop
+    ! if (trim(name).EQ.'rdm') then
+    !     write (*,*) bdSet(bdPos)%bdStr%get()
+    !     stop
+    ! endif
 
     rcode=bdSetValues(bdPos)
 
@@ -713,7 +715,7 @@
                     case (2); accuracy=7
                 end select
 
-                if ((mid(abs(uReal)).GT.6).OR.(mid(uReal).LT.1D-5)) then
+                if ((abs(uReal).GT.1D+5).OR.(uReal.LT.1D-5)) then
                     mfmt='0.'//tpFill(accuracy,'0')//'E00'
                 else
                     mfmt='^.'//tpFill(accuracy-mid(uReal),'0')
@@ -753,13 +755,65 @@
         endif
 
         resStr=trim(resStr)//trim( variableSet(j)%name%get() )//'='//trim(valueString)
-        if (k.NE.bdSet(bdPos)%arrayLen) resStr=trim(resStr)//','
+        if (k.NE.bdSet(bdPos)%arrayLen) resStr=trim(resStr)//'&&&'
     enddo
 
-    call prTable(trim(resStr),trgt,adjust='left',width=dwidth,indent=2,spacer=' ',interColWidth=2,saveOrder=false,equalWidth=false)
+    !write (*,'(A)') '#'//trim(resStr)//'#'
+    call prTable(trim(resStr),trgt,adjust='left',width=dwidth,indent=2,separator='&&&',spacer=' ',interColWidth=2,saveOrder=false,equalWidth=false)
 
     return
     end function bdPrintBlockData
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer*4 function bdCheckExternalParameter(bdentry, paramentry, value, autoset) result(rcode)
+    implicit none
+
+    type(uch), intent(in)           :: bdentry, paramentry, value
+    logical*1, intent(in), optional :: autoset
+    logical*1                       :: dautoset,found
+    integer*4                       :: i,j,k,l,position
+
+
+    dautoset=false; if (present(autoset)) dautoset=autoset
+
+    rcode=0
+    j=find(bdSet(1:bdAppend)%name,bdentry%get())
+    if (j.LT.0) then
+        write (errunit,'(A)') 'External parameter check.'
+        write (errunit,'(A)') trim(bdentry%get())//': Block data with such name has not been declared.'
+        rcode=-1
+        return
+    endif
+
+    do i = 1,bdSet(j)%arrayLen
+        if (variableSet(bdSet(j)%varset(i))%name%get().EQ.paramentry%get()) then
+            found=true
+            position=bdSet(j)%varset(i)
+            exit
+        endif
+    enddo
+
+    if (.NOT.found) then
+        write (errunit,'(A)') 'External parameter check.'
+        write (errunit,'(A,1X,A)') 'Not found variable in bd: '//bdSet(j)%name%get(),&
+                                   ' with name '//paramentry%get()//'.'
+        rcode=-2
+        return
+    endif
+
+    ! write(*,*) 'BD',bdSet(j)%name%get()
+    ! write(*,*) 'PA',variableSet(position)%name%get()
+    ! write(*,*) 'VA',value%get()
+
+    rcode=checkOnExpect(position,value%get())
+
+    if (dautoset) then
+        rcode=bdSetValue(position,value%get())
+    endif
+
+    return
+    end function bdCheckExternalParameter
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -769,19 +823,20 @@
     implicit none
 
     integer*4              :: bdPos,k,j,l,fnd,pStart,pEnd,err,optcount,nvars,seplen,seppos
-    integer*4              :: bdsta,bdsto
+    integer*4              :: bdsta,bdsto,quoshift
     logical*1              :: isBlank
     type(uch)              :: ustr
     integer*4, allocatable :: variables(:,:)
 
 
-    !if (bdSet(bdPos)%name%get().EQ.'polariz') then
-    !call system('CLS')
-    !write (*,'(A)' ) bdSet(bdPos)%name%get()
-    !write (*,'(A)' ) bdSet(bdPos)%bdStr%get()
-    !write (*,'(A)' ) '123456789012345678901234567890123456789012345678901234567890123456789012345678'
-    !write (*,'(A/)') '         1         2         3         4         5         6         7        '
-    !endif
+    ! if (bdSet(bdPos)%name%get().EQ.'iteration') then
+    ! call system('CLS')
+    ! write (*,*)
+    ! write (*,'(A)' ) bdSet(bdPos)%name%get()
+    ! write (*,'(A)' ) bdSet(bdPos)%bdStr%get()
+    ! write (*,'(A)' ) '123456789012345678901234567890123456789012345678901234567890123456789012345678'
+    ! write (*,'(A/)') '         1         2         3         4         5         6         7        '
+    ! endif
 
     rcode=0
     if (bdSet(bdPos)%freeBlock) then
@@ -799,9 +854,8 @@
         bdsto=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%endCh%get()   ,endp=true)-1
 
         if ( (tpCount( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%accordCh%get() ).EQ.0) .AND. (.NOT.isBlank)) then
-            !write (*,*) bdSet(bdPos)%bdStr%get()
             write (errunit,'(A\)') 'bd '//bdSet(bdPos)%name%get()//':'
-            write (errunit,'(A)' ) ' Format error. i.e. incorrect accordance/comment symbols: '//bdSet(bdPos)%accordCh%get()
+            write (errunit,'(A)' ) ' Format error. e.g. incorrect accordance/comment symbols: '//bdSet(bdPos)%accordCh%get()
             rcode=-1
             return
         endif
@@ -809,9 +863,16 @@
         nvars=tpCount( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%separatorCh%get() )+1
         allocate (variables(nvars,0:2)); variables=0
 
-        j=2; seplen=bdSet(bdPos)%separatorCh%ln
+        j=2; seplen=bdSet(bdPos)%separatorCh%ln; quoshift=0
         do k = 1,nvars
-            seppos=tpIndex( bdSet(bdPos)%bdStr%get(),bdSet(bdPos)%separatorCh%get(),cnt=k )
+            seppos=tpIndex( bdSet(bdPos)%bdStr%get(),bdSet(bdPos)%separatorCh%get(),cnt=k+quoshift )
+
+            ! ====> one of modifications. need time to be tested <====
+            if ( tpQuoted(bdSet(bdPos)%bdStr%get(), seppos) ) then
+                quoshift=quoshift+1
+                cycle
+            endif
+
             if (seppos.LE.0) seppos=bdSet(bdPos)%bdStr%ln
             variables(k,0)=1
             variables(k,1)=j
@@ -826,6 +887,8 @@
             j=bdSet(bdPos)%varSet(k)
 
             if (j.LT.0) then; write (errunit,*) 'Internal error.'; stop; endif
+
+            ! write (*,*) 'Variable: ', variableSet(j)%name%get()
 
             if (variableSet(j)%opt) void=bdSetDefaultValue(variableSet(j)%address)
 
@@ -853,23 +916,37 @@
             if ( tpQuoted(bdSet(bdPos)%bdStr%get(),fnd) ) cycle
 
             if (shortKindLabels(variableSet(j)%kind).EQ.'lo') then
-                pStart=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%accordCh%get()   , start=fnd)
-                pEnd  =tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%separatorCh%get(), start=fnd)
 
-                if ((pStart.EQ.0) .OR. (pStart.GT.pEnd)) then
+                ! ====> one of modifications. need time to be tested <====
+                pEnd=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%separatorCh%get(), start=fnd)
+                if (pEnd.EQ.0) pEnd=bdSet(bdPos)%bdStr%ln-1
+
+                pStart=tpIndex( bdSet(bdPos)%bdStr%get(ustop=pEnd),bdSet(bdPos)%accordCh%get(), start=fnd)
+
+                if (pStart.EQ.0) then
                     void=modify( variableSet(j)%address, true )
                     !write (*,*) variableSet(j)%name%get(), ' modified'
                     cycle
                 endif
             endif
 
-            pStart=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%accordCh%get()   , start=fnd)+1
+            pStart=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%accordCh%get()   , start=fnd, endp=true)+1
             pEnd  =tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%separatorCh%get(), start=fnd)-1
 
-            !write (*,*) 'Accord ',bdSet(bdPos)%accordCh%get()
-            !write (*,*) 'Separator ',bdSet(bdPos)%separatorCh%get()
-            !write (*,*) 'Bounds ',pStart,pEnd,bdSet(bdPos)%bdStr%ln
-            !write (*,*) 'Statement ',bdSet(bdPos)%bdStr%get(pStart,pEnd)
+            ! ====> one of modifications. need time to be tested <====
+            if (tpQuoted(bdSet(bdPos)%bdStr%get(),pEnd)) then
+                do while ( tpQuoted(bdSet(bdPos)%bdStr%get(),pEnd) )
+                    pEnd=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%separatorCh%get(), start=pEnd+1)
+                enddo
+                pEnd=pEnd-1
+            endif
+
+            ! if (bdSet(bdPos)%name%get().EQ.'rdm') then
+            !     write (*,*) 'Accord ',bdSet(bdPos)%accordCh%get()
+            !     write (*,*) 'Separator ',bdSet(bdPos)%separatorCh%get()
+            !     write (*,*) 'Bounds ',pStart,pEnd,bdSet(bdPos)%bdStr%ln
+            !     write (*,*) 'Statement ',bdSet(bdPos)%bdStr%get(pStart,pEnd)
+            ! endif
 
             if (pEnd.GT.0) then
                 do while ( tpQuoted(bdSet(bdPos)%bdStr%get(),pEnd) )
@@ -878,7 +955,9 @@
             else
                 pEnd=bdSet(bdPos)%bdStr%ln-1
             endif
-            !write (*,*) variableSet(j)%name%get(),pStart,pEnd
+            ! if (bdSet(bdPos)%name%get().EQ.'rdm') then
+            !     write (*,*) variableSet(j)%name%get(),pStart,pEnd
+            ! endif
 
             if ((pStart.EQ.1) .OR. (pstart.GT.pEnd)) then
                 write (errunit,'(A\)') 'bd '//bdSet(bdPos)%name%get()//':'
@@ -888,8 +967,10 @@
             end if
 
             ustr=bdSet(bdPos)%bdStr%get(pStart,pEnd)
-            !write (*,*) '#'//ustr%get()//'#'
-            !write (*,*) variableSet(j)%name%get()//' ===> '//bdSet(bdPos)%bdStr%get(pStart,pEnd)//' ===> '//variableSet(j)%expect%get()
+            ! if (bdSet(bdPos)%name%get().EQ.'rdm') then
+            !     write (*,*) '#'//ustr%get()//'#'
+            !     write (*,*) variableSet(j)%name%get()//' ===> '//bdSet(bdPos)%bdStr%get(pStart,pEnd)//' ===> '//variableSet(j)%expect%get()
+            ! endif
 
             if ( variableSet(j)%expect%get().NE.'any' ) then
                 err=checkOnExpect(j,trim(tpDeQuote(ustr%get())))
@@ -950,10 +1031,31 @@
         deallocate (variables)
     endif
 
-    !if (bdSet(bdPos)%name%get().EQ.'polariz') stop
+    ! if (bdSet(bdPos)%name%get().EQ.'iteration') stop
 
     return
     end function bdSetValues
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer*4 function bdSetValue(variable, value) result(rcode)
+    implicit none
+
+    integer*4        :: variable,err
+    character(len=*) :: value
+
+
+    rcode=0
+    select case ( shortKindLabels(variableSet(variable)%kind) )
+        case('re'); void=modify( variableSet(variable)%address,      tpRealByStr( value,stat=err )   )
+        case('in'); void=modify( variableSet(variable)%address,       tpIntByStr( value,stat=err )   )
+        case('lo'); void=modify( variableSet(variable)%address,       tpLogByStr( value,stat=err )   )
+        case('ch'); void=modify( variableSet(variable)%address, trim(  tpDeQuote( value,stat=err ) ) )
+        case('uc'); void=modify( variableSet(variable)%address, trim(  tpDeQuote( value,stat=err ) ) )
+    end select
+
+    return
+    end function bdSetValue
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

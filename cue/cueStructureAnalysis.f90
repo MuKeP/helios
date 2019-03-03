@@ -1,9 +1,9 @@
     subroutine cueStructureAnalysis
 
-    use glob     , only: iglu,rglu,lglu,true,mid,void,i8kind,glControlMemory
-    use hdb      , only: mol,cuebd,ou,su,ouWidth,ouIndent
+    use glob,      only: iglu,rglu,lglu,true,mid,void,i8kind,glControlMemory
+    use hdb,       only: mol,cuebd,ou,su,ouWidth,ouIndent
     use txtParser, only: tpFill,tpShowRuler,tpAdjustc
-    use printmod , only: prMatrix
+    use printmod,  only: prMatrix
 
     implicit none
 
@@ -169,7 +169,7 @@
     enddo
 
     void=glControlMemory(int( iglu*(Nocc*Nocc) ,kind=i8kind),'tmp. cue-structure analysis')
-    allocate (relLayerPos(Nocc,Nocc)) !layer affiliation of "i-j" pairs
+    allocate (relLayerPos(Nocc,Nocc)); relLayerPos=0 !layer affiliation of "i-j" pairs
     !$omp parallel default(shared) private(i,j,k,condit)
     !$omp do
     do i = 1,Nocc

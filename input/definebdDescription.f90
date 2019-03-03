@@ -1,7 +1,7 @@
     subroutine definebdDescription
 
     use glob,      only: iglu,void
-    use hdb,       only: generalbd,systembd,iterationbd,geometrybd,statesbd,polarizbd,diisbd
+    use hdb,       only: generalbd,systembd,iterationbd,geometrybd,statesbd,polarizbd,fieldbd
     use hdb,       only: densitybd,coulsonbd,hyperchargesbd,cuebd,fcibd,scfbd,lrbd,ccbd,pipekbd
     use datablock, only: bdAddDescription,bdVariableAddDescription
     use txtParser, only: tpTranslateEscapes
@@ -11,7 +11,7 @@
 
     void=bdAddDescription('general','contains general semi-empirical parameters and calculation settings.')
     void=bdVariableAddDescription(loc(generalbd%methods),&
-                                  tpTranslateEscapes('specifies method(s) to be used for calculation:\n'//&
+                                  tpTranslateEscapes('specifies method(s) to be used for calculation (use "+" as separator):\n'//&
                                                      'huckel           - Molecular orbitals Huckel method\n'//&
                                                      'rhf              - Restricted Hartree-Fock self-consistent field\n'//&
                                                      'fci              - Full configuration interaction method\n'//&
@@ -47,11 +47,18 @@
     void=bdVariableAddDescription(loc(generalbd%alternation),'specifies the values of single/double bond resonant integrals alternation')
 
     void=bdAddDescription('system','contains global system settings for calculation.')
-    void=bdVariableAddDescription(loc(systembd%memory)      ,'specifies maximum amount of shared RAM (in MB, i.e. x1024*1024 bytes)')
-    void=bdVariableAddDescription(loc(systembd%nNodes)      ,'specifies maximum number of cores to use for parallel execution')
-    void=bdVariableAddDescription(loc(systembd%allowRestart),'store intermediate data to restart in case of unexpected termination')
-    void=bdVariableAddDescription(loc(systembd%verboselvl)  ,'specifies admissible verbose level for output')
-    void=bdVariableAddDescription(loc(systembd%ignoreSIGHUP),'specifies action on sighup recieved (only POSIX systems)')
+    void=bdVariableAddDescription(loc(systembd%memory)          ,'specifies maximum amount of shared RAM (i.e. in MB: x1024*1024 bytes)')
+    void=bdVariableAddDescription(loc(systembd%nNodes)          ,'specifies maximum number of cores to use for parallel execution')
+    void=bdVariableAddDescription(loc(systembd%allowRestart)    ,'store intermediate data to restart in case of unexpected termination')
+    void=bdVariableAddDescription(loc(systembd%verboselvl)      ,'specifies admissible verbose level for output')
+    void=bdVariableAddDescription(loc(systembd%ignoreSIGHUP)    ,'specifies action on sighup recieved (only POSIX systems)')
+    void=bdVariableAddDescription(loc(systembd%harvest)         ,'enables many-method harvest mode')
+    void=bdVariableAddDescription(loc(systembd%memoryReport)    ,'enables memory report on every allocation/deallocation')
+    void=bdVariableAddDescription(loc(systembd%memoryUnits)     ,'specifies the units of shared memory value')
+    void=bdVariableAddDescription(loc(systembd%memoryThreshold) ,'specifies threshold of memory report messages (reported more than)')
+    void=bdVariableAddDescription(loc(systembd%throughHeader)   ,'specifies header for through output file')
+    void=bdVariableAddDescription(loc(systembd%throughFile)     ,'specifies file for through output')
+    void=bdVariableAddDescription(loc(systembd%throughEnable(1)),'enables through output')
 
     void=bdAddDescription('iteration','contains general settings for iteration procedures performed during calculation')
     void=bdVariableAddDescription(loc(iterationbd%chkStagnation)      ,'enables iteration procedure stagnation determination')
@@ -82,17 +89,37 @@
     void=bdVariableAddDescription(loc(polarizbd%derivStep),'specifies derivation step for Finite Field method')
 
     void=bdAddDescription('rdm','contains settings for RDM1 preparation')
-    void=bdVariableAddDescription(loc(densitybd%dtype)       ,'specifies RDM1 elements to be calculated')
-    void=bdVariableAddDescription(loc(densitybd%nPoints)     ,'specifies number of points to be used for derivation')
-    void=bdVariableAddDescription(loc(densitybd%prntAccuracy),'specifies print accuracy for RDM1')
-    void=bdVariableAddDescription(loc(densitybd%derivStep)   ,'specifies derivation step')
-    void=bdVariableAddDescription(loc(densitybd%NOAnalize)   ,'enables Natural Orbitals production (requires elements=all)')
+    void=bdVariableAddDescription(loc(densitybd%dtype),&
+                                  tpTranslateEscapes('specifies RDM1 elements to be calculated:\n'//&
+                                                     'charges  - compute only diagonal elements of RDM1\n'//&
+                                                     'orders   - compute only off-diagonal elements of RDM1\n'//&
+                                                     'scharges - compute selected list of charges (see selected-charges variable)\n'//&
+                                                     'sorders  - compute selected list of orders (see selected-orders variable)\n'//&
+                                                     'all      - compute all elements of RDM1 (this value is required for Natural Orbitals computation)') )
+
+    void=bdVariableAddDescription(loc(densitybd%nPoints)       ,'specifies number of points to be used for derivation')
+    void=bdVariableAddDescription(loc(densitybd%prntAccuracy)  ,'specifies print accuracy for RDM1')
+    void=bdVariableAddDescription(loc(densitybd%derivStep)     ,'specifies derivation step')
+    void=bdVariableAddDescription(loc(densitybd%NOAnalize)     ,'enables Natural Orbitals production (requires elements=all)')
+    void=bdVariableAddDescription(loc(densitybd%scharges)      ,'holds list of atoms to be calculated. use following syntax i;j;a...b')
+    void=bdVariableAddDescription(loc(densitybd%sorders)       ,'holds list of pairs to be calculated. use following syntax (i,j);(a,b)...(c,d)')
+    void=bdVariableAddDescription(loc(densitybd%gcharges)      ,'holds the list of charge groups to be collected. use following syntax (i,j,...,k);(l,a,...,b);...(c,d,...,e)')
+    void=bdVariableAddDescription(loc(densitybd%forceNumerical),'forces to perform numerical computation of RDM elements instead of analytical if possible')
 
     void=bdAddDescription('coulson','contains settings for Coulson polarizabilities calculation')
-    void=bdVariableAddDescription(loc(coulsonbd%ctype)     ,'specifies type of polarizability to be calculated')
-    void=bdVariableAddDescription(loc(coulsonbd%nPoints)   ,'specifies number of points to be used for derivation')
-    void=bdVariableAddDescription(loc(coulsonbd%derivPower),'specifies maximum power of derivative to be obtained')
-    void=bdVariableAddDescription(loc(coulsonbd%derivStep) ,'specifies derivation step for Finite Field method')
+    void=bdVariableAddDescription(loc(coulsonbd%ctype)         ,'specifies type of polarizability to be calculated')
+    void=bdVariableAddDescription(loc(coulsonbd%selected)      ,'specifies option to compute only selected elements of the matrix (atom-atom and bond-bond only)')
+    void=bdVariableAddDescription(loc(coulsonbd%nPoints)       ,'specifies number of points to be used for derivation')
+    void=bdVariableAddDescription(loc(coulsonbd%prntAccuracy)  ,'specifies print accuracy for coulson polarizabilities')
+    void=bdVariableAddDescription(loc(coulsonbd%derivPower)    ,'specifies maximum power of derivative to be obtained')
+    void=bdVariableAddDescription(loc(coulsonbd%derivStep)     ,'specifies derivation step for Finite Field method')
+    void=bdVariableAddDescription(loc(coulsonbd%sdiagonals)    ,'holds the list of diagonal elements to be calculated. use following syntax i;j;a...b')
+    void=bdVariableAddDescription(loc(coulsonbd%soffdiagonals) ,'holds the list of off-diagonal elements to be calculated. use following syntax (i,j);(a,b)...(c,d)')
+
+    void=bdAddDescription('field','contains settings for applied field cases')
+    void=bdVariableAddDescription(loc(fieldbd%strength(1)),'specifies the strength of applied field along x axis (eV/Angstrom)')
+    void=bdVariableAddDescription(loc(fieldbd%strength(2)),'specifies the strength of applied field along y axis (eV/Angstrom)')
+    void=bdVariableAddDescription(loc(fieldbd%strength(3)),'specifies the strength of applied field along z axis (eV/Angstrom)')
 
     void=bdAddDescription('hypercharges','contains settings for Bredas real-space Finite Field approach')
     void=bdVariableAddDescription(loc(hyperchargesbd%scales)    ,'specifies components of hypercharges to be calculated')
@@ -101,9 +128,12 @@
     void=bdVariableAddDescription(loc(hyperchargesbd%derivPower),'specifies maximum power of derivative to be obtained')
     void=bdVariableAddDescription(loc(hyperchargesbd%derivaStep),'specifies derivation step for derivative by Coulomb integral')
     void=bdVariableAddDescription(loc(hyperchargesbd%derivfStep),'specifies derivation step for derivative by applied field')
+    void=bdVariableAddDescription(loc(hyperchargesbd%scharges)  ,'specifies the list of charges to be computed. use following syntax i;j;a...b')
+    void=bdVariableAddDescription(loc(hyperchargesbd%gcharges)  ,'specifies the list of charge groups to be collected. use following syntax (i,j,...,k);(l,a,...,b);...(c,d,...,e)')
+    void=bdVariableAddDescription(loc(hyperchargesbd%dtype)     ,'specifies the elements to be calculated (all or selected charges)')
 
     void=bdAddDescription('cue','contains settings of the cue basis')
-    void=bdVariableAddDescription(loc(cuebd%radius(0)),'specifies limitation for t1^3 and t1^4 diagrams')
+    void=bdVariableAddDescription(loc(cuebd%radius(0)),'specifies limitation for t1^3 and t1^4 diagrams in spares method')
     void=bdVariableAddDescription(loc(cuebd%radius(1)),'specifies limitation for all t1 amplitudes')
     void=bdVariableAddDescription(loc(cuebd%radius(2)),'specifies limitation for all t2 amplitudes')
     void=bdVariableAddDescription(loc(cuebd%radius(3)),'specifies limitation for all t3 amplitudes')
@@ -120,6 +150,7 @@
     void=bdVariableAddDescription(loc(scfbd%maxiters),'specifies maximum number of iterations to be performed')
     void=bdVariableAddDescription(loc(scfbd%accuracy),'specifies accuracy to be reached')
     void=bdVariableAddDescription(loc(scfbd%iterStep),'specifies iteration step')
+    void=bdVariableAddDescription(loc(scfbd%keep)    ,'enables the usage of previous SCF solution as guess')
     void=bdVariableAddDescription(loc(scfbd%guess)   ,tpTranslateEscapes('specifies guess type for SCF:\n'//&
                                                                          'huckel - start with huckel density\n'//&
                                                                          'unt    - start with unitary matrix\n'//&
@@ -144,6 +175,13 @@
     void=bdVariableAddDescription(loc(ccbd%iterStep(3))   ,'specifies iteration step for t3 amplitudes (for non-diis calculations)')
     void=bdVariableAddDescription(loc(ccbd%forceSpin)     ,'compels to use spin-orbitals even when it is not necessary')
     void=bdVariableAddDescription(loc(ccbd%storeIntegrals),'specifies whether to prepare integrals once or calculate it on demand (non-spare)')
+    void=bdVariableAddDescription(loc(ccbd%diisStorage),tpTranslateEscapes('specifies where to store amplitudes and corrections vectors:\n'//&
+                                                                           'ram - RAM\n'//&
+                                                                           'hdd - hard disk (slow)') )
+    void=bdVariableAddDescription(loc(ccbd%diisSteps)     ,'specifies steps number for interpolation')
+    void=bdVariableAddDescription(loc(ccbd%diisEnabled)   ,'enables DIIS procedure for coupled-cluster')
+    void=bdVariableAddDescription(loc(ccbd%wfSwitches)    ,'specifies pattern for wave-function analysis')
+    void=bdVariableAddDescription(loc(ccbd%printThreshold),'specifies threshold for amplitudes output')
 
     void=bdAddDescription('linear-response','contains settings for linear-response coupled-cluster methods')
     void=bdVariableAddDescription(loc(lrbd%guess),tpTranslateEscapes('specifies guess type for linear response procedure:\n'//&
@@ -157,13 +195,11 @@
     void=bdVariableAddDescription(loc(lrbd%iterStep(1))   ,'specifies iteration step for r1 amplitudes (for non-diis calculations)')
     void=bdVariableAddDescription(loc(lrbd%iterStep(2))   ,'specifies iteration step for r2 amplitudes (for non-diis calculations)')
     void=bdVariableAddDescription(loc(lrbd%orthogonalize) ,'enables orthogonalization of states')
-
-    void=bdAddDescription('diis','contains settings for DIIS procedure')
-    void=bdVariableAddDescription(loc(diisbd%storage),tpTranslateEscapes('specifies where to store amplitudes and corrections vectors:\n'//&
-                                                                         'ram - RAM\n'//&
-                                                                         'hdd - hard disk (slow)') )
-    void=bdVariableAddDescription(loc(diisbd%steps)  ,'specifies steps number for interpolation')
-    void=bdVariableAddDescription(loc(diisbd%enabled),'enables DIIS procedure')
+    void=bdVariableAddDescription(loc(lrbd%diisStorage),tpTranslateEscapes('specifies where to store amplitudes and corrections vectors:\n'//&
+                                                                           'ram - RAM\n'//&
+                                                                           'hdd - hard disk (slow)') )
+    void=bdVariableAddDescription(loc(lrbd%diisSteps)  ,'specifies steps number for interpolation')
+    void=bdVariableAddDescription(loc(lrbd%diisEnabled),'enables DIIS procedure for linear-reponse')
 
     void=bdAddDescription('molecule',tpTranslateEscapes('contains molecular information in the following format:\n\n'//&
                                                         'MOLECULE NAME\n'//&
@@ -199,7 +235,7 @@
                                                        'i = occupied orbital\n'//&
                                                        'a = vacant orbital\n'//&
                                                        'r1(i,a) = value of corresponding amplitude\n\n'//&
-                                                       'R2 section        <= key word\n'//&
+                                                       'R2 amplitudes        <= key word\n'//&
                                                        'i1  j1  a1  b1  r2(i1,j1,a1,b1)\n'//&
                                                        'i2  j2  a2  b2  r2(i2,j2,a2,b2)\n'//&
                                                        '...\n\n'//&
@@ -208,8 +244,8 @@
                                                        'r2(i,j,a,b) = value of corresponding amplitude\n\n'//&
                                                        '* key words must start every section\n'//&
                                                        '* violation of ranges will lead to error during read (N - number of atoms)\n'//&
-                                                       '  - occupied indices must be in the range [1,N]\n'//&
-                                                       '  - vacant indices must be in the range [N+1,2N]\n'//&
+                                                       '  - occupied indices must be in the range [1..N]\n'//&
+                                                       '  - vacant indices must be in the range [N+1..2N]\n'//&
                                                        '* any sections could be omitted') )
 
     void=bdAddDescription('scfguess',tpTranslateEscapes('contains guess information for SCF procedure in the following format:\n\n'//&

@@ -11,8 +11,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: prVersion='2.300'
-    character (len=*), parameter :: prDate   ='2017.12.10'
+    character (len=*), parameter :: prVersion='2.322'
+    character (len=*), parameter :: prDate   ='2019.03.03'
     character (len=*), parameter :: prAuthor ='Anton B. Zakharov'
 
     character (len=*), parameter :: prMatrixPrefix=' '
@@ -86,7 +86,7 @@
     public :: prUndoOutput
     public :: prMatrix,prVector,prEigenProblem
     public :: prAccumulateValues,prFlushValues
-    public :: prLongText,prTable,prEchoFile,prStrByVal
+    public :: prLongText,prTable,prEchoFile,prStrByVal,prJoin
     public :: prBuffer,prOpenBuffer,prCloseBuffer,prFlushBuffer,prAppendFile
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -373,6 +373,49 @@
 
     return
     end subroutine prAppendFile
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    function prJoin(arr,sep) result(ret)
+    implicit none
+
+    character (len=*), intent(in)  :: arr(:)
+    character (len=*), optional    :: sep
+    character (len=:), allocatable :: ret
+
+    integer*4                      :: i,rlen,slen,left,right
+
+
+    slen=1; if (present(sep)) slen=len(sep)
+
+    rlen=-slen
+    do i = 1,UBound(arr,1)
+        rlen=rlen+len(arr(i))+slen
+    enddo
+
+    allocate (character (len=rlen) :: ret)
+    ret=tpFill(ret)
+
+    left=1
+    do i = 1,UBound(arr,1)
+        right=left+len(arr(i))-1
+        ret(left:right)=arr(i)
+        left=right+1
+
+        if (i.EQ.UBound(arr,1)) exit
+
+        if (present(sep)) then
+            ret(left:left+slen)=sep
+        else
+            ret(left:left+slen)=' '
+        endif
+        left=left+slen
+    enddo
+
+    !write (*,*) 'prJoin: RETURNS %'//ret//'%'
+
+    return
+    end function prJoin
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -1675,6 +1718,10 @@
     do k = 1,N
         hold(k)=tpRetSplit(ustr,k)
         strLength(k)=hold(k)%ln
+        if (hold(k)%ln.GT.uwidth) then
+            uerr=-5; goto 666
+            !stop 'Internal error (printmod::prTable): Given parameter len is greater than uwidth.'
+        endif
     enddo
 
     if (present(columns)) uwidth=huge(uwidth)
@@ -2106,54 +2153,68 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByIntfmt_i8(i,fmt) result(ret)
     implicit none
-    integer*8        , intent(in) :: i
-    character (len=*), intent(in) :: fmt
-    character (len=fmtPrintLen)         :: ret
+    integer*8        , intent(in)  :: i
+    character (len=*), intent(in)  :: fmt
+    character (len=:), allocatable :: ret
+    character (len=fmtPrintLen)    :: tmp
 
 
     iMid=mid(i); arrType=2
 
+    tmp=repeat(' ', len(tmp))
+
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
-    write (ret,ufmt) i; return
+    write (tmp,ufmt) i
+    ret=trim(tmp); return
     end function strByIntfmt_i8
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByIntfmt_i4(i,fmt) result(ret)
     implicit none
     integer*4        , intent(in) :: i
     character (len=*), intent(in) :: fmt
-    character (len=fmtPrintLen)         :: ret
+    character (len=:), allocatable :: ret
+    character (len=fmtPrintLen)    :: tmp
 
 
     iMid=mid(i); arrType=2
 
+    tmp=repeat(' ', len(tmp))
+
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
-    write (ret,ufmt) i; return
+    write (tmp,ufmt) i
+    ret=trim(tmp); return
     end function strByIntfmt_i4
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByIntfmt_i2(i,fmt) result(ret)
     implicit none
     integer*2        , intent(in) :: i
     character (len=*), intent(in) :: fmt
-    character (len=fmtPrintLen)   :: ret
+    character (len=:), allocatable :: ret
+    character (len=fmtPrintLen)    :: tmp
 
 
     iMid=mid(i); arrType=2
 
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
-    write (ret,ufmt) i; return
+    write (tmp,ufmt) i
+    ret=trim(tmp); return
     end function strByIntfmt_i2
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByIntfmt_i1(i,fmt) result(ret)
     implicit none
     integer*1        , intent(in) :: i
     character (len=*), intent(in) :: fmt
-    character (len=fmtPrintLen)   :: ret
+    character (len=:), allocatable :: ret
+    character (len=fmtPrintLen)    :: tmp
 
 
     iMid=mid(i); arrType=2
 
+    tmp=repeat(' ', len(tmp))
+
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
-    write (ret,ufmt) i; return
+    write (tmp,ufmt) i
+    ret=trim(tmp); return
     end function strByIntfmt_i1
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     pure function strByRealf_r16(r,indent,accuracy) result(ret)
@@ -2233,43 +2294,55 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByRealfmt_r16(r,fmt) result(ret)
     implicit none
-    real*16          , intent(in) :: r
-    character (len=*), intent(in) :: fmt
-    character (len=fmtPrintLen)   :: ret
+    real*16          , intent(in)  :: r
+    character (len=*), intent(in)  :: fmt
+    character (len=fmtPrintLen)    :: tmp
+    character (len=:), allocatable :: ret
 
 
     rMid=mid(r); arrType=1
 
+    tmp=repeat(' ',len(tmp))
+
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
     !write (*,*) '$'//trim(ufmt)//'$'
-    write (ret,ufmt) r; return
+    write (tmp,ufmt) r
+    ret=trim(tmp); return
     end function strByRealfmt_r16
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByRealfmt_r8(r,fmt) result(ret)
     implicit none
-    real*8           , intent(in) :: r
-    character (len=*), intent(in) :: fmt
-    character (len=fmtPrintLen)   :: ret
+    real*8           , intent(in)  :: r
+    character (len=*), intent(in)  :: fmt
+    character (len=fmtPrintLen)    :: tmp
+    character (len=:), allocatable :: ret
 
 
     rMid=mid(r); arrType=1
 
+    tmp=repeat(' ',len(tmp))
+
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
     !write (*,*) '$'//trim(ufmt)//'$'
-    write (ret,ufmt) r; return
+    write (tmp,ufmt) r
+    ret=trim(tmp); return
     end function strByRealfmt_r8
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     function strByRealfmt_r4(r,fmt) result(ret)
     implicit none
-    real*4           , intent(in) :: r
-    character (len=*), intent(in) :: fmt
-    character (len=fmtPrintLen)   :: ret
+    real*4           , intent(in)  :: r
+    character (len=*), intent(in)  :: fmt
+    character (len=fmtPrintLen)    :: tmp
+    character (len=:), allocatable :: ret
 
 
     rMid=mid(r); arrType=1
 
+    tmp=repeat(' ',len(tmp))
+
     void=parsfmt(fmt); ufmt='('//trim(ufmt)//')'
-    write (ret,ufmt) r; return
+    write (tmp,ufmt) r
+    ret=trim(tmp); return
     end function strByRealfmt_r4
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
     pure function strByStr(str) result(ret)

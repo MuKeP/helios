@@ -1,6 +1,6 @@
     subroutine projection_ccsd_singles_spatial_cue
 
-    use glob          , only: rglu,iglu,lglu
+    use glob,           only: rglu,iglu,lglu
     use coupledCluster, only: N,Nocc,Ne,NFnz
     use coupledCluster, only: F,R,Fnz
     use coupledCluster, only: t1,t2,d1,excSet,iapairs

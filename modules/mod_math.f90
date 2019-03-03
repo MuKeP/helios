@@ -31,16 +31,15 @@
     subroutine gltred4(A,Z,D,N,AC,ATOL)
     implicit none
 
-    integer(kind=iglu),intent(in)  :: N
-    integer(kind=iglu)             :: i,j,k,l,m
+    integer(kind=iglu), intent(in)  :: N
+    real   (kind=rglu), intent(in)  :: A(:,:)
+    real   (kind=rglu), intent(in)  :: ATOL,AC
 
-    real(kind=rglu)   ,intent(in)  :: A(N,N)
-    real(kind=rglu)   ,intent(out) :: D(N),Z(N,N)
+    real   (kind=rglu), intent(out) :: D(:),Z(:,:)
 
-    real(kind=rglu)   ,intent(in)  :: ATOL,AC
-
-    real(kind=rglu)                :: F,G,H,HH,B,P,R,C,S
-    real(kind=rglu), allocatable   :: E(:)
+    integer(kind=iglu)              :: i,j,k,l,m
+    real   (kind=rglu)              :: F,G,H,HH,B,P,R,C,S
+    real   (kind=rglu), allocatable :: E(:)
 
 
     void=glControlMemory(int( rglu*N ,kind=i8kind),'tmp. tred4')
@@ -145,7 +144,7 @@
             D(l)=D(l)+F
             cycle
         endif
-1        if (j.LE.0) then
+1       if (j.LE.0) then
             deallocate (E)
             void=glControlMemory(int( rglu*N ,kind=i8kind),'tmp. tred4','free')
             return
@@ -235,16 +234,16 @@
     subroutine sptred4(A,Z,D,N,AC,ATOL)
     implicit none
 
-    integer(kind=iglu),intent(in)  :: N
-    integer(kind=iglu)             :: i,j,k,l,m
+    integer(kind=iglu), intent(in)  :: N
+    real   (kind=rspu), intent(in)  :: A(:,:)
+    real   (kind=rspu), intent(in)  :: ATOL,AC
 
-    real(kind=rspu)   ,intent(in)  :: A(N,N)
-    real(kind=rspu)   ,intent(out) :: D(N),Z(N,N)
+    real   (kind=rspu), intent(out) :: D(:),Z(:,:)
 
-    real(kind=rspu)   ,intent(in)  :: ATOL,AC
+    integer(kind=iglu)              :: i,j,k,l,m
+    real   (kind=rspu)              :: F,G,H,HH,B,P,R,C,S
 
-    real(kind=rspu)                :: F,G,H,HH,B,P,R,C,S
-    real(kind=rspu), allocatable   :: E(:)
+    real   (kind=rspu), allocatable :: E(:)
 
 
     void=glControlMemory(int( rspu*N ,kind=i8kind),'tmp. tred4')
@@ -349,7 +348,7 @@
             D(l)=D(l)+F
             cycle
         endif
-1        if (j.LE.0) then
+1       if (j.LE.0) then
             deallocate (E)
             void=glControlMemory(int( rspu*N ,kind=i8kind),'tmp. tred4','free')
             return

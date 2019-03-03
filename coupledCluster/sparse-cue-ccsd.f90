@@ -1,8 +1,8 @@
     subroutine prepareSparseIndexInformation
 
-    use glob                , only: iglu,rglu,i8kind,void,glControlMemory
-    use hdb                 , only: mol,cuebd
-    use coupledCluster      , only: Nel,No,Ne,Nth,cueDistance,iapairs,notFitRadius
+    use glob,                only: iglu,rglu,i8kind,void,glControlMemory
+    use hdb,                 only: mol,cuebd
+    use coupledCluster,      only: Nel,No,Ne,Nth,cueDistance,iapairs,notFitRadius
     use coupledClusterSparse
 
     implicit none

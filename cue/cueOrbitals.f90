@@ -1,14 +1,15 @@
     subroutine cueOrbitals
 
-    use glob    , only: iglu,rglu,void,i8kind,glControlMemory
-    use hdb     , only: eu,ou,cueConstant1
-    use hdb     , only: mol,cuebd
+    use glob,     only: assignment(=)
+    use glob,     only: iglu,rglu,void,i8kind,glControlMemory
+    use hdb,      only: eu,ou,cueConstant1,ierror
+    use hdb,      only: mol,cuebd
     use printmod, only: prMatrix
 
     implicit none
 
-    integer(kind=iglu)  :: N,M,Nel,Nocc,i,j,k,l,v,p
-    real(kind=rglu)     :: coords(3),val
+    integer(kind=iglu)              :: N,M,Nel,Nocc,i,j,k,l,v,p
+    real(kind=rglu)                 :: coords(3),val
     integer(kind=iglu), allocatable :: connectivity(:)
 
 
@@ -34,7 +35,8 @@
     enddo
 
     if ( .NOT.( (maxval(connectivity).EQ.1).AND.(minval(connectivity).EQ.1) ) ) then
-        write (eu,*) 'Error. Proposed CUE basis is not correct.'; stop
+        ierror='Proposed CUE basis is not correct.'
+        call primaryInformation('error')
     endif
 
     deallocate (connectivity)
@@ -67,8 +69,8 @@
             l=l+1
 
             mol%orb(l)%ova=Nocc+1 !any orthogonal vacant orbital
-
             mol%orb(l)%atoms(1)=j
+
             if (j.EQ.N) then !any non-equal to j
                 mol%orb(l)%atoms(2)=1
             else
@@ -76,8 +78,6 @@
             endif
 
             k=mol%orb(l)%ova
-
-            !write (*,*) mol%orb(k)%atoms(1),mol%orb(k)%atoms(2),mol%orb(l)%atoms(2)
 
             mol%orb(l)%nels=2
 

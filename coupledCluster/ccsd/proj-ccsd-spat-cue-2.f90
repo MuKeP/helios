@@ -1,6 +1,6 @@
     subroutine projection_ccsd_doubles_spatial_cue
 
-    use glob          , only: rglu,iglu,lglu
+    use glob,           only: rglu,iglu,lglu
     use coupledCluster, only: N,Nocc,Ne,NFnz
     use coupledCluster, only: F,R,Fnz !,mol
     use coupledCluster, only: t1,t2,d2,excSet,iapairs
@@ -8,13 +8,13 @@
 
     implicit none
 
-    real   (kind=rglu) :: rez,sum !,oset(4)
+    real   (kind=rglu) :: rez,sum
     integer(kind=iglu) :: u,v,i,a,j,b,k,c,l,d
     integer(kind=iglu) :: t,ab(2)
     logical(kind=lglu) :: ai,aj,bi,bj,ba,ji,ki,kj,ka,kb
 
 
-    d2=0.d0
+    d2=0
     do u = 1,Ne
         i=excSet(u,1)
         a=excSet(u,2)
@@ -245,7 +245,6 @@
                                 +t1(k,b)*(-2*t2(i,j,a,c)+t2(i,j,c,a))&
                                 +t1(k,a)*(-2*t2(i,j,c,b)+t2(i,j,b,c))&
                                 )
-
 
             enddo
             !$omp end parallel

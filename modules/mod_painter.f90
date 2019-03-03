@@ -310,20 +310,15 @@
 
     real(kind=rglu) function ang(aa,jj,pl)
 
-    ! Привет, великий Рендом. Ты прибывал со мной во время написания этой хуйни.
-    ! п.с. сука, я не понимаю как оно работает. это сука гребаный подбор.
-    ! берите книгу "Как нихуя не понять".
-    ! ИксИгрикЙ его знает как для других плоскостей. я использую только xy.
-    !
     !    zero direction: COORD(pl)=COORD(pl)+1.0d0   others COORD=COORD;
-    !    i.e. delta(COORD(pl))=-1.0d0   others delta(COORD)=0.d0
+    !    i.e. delta(COORD(pl))=-1   others delta(COORD)=0
     !
-    ! x1 y1 z1 соответствуют направлению орта, относительно которого будет
-    ! отсчитываться угол.
-    ! xy - орт j.
-    ! xz - орт i.
-    ! yz - орт k.
-    ! x1 y1 z1 - длины орта вдоль каждой из осей.
+    ! x1 y1 z1 corresponds to orth that angle will be defined from
+    !
+    ! xy - orth j.
+    ! xz - orth i.
+    ! yz - orth k.
+    ! x1 y1 z1 - the length of the orth along every axis
     !
     ! Y
     ! ^  zero direction

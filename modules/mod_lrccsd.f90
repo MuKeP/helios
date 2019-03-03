@@ -2,16 +2,16 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob     , only: assignment(=)
-    use glob     , only: uch,rglu,iglu,lglu,true,false,void,i8kind,glControlMemory
-    use glob     , only: ivarVector,rvarVector
-    use hdb      , only: mol,statesbd,lrbd,diisbd
-    use hdb      , only: scfbd,ou,ouWidth,cueConstant1
-    use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
-    use scf      , only: energySCF,finalizeSCF,printSCFSolution
+    use glob,      only: assignment(=)
+    use glob,      only: uch,rglu,iglu,lglu,true,false,void,i8kind,glControlMemory
+    use glob,      only: ivarVector,rvarVector
+    use hdb,       only: mol,statesbd,lrbd
+    use hdb,       only: scfbd,ou,ouWidth,cueConstant1
+    use scf,       only: setSCFParameters,initSCF,iterationSCF,getSCFResult
+    use scf,       only: energySCF,finalizeSCF,printSCFSolution
     use txtParser, only: tpFill,operator(.in.)
-    use printmod , only: prEigenProblem,prMatrix
-    use math     , only: tred4
+    use printmod,  only: prEigenProblem,prMatrix
+    use math,      only: tred4
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -74,13 +74,14 @@
     type(uch)          :: umethod
     integer(kind=iglu) :: N,Nocc,Nel,No,Nd,Ne,currentState
     real   (kind=rglu) :: omega,currentEnergy
+    logical(kind=lglu) :: converged,guessReady
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     private
 
     public :: lrVersion,lrDate,lrAuthor
-    public :: setLRParameters,initLR,energyLR,finalizeLR
+    public :: setLRParameters,initLR,energyLR,finalizeLR,analizewfLR
 
     ! to harvest the results
     public :: lrHoldStateEnergy
@@ -107,10 +108,11 @@
     if (method .in. ['r-ccsd','u-ccsd','cue-ccsd','spin-cue-ccsd','spin-u-ccsd','spin-r-ccsd'] ) then
         umethod='lr-'//method
     else
-        stop 'LR: Illegal method '
+        stop 'Internal error (lrccsd::setLRParameters): Unknown method.'
     endif
 
-    N=mol%nAtoms; Nel=mol%nEls; No=2*N; Nocc=Nel/2; Ne=Nocc*(N-Nocc); Nd=diisbd%steps
+    N=mol%nAtoms; Nel=mol%nEls; No=2*N; Nocc=Nel/2; Ne=Nocc*(N-Nocc); Nd=lrbd%diisSteps
+    guessReady=false
 
     call controlMemoryLR('general','allocate')
 
@@ -125,11 +127,11 @@
     integer(kind=iglu) :: k
 
 
-    call prepareGuess
+    if (.NOT.guessReady) call prepareGuess
 
     call getCCSolution
 
-    call controlMemoryLR('diis','allocate')
+    if (lrbd%diisEnabled) call controlMemoryLR('diis','allocate')
     call controlMemoryLR('intermediates','allocate')
 
     call projection_lrccsd_spin_hf_intermediates_1
@@ -144,7 +146,7 @@
         currentState=k
         call guessState(k)
 
-        call iterator(iterationLR,energylr,lrbd%maxiters,lrbd%accuracy*real(2**(k-1),rglu),false)
+        call iterator(iterationLR,energylr,lrbd%maxiters,lrbd%accuracy*real(2**(k-1),rglu),false,converged)
 
         lrHoldStateVectorR1(    :,:,k)=r1
         lrHoldStateVectorR2(:,:,:,:,k)=r2
@@ -185,7 +187,7 @@
 
     if (maxval(accuracy).LT.epsilon) return
 
-    if (diisbd%enabled) then
+    if (lrbd%diisEnabled) then
         call pushLRVectors
 
         if (iteration.GT.Nd) then
@@ -582,6 +584,7 @@
     use coupledCluster, only: ccF=> F, ccR=> R
     use coupledCluster, only: cciapairs=> iapairs, ccexcSet=> excSet
     use coupledCluster, only: cchV=> hV
+    use coupledCluster, only: convertSpatialToSpinCC
 
     implicit none
 
@@ -591,57 +594,9 @@
 
     call controlMemoryLR('spin_transformation','allocate')
 
-    select case ( ccmethod%get() ) !amplitudes
-        case ('cue-ccsd','u-ccsd','r-ccsd')
-
-            do mm = 1,ccNe
-                i=ccexcSet(mm,1); a=ccexcSet(mm,2)
-                t1(2*i-1,2*a-1)=cct1(i,a)
-                t1(2*i  ,2*a  )=cct1(i,a)
-            enddo
-
-            do mm = 1,ccNe
-                i=ccexcSet(mm,1); a=ccexcSet(mm,2)
-                do nn = 1,ccNe
-                    j=ccexcSet(nn,1); b=ccexcSet(nn,2)
-
-                    Ax=cct2(i,j,a,b)
-
-                    t2(2*i-1,2*j  ,2*a-1,2*b  )= Ax
-                    t2(2*j  ,2*i-1,2*a-1,2*b  )=-Ax
-                    t2(2*i-1,2*j  ,2*b,2*a-1  )=-Ax
-                    t2(2*j  ,2*i-1,2*b  ,2*a-1)= Ax
-
-                    t2(2*i  ,2*j-1,2*a  ,2*b-1)= Ax
-                    t2(2*j-1,2*i  ,2*a  ,2*b-1)=-Ax
-                    t2(2*i  ,2*j-1,2*b-1,2*a  )=-Ax
-                    t2(2*j-1,2*i  ,2*b-1,2*a  )= Ax
-                enddo
-            enddo
-
-            do mm = 1,ccNe
-                i=ccexcSet(mm,1); a=ccexcSet(mm,2)
-                do nn = 1,ccNe
-                    j=ccexcSet(nn,1); b=ccexcSet(nn,2)
-
-                    Ax=-cct2(j,i,a,b)+cct2(i,j,a,b)
-
-                    t2(2*i  ,2*j  ,2*a  ,2*b  )= Ax
-                    t2(2*j  ,2*i  ,2*a  ,2*b  )=-Ax
-                    t2(2*i  ,2*j  ,2*b  ,2*a  )=-Ax
-                    t2(2*j  ,2*i  ,2*b  ,2*a  )= Ax
-
-                    t2(2*i-1,2*j-1,2*a-1,2*b-1)= Ax
-                    t2(2*j-1,2*i-1,2*a-1,2*b-1)=-Ax
-                    t2(2*i-1,2*j-1,2*b-1,2*a-1)=-Ax
-                    t2(2*j-1,2*i-1,2*b-1,2*a-1)= Ax
-                enddo
-            enddo
-
-        case ('spin-cue-ccsd','spin-u-ccsd','spin-r-ccsd')
-            t1=cct1; t2=cct2
-
-    end select
+    if (convertSpatialToSpinCC(ccNocc, Nel, cct1, cct2, t1, t2, 'sd').EQ.-1) then
+        stop 'Internal error (lrccsd::getCCSolution): Error while converting spatial to spin orbitals'
+    endif
 
     select case ( ccmethod%get() ) !fockian
         case ('cue-ccsd','u-ccsd','r-ccsd')
@@ -760,6 +715,22 @@
 
     return
     end subroutine getCCSolution
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine analizewfLR(state)
+    implicit none
+
+    integer(kind=iglu) :: state
+
+
+    r1=lrHoldStateVectorR1(:,:,state)
+    r2=lrHoldStateVectorR2(:,:,:,:,state)
+
+    call wfAnalize(umethod%get(), int4(2#111100))
+
+    return
+    end subroutine analizewfLR
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -1101,6 +1072,8 @@
     real   (kind=rglu) :: Ax,Bx,sum
 
 
+    guessReady=true
+
     call controlMemoryLR('guess','allocate')
 
     guess=lrbd%guess%get()
@@ -1108,7 +1081,7 @@
         case ('lr-spin-cue-ccsd','lr-cue-ccsd')
             call setSCFParameters
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
             call getSCFResult(vectors=hfV,energies=hfE)
 
         case ('lr-spin-u-ccsd','lr-spin-r-ccsd','lr-u-ccsd','lr-r-ccsd')

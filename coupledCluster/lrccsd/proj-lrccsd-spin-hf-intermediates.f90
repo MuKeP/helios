@@ -1,6 +1,6 @@
     subroutine projection_lrccsd_spin_hf_intermediates_1
 
-    use glob        , only: iglu,rglu
+    use glob,         only: iglu,rglu
     use lrccsdModule, only: Nel,No
     use lrccsdModule, only: R,F,t1,t2
     use lrccsdModule, only: ai1,ai2,ai3,ai4,ai5,ai6,ai7,Fab,Fij,Fia

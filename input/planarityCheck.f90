@@ -29,10 +29,13 @@
             i1=1; i2=2; call setLinear(i1,i2); return
         endif
 
-        i1=rangen(1,N)
         do
-            i2=rangen(1,N)
-            if (i1.NE.i2) exit
+            i1=rangen(1,N)
+            do
+                i2=rangen(1,N)
+                if (i1.NE.i2) exit
+            enddo
+            if (abs(X(i2)-X(i1)).GT.1D-10) exit
         enddo
 
         A=(Y(i2)-Y(i1))/(X(i2)-X(i1))
@@ -54,10 +57,13 @@
         endif
 
         do
-            i1=rangen(1,N)
             do
-                i2=rangen(1,N)
-                if (i1.NE.i2) exit
+                i1=rangen(1,N)
+                do
+                    i2=rangen(1,N)
+                    if (i1.NE.i2) exit
+                enddo
+                if (abs(X(i2)-X(i1)).GT.1D-10) exit
             enddo
             do
                 i3=rangen(1,N)

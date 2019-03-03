@@ -1,6 +1,6 @@
     subroutine projection_ccd_doubles_spatial_hf
 
-    use glob          , only: rglu,iglu,lglu
+    use glob,           only: rglu,iglu,lglu
     use coupledCluster, only: N,Nocc,Ne
     use coupledCluster, only: F,R
     use coupledCluster, only: t2,d2,excSet

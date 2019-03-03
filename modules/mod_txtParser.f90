@@ -27,8 +27,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: tpVersion='3.610'
-    character (len=*), parameter :: tpDate   ='2017.12.10'
+    character (len=*), parameter :: tpVersion='3.611'
+    character (len=*), parameter :: tpDate   ='2018.12.11'
     character (len=*), parameter :: tpAuthor ='Anton B. Zakharov'
 
     integer*4, parameter         :: maxStrLen=1024,maxCommentDefLen=5
@@ -729,14 +729,22 @@
 
 
     defSpacer=' '; if (present(spacer)) defSpacer=spacer
-    tmp=tpFill(len(tmp)); tmp=trim(adjustl(str)); ln=len_trim(tmp)
+    if (defSpacer.EQ.' ') then
+        tmp=tpFill(len(tmp)); tmp=trim(adjustl(str)); ln=len_trim(tmp)
+    else
+        tmp=str; ln=len(tmp)
+    endif
 
     rst=len(str)-ln
     lft=rst/2; rght=rst/2
 
     lft=lft+ibits(rst,0,1)
 
-    ret=tpFill(lft,defSpacer)//trim(tmp)//tpFill(rght,defSpacer)
+    if (defSpacer.EQ.' ') then
+        ret=tpFill(lft,defSpacer)//trim(tmp)//tpFill(rght,defSpacer)
+    else
+        ret=tpFill(lft,defSpacer)//tmp//tpFill(rght,defSpacer)
+    endif
 
     return
     end function tpNomCentrString
@@ -756,7 +764,11 @@
 
 
     defSpacer=' '; if (present(spacer)) defSpacer=spacer
-    tmp=tpFill(len(tmp)); tmp=trim(adjustl(str)); ln=len_trim(tmp)
+    if (defSpacer.EQ.' ') then
+        tmp=tpFill(len(tmp)); tmp=trim(adjustl(str)); ln=len_trim(tmp)
+    else
+        tmp=str; ln=len(tmp)
+    endif
 
     if (ln.GT.defLen) then
         ret=repeat('*',defLen)
@@ -767,7 +779,11 @@
 
     lft=lft+ibits(rst,0,1)
 
-    ret=tpFill(lft,defSpacer)//trim(tmp)//tpFill(rght,defSpacer)
+    if (defSpacer.EQ.' ') then
+        ret=tpFill(lft,defSpacer)//trim(tmp)//tpFill(rght,defSpacer)
+    else
+        ret=tpFill(lft,defSpacer)//tmp//tpFill(rght,defSpacer)
+    endif
 
     return
     end function tpDefCentrString
@@ -992,7 +1008,8 @@
     logical*1 function tpSplit_uc(str,delim,arr) result(ret)
     implicit none
 
-    type(uch)                       , intent(in)  :: str,delim
+    type(uch)                       , intent(in)  :: str
+    character(len=*)                , intent(in)  :: delim
     type(uch), allocatable, optional, intent(out) :: arr(:)
     integer*4                                     :: k,ln,sta,sto
 
@@ -1002,7 +1019,7 @@
         tpSplitLen=0; tpSplitAdress=0
     endif
 
-    ln=tpCount(str%get(),delim%get(),overlap=false)+1
+    ln=tpCount(str%get(),delim,overlap=false)+1
 
     if (ln.LE.0) then; ret=false; return; endif
 
@@ -1017,10 +1034,10 @@
 
     sta=1
     do k = 1,ln-1
-        sto=tpIndex(str%get(),delim%get(),cnt=k)
+        sto=tpIndex(str%get(),delim,cnt=k)
         tpSplitHold(k)=str%get(sta,sto-1)
 
-        sta=sto+delim%ln
+        sta=sto+len(delim)
     enddo
     tpSplitHold(ln)=str%get(sta)
 
@@ -1232,7 +1249,7 @@
 
     sprev=1; fprev=1; i=0; rcnt=0
     if (dquo) then
-        do ! twice cause fortran cannot into multiple logical construtions (exit from .and. if the first is false)
+        do ! fortran cannot into short-circuit evaluation
             i=i+1; fnd=tpIndex(ustr,ufsub,cnt=i)-1
 
             if (tpQuoted(ustr,fnd+1)) cycle
@@ -2037,32 +2054,40 @@
     ret=0; lstr=len_trim(str); allocate (arr(1:lstr))
     select case (stype)
         case ('bin'); id=2
-            do i = 1,lstr; do j = 1,len(binset)
+            do i = 1,lstr
+            do j = 1,len(binset)
                 if (str(i:i).EQ.binset(j:j)) then
                     arr(lstr-i+1)=j-1; exit
                 endif
-            enddo; enddo
+            enddo
+            enddo
 
         case ('oct'); id=8
-            do i = 1,lstr; do j = 1,len(octset)
+            do i = 1,lstr
+            do j = 1,len(octset)
                 if (str(i:i).EQ.octset(j:j)) then
                     arr(lstr-i+1)=j-1; exit
                 endif
-            enddo; enddo
+            enddo
+            enddo
 
         case ('dec'); id=10
-            do i = 1,lstr; do j = 1,len(decset)
+            do i = 1,lstr
+            do j = 1,len(decset)
                 if (str(i:i).EQ.decset(j:j)) then
                     arr(lstr-i+1)=j-1; exit
                 endif
-            enddo; enddo
+            enddo
+            enddo
 
         case ('hex'); id=16
-            do i = 1,lstr; do j = 1,len(hexset)
+            do i = 1,lstr
+            do j = 1,len(hexset)
                 if (str(i:i).EQ.hexset(j:j)) then
                     arr(lstr-i+1)=j-1; exit
                 endif
-            enddo; enddo
+            enddo
+            enddo
 
         case default
             deallocate (arr)

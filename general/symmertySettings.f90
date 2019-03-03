@@ -1,14 +1,14 @@
     subroutine symmetrySettings
 
-    use glob     , only: assignment (=)
-    use glob     , only: rglu,iglu,lglu,true,false,mid,void,i8kind,glControlMemory
-    use glob     , only: uch
-    use hdb      , only: mol,geometrybd,polarizbd,generalbd,ou,ouWidth
-    use hdb      , only: gEnergyHolder,GlEt,Et,MEt,MMEt,MethodListLen
-    use hdb      , only: pointAccordance,pointSet,pointToPut,pointToCalc
-    use txtParser, only: tpAdjustc
-    use printmod , only: prMatrix
-    use math     , only: tred4
+    use glob,      only: assignment (=)
+    use glob,      only: rglu,iglu,lglu,true,false,mid,void,i8kind,glControlMemory
+    use glob,      only: uch,mid
+    use hdb,       only: mol,geometrybd,polarizbd,generalbd,ou,ouWidth
+    use hdb,       only: gEnergyHolder,GlEt,Et,MEt,MMEt,MethodListLen
+    use hdb,       only: pointAccordance,pointSet,pointToPut,pointToCalc,atomEqu,bondEqu
+    use txtParser, only: tpAdjustc,operator(.in.)
+    use printmod,  only: prMatrix
+    use math,      only: tred4
 
     implicit none
 
@@ -22,9 +22,13 @@
                                        d3gridEquivalence(:,:,:)
 
     integer(kind=iglu), allocatable :: d1grid(:),d2grid(:,:),d3grid(:,:,:),pntDistribution(:)
-    integer(kind=iglu), allocatable :: atomEqu(:,:),bondEqu(:,:)
 
 
+    if (generalbd%task%get() .in. ['energy','wf-analysis']) then
+        void=glControlMemory(int( MethodListLen*2*2*2*6 ,kind=i8kind),'Symmetry settings')
+        allocate(gEnergyHolder(0:1,0:1,0:1,0:5,MethodListLen))
+        return
+    endif
 
     write (ou,'(/A/)') tpAdjustc('Symmetry analysis',ouWidth,'=')
 
@@ -38,9 +42,6 @@
 
         case ('density','coulson','hypercharges')
             dSize=N+Ncue+N*(N-1)/2
-
-        case ('energy','wf-analize')
-            return
 
     end select
 
@@ -95,6 +96,10 @@
                     enddo
                 enddo
             enddo
+
+        case ('wf-analysis')
+            continue
+
     end select
 
     !$omp parallel default(shared) private(i,j,k,sum)
@@ -113,8 +118,8 @@
     call tred4(distance,eigenVectors,eigenValues,dSize,1e-100_rglu,1e-100_rglu)
 
     select case( generalbd%task%get() )
-        case ('polarizability')
 
+        case ('polarizability')
             void=glControlMemory(int( rglu*(Np+Np**2+Np**3) ,kind=i8kind),'Symmetry settings')
             allocate (d1gridEquivalence(sta:sto),&
             &         d2gridEquivalence(sta:sto,sta:sto),&
@@ -340,7 +345,7 @@
 
             write (ou,100)
             do i = 1,pointToPut
-                write (ou,101) pointAccordance(i,1,:),pointAccordance(i,2,:)
+                write (ou,101) (pointAccordance(i,1,k), k=1,3),(pointAccordance(i,2,k), k=1,3)
             enddo
             write (ou,110) pointToCalc,writeMypnts
             write (ou,*)
@@ -356,7 +361,6 @@
             deallocate (pntDistribution)
 
         case ('density','coulson','hypercharges')
-
             void=glControlMemory(int( iglu*(N*N+M*M)+rglu*dSize*dSize ,kind=i8kind),'Symmetry settings')
             allocate (atomEqu(N,N),bondEqu(M,M)); atomEqu=0; bondEqu=0
             allocate (evecDifference(dSize,dSize))
@@ -404,9 +408,12 @@
                 write (ou,131) ul,dl,pntDistribution(l)
             enddo
             write (ou,*)
-            call prMatrix(evecDifference,ou,'Atom equivalence','0.0000E00')
+            !call prMatrix(evecDifference(1:N,1:N),ou,'Atom equivalence','0.00E00',maxwidth=ouWidth)
             deallocate (pntDistribution,evecDifference)
             void=glControlMemory(int( sizeof(evecDifference) ,kind=i8kind),'tmp. Symmetry settings','free')
+
+        case ('wf-analysis')
+            continue
 
     end select
 
@@ -424,14 +431,17 @@
 
     return
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     contains
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
         subroutine defAtomsEquivalence
         implicit none
+
+        logical(kind=lglu) :: once
+        integer(kind=iglu) :: i,j,k,l,a,b
 
 
         do i = 1,N
@@ -473,10 +483,33 @@
         enddo
         call prMatrix(atomEqu,ou,'Atom equivalence','^')
 
+        k=0
+        write (ou,'(4X,A/)') 'Unique atoms:'
+        do i = 1,N
+            if (atomEqu(i,i).LE.0) cycle
+            k=k+1
+            once=false
+            write (ou,'(4X,i<mid(N)>,")",1X,i<mid(N)>\)') k,i
+            do j = 1,N
+                if ((atomEqu(j,j).LT.0).AND.(abs(atomEqu(j,j)).EQ.atomEqu(i,i))) then
+                    if (once) then
+                        write (ou,'(",",1X,i<mid(N)>\)') j
+                    else
+                        write (ou,'(1X,"- equal:",1X,i<mid(N)>\)') j
+                        once=true
+                    endif
+                endif
+            enddo
+            write (ou,*)
+        enddo
+        write (ou,*)
+
+        call defInverse
+
         return
         end subroutine defAtomsEquivalence
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
         subroutine defBondsEquivalence
         implicit none
@@ -486,6 +519,7 @@
         real   (kind=rglu), allocatable :: X(:),Y(:),Z(:)
         integer(kind=iglu)              :: i,j,a,b,k(4),l(4),aa,bb,cc,dd
         real   (kind=rglu)              :: centr(2)
+        logical(kind=lglu)              :: once
 
 
         allocate (bond(2,M))
@@ -509,9 +543,11 @@
             enddo
         enddo
 
-        do i = 1,M !!!
-            write (ou,*) i,bond(1,i),bond(2,i)
+        write (ou,'(4X,A/)') 'Bonds:'
+        do i = 1,M
+            write (ou,'(4X,i<mid(M)>,")",2X,i<mid(N)>," <--> ",i<mid(N)>)') i,bond(1,i),bond(2,i)
         enddo
+        write (ou,*)
 
         do i = 1,M
             if (bondEqu(i,i).NE.0) cycle
@@ -572,12 +608,33 @@
         enddo
         call prMatrix(bondEqu,ou,'Bond equivalence','^')
 
+        a=0
+        write (ou,'(4X,A/)') 'Unique bonds:'
+        do i = 1,M
+            if (bondEqu(i,i).LE.0) cycle
+            a=a+1
+            once=false
+            write (ou,'(4X,i<mid(M)>,")",1X,i<mid(M)>\)') a,i
+            do j = 1,M
+                if ((bondEqu(j,j).LT.0).AND.(abs(bondEqu(j,j)).EQ.bondEqu(i,i))) then
+                    if (once) then
+                        write (ou,'(",",1X,i<mid(M)>\)') j
+                    else
+                        write (ou,'(1X,"- equal:",1X,i<mid(M)>\)') j
+                        once=true
+                    endif
+                endif
+            enddo
+            write (ou,*)
+        enddo
+        write (ou,*)
+
         deallocate (d,bond,X,Y,Z)
 
         return
         end subroutine defBondsEquivalence
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
         logical*1 function bEqu(k1,k2,d) result(ret)
         implicit none
@@ -604,6 +661,32 @@
         return
         end function bEqu
 
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ !
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+        subroutine defInverse
+        implicit none
+
+        integer(kind=iglu) :: i,j
+        real   (kind=rglu) :: dx,dy,dz
+
+
+        mol%inverse=0
+        do i = 1,N-1
+            do j = i+1,N
+                dx=abs(mol%atm(i)%coords(1)+mol%atm(j)%coords(1))
+                dy=abs(mol%atm(i)%coords(2)+mol%atm(j)%coords(2))
+                dz=abs(mol%atm(i)%coords(3)+mol%atm(j)%coords(3))
+
+                if ((max(dx,dy,dz).LT.symmetryTolerance).AND.(abs(atomEqu(j,j)).EQ.abs(atomEqu(i,i)))) then
+                    mol%inverse(i)=j
+                    mol%inverse(j)=i
+                endif
+            enddo
+        enddo
+
+        return
+        end subroutine defInverse
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     end subroutine symmetrySettings

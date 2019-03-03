@@ -12,26 +12,27 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob      , only: assignment (=)
-    use glob      , only: rglu,iglu,lglu,i4kind,i8kind,void,true,false
-    use glob      , only: SIGABRT,SIGINT,SIGTERM,system
-    use glob      , only: uch,mid
-    use glob      , only: setThreadsNumber,timeControl,definePi,getpid,glSetIOunit
-    use fcontrol  , only: fcNewID,fcSetIOunit,fcNullID
-    use printmod  , only: prMatrix
+    use glob,       only: assignment (=)
+    use glob,       only: rglu,iglu,lglu,r16kind,i4kind,i8kind,void,true,false,gluCompare
+    use glob,       only: SIGABRT,SIGINT,SIGTERM,system
+    use glob,       only: uch,mid,find,glMemoryLeft,glFromBytes
+    use glob,       only: setThreadsNumber,timeControl,definePi,getpid,glSetIOunit
+    use glob,       only: glSharedMemory
+    use fcontrol,   only: fcNewID,fcSetIOunit,fcNullID
+    use printmod,   only: prMatrix,prStrByVal
 
     use argsParser, only: apSetIOunit,apSetERRunit
-    use txtParser , only: tpFill
-    use datablock , only: bdSetIOunit,bdSetERRunit
+    use txtParser,  only: tpFill
+    use datablock,  only: bdSetIOunit,bdSetERRunit
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     ! ~~~~~ Module information ~~~~~ !
 
-    character (len=*), parameter :: heVersion   ='1.510a'
-    character (len=*), parameter :: heDate      ='10-Dec-2017'
+    character (len=*), parameter :: heVersion   ='1.610a'
+    character (len=*), parameter :: heDate      ='11-Dec-2018'
     character (len=*), parameter :: heAuthor    ='Anton B. Zakharov'
-    character (len=*), parameter :: heCompilDate='12-Dec-2017'
+    character (len=*), parameter :: heCompilDate='11-Dec-2018'
     ! Memory: 45 bytes
 
     ! ~~~~~ Fundamental constants ~~~~~ !
@@ -70,8 +71,8 @@
                                                             'polariz','rdm','scf','hypercharges',&
                                                             'states','coulson','coupled-cluster',&
                                                             'linear-response','molecule','local',&
-                                                            'fci','diis','iteration','scfguess', &
-                                                            'lrguess','cue']
+                                                            'lrguess','iteration','scfguess',    &
+                                                            'fci','cue','field']
 
     ! ~~~~~ Methods names ~~~~~ !
     integer(kind=iglu)  , parameter :: MethodListLen=15
@@ -85,7 +86,7 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DATA BLOCKS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     type bdgeneral
-        type(uch)          :: methods,task,infile,outfile,coulombType
+        type(uch)          :: methods,task,infile,outfile,harvestfile,coulombType
         real(kind=rglu)    :: alternation
         logical(kind=lglu) :: bondsAlternated
     end type bdgeneral
@@ -96,15 +97,16 @@
     end type bdgeometry
 
     type bdsystem
-        type(uch)            :: muttDestination
-        real(kind=rglu)      :: memory
+        type(uch)            :: muttDestination,memoryUnits,throughHeader,throughFile
+        real(kind=rglu)      :: memory,memoryThreshold
         integer(kind=iglu)   :: nNodes,verboselvl
         integer(kind=i8kind) :: imemory
-        logical(kind=lglu)   :: allowRestart,allowMutt,muttSendTared,ignoreSIGHUP
+        logical(kind=lglu)   :: allowRestart,allowMutt,muttSendTared,ignoreSIGHUP,harvest
+        logical(kind=lglu)   :: memoryReport,throughEnable(2)
     end type bdsystem
 
     type bditeration
-        logical(kind=lglu) :: chkStagnation,chkDivergence,chkStopIteration(2)
+        logical(kind=lglu) :: chkStagnation,chkDivergence,chkStopIteration(2),afterPause
         real(kind=rglu)    :: feelDivergence,feelStagnation,thresholdStagnation
         real(kind=rglu)    :: printFrequency,printNotRearly
     end type bditeration
@@ -120,20 +122,20 @@
     end type bdpolariz
 
     type bddensity
-        type(uch)          :: dtype
+        type(uch)          :: dtype,scharges,sorders,gcharges
         integer(kind=iglu) :: nPoints,prntAccuracy
         real(kind=rglu)    :: derivStep
-        logical(kind=lglu) :: NOAnalize
+        logical(kind=lglu) :: NOAnalize,forceNumerical
     end type bddensity
 
     type bdcoulson
-        type(uch)          :: ctype
-        integer(kind=iglu) :: nPoints,derivPower
+        type(uch)          :: ctype,selected,sdiagonals,soffdiagonals
+        integer(kind=iglu) :: nPoints,derivPower,prntAccuracy
         real(kind=rglu)    :: derivStep
     end type bdcoulson
 
     type bdhypercharges
-        type(uch)          :: scales
+        type(uch)          :: scales,scharges,gcharges,dtype
         integer(kind=iglu) :: naPoints,nfPoints,derivPower
         real(kind=rglu)    :: derivaStep,derivfStep
     end type bdhypercharges
@@ -152,6 +154,7 @@
         type(uch)          :: guess,exctype
         integer(kind=iglu) :: maxiters
         real(kind=rglu)    :: accuracy,iterStep
+        logical(kind=lglu) :: keep
     end type bdscf
 
     type bdpipek
@@ -161,24 +164,26 @@
     end type bdpipek
 
     type bdcc
-        type(uch)          :: projType
-        integer(kind=iglu) :: maxiters
-        real(kind=rglu)    :: accuracy,iterStep(3)
-        logical(kind=lglu) :: dcue,forceSpin,storeIntegrals
+        type(uch)          :: projType,diisStorage
+        integer(kind=iglu) :: maxiters,diisSteps,wfSwitches
+        real(kind=rglu)    :: accuracy,iterStep(3),printThreshold
+        logical(kind=lglu) :: dcue,forceSpin,storeIntegrals,diisEnabled
     end type bdcc
 
     type bdlr
-        type(uch)          :: guess
-        integer(kind=iglu) :: maxiters
+        type(uch)          :: guess,diisStorage
+        integer(kind=iglu) :: maxiters,diisSteps
         real(kind=rglu)    :: accuracy,iterStep(2),guessThreshold
-        logical(kind=lglu) :: orthogonalize
+        logical(kind=lglu) :: orthogonalize,diisEnabled
     end type bdlr
 
-    type bddiis
-        type(uch)          :: storage
-        integer(kind=iglu) :: steps
-        logical(kind=lglu) :: enabled
-    end type bddiis
+    type bdfield
+        real(kind=rglu)    :: strength(3)
+    end type bdfield
+
+    type cparam
+        type(uch)          :: bd,param,value
+    end type
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -214,14 +219,15 @@
         real   (kind=rglu) :: clearance(3)
         real   (kind=rglu) :: cueLevel(0:3)
 
-        type(atom)     , allocatable :: atm(:)
-        type(bond)     , allocatable :: bnd(:)
-        type(cueorb)   , allocatable :: orb(:)
-        real(kind=rglu), allocatable :: atmdist(:,:),cuedist(:,:)
-        real(kind=rglu), allocatable :: g(:,:),core(:,:),huckelCore(:,:)
-        real(kind=rglu), allocatable :: connect(:,:),coreImage(:,:),perturbation(:,:)
-        real(kind=rglu), allocatable :: cueLayers(:)
-    end type molecule ! Memory: uch%ln+na*atom+nb*bond+no*cueorb+rglu*(4*na*na+3)+9*iglu
+        type(atom)        , allocatable :: atm(:)
+        type(bond)        , allocatable :: bnd(:)
+        type(cueorb)      , allocatable :: orb(:)
+        real(kind=rglu)   , allocatable :: atmdist(:,:),cuedist(:,:)
+        real(kind=rglu)   , allocatable :: g(:,:),core(:,:),huckelCore(:,:)
+        real(kind=rglu)   , allocatable :: connect(:,:),coreImage(:,:),perturbation(:,:)
+        real(kind=rglu)   , allocatable :: cueLayers(:)
+        integer(kind=iglu), allocatable :: inverse(:)
+    end type molecule ! Memory: uch%ln+na*atom+nb*bond+no*cueorb+rglu*(4*na*na+3)+(9+na)*iglu
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -240,19 +246,22 @@
     type (bdpipek)         :: pipekbd
     type (bdcc)            :: ccbd
     type (bdlr)            :: lrbd
-    type (bddiis)          :: diisbd
     type (bditeration)     :: iterationbd
+    type (bdfield)         :: fieldbd
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     real   (kind=rglu), allocatable :: GlEt(:,:,:),MMEt(:,:,:),MEt(:,:),Et(:)
     real   (kind=rglu), allocatable :: gEnergyHolder(:,:,:,:,:)
-    integer(kind=iglu), allocatable :: pointAccordance(:,:,:),pointSet(:,:)
+    integer(kind=iglu), allocatable :: pointAccordance(:,:,:),pointSet(:,:),atomEqu(:,:),bondEqu(:,:)
+
+    type(cparam)      , allocatable :: cparHolder(:)
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     ! ~~~~~ Derivatives ~~~~~ !
     integer(kind=iglu)   :: pointToPut,pointToCalc,perturbationID=0
+    logical(kind=lglu)   :: noPerturbation=true
     ! Memory: 3*iglu
 
     ! ~~~~~ File IDs ~~~~~ !
@@ -268,10 +277,21 @@
     type(uch)            :: showInputHelp
     real   (kind=rglu)   :: timeSpent(2,3)
     integer(kind=i8kind) :: store_memory
+    logical(kind=lglu)   :: afterPause
     ! Memory: 4+4*iglu+lglu+6*rglu+8
 
-    type(uch)            :: pauseFileName,continueFileName,holdMethods(30)
+    type(uch)            :: controlFileName,holdMethods(30)
     ! Memory: based on the length
+
+    type(uch)            :: cparamstring
+    type(uch)            :: iheader,ierror
+    logical(kind=lglu)   :: ipFailed
+
+    integer(kind=iglu)   :: CATOM
+
+    ! ~~~~~ Single Session Output ~~~~~ !
+
+    integer(kind=iglu)   :: single_io=-1
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -281,6 +301,7 @@
     private :: fcSetIOunit,apSetIOunit,bdSetIOunit,bdSetERRunit,apSetERRunit
     private :: prMatrix,tpFill,fcNewID
     private :: setThreadsNumber,timeControl,definePi,getpid
+    private :: single_io
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -291,8 +312,29 @@
     subroutine setParams
     implicit none
 
+    integer(kind=i4kind) :: fid,err
+
 
     void=setThreadsNumber(systembd%nNodes)
+    iterationbd%afterPause=false
+    ipFailed=false
+
+    ! only for POSIX systems
+#   if(__OS==2)
+        fid=fcNewID()
+        open(fid,file=controlFileName%get()); write(fid,100) trim(adjustl(prStrByVal(appPID))); close(fid)
+        void=fcNullID(fid)
+        err=system('chmod +x '//controlFileName%get())
+
+100 format('MPID=',A/&
+           'case $1 in'/&
+           4X,'stop)'/4X         ,'kill -2 $MPID'/4X,';;'/&
+           4X,'kill)'/4X         ,'kill -9 $MPID'/4X,';;'/&
+           4X,'stopiteration)'/4X,'kill -10 $MPID'/4X,';;'/&
+           4X,'continue)'/4X     ,'kill -18 $MPID'/4X,';;'/&
+           4X,'pause)'/4X        ,'kill -19 $MPID'/4X,';;'/&
+           'esac')
+#   endif
 
     return
     end subroutine setParams
@@ -302,16 +344,11 @@
     subroutine trapSignals
     implicit none
 
-    integer(kind=i4kind) :: fid,err
+    integer(kind=i4kind) :: err
 
 
+    ! only for POSIX systems
 #   if(__OS==2)
-        fid=fcNewID()
-        open  (fid,file=pauseFileName%get())   ; write (fid,"('kill -19 ',i5)") appPID; close (fid)
-        open  (fid,file=continueFileName%get()); write (fid,"('kill -18 ',i5)") appPID; close (fid)
-        void=fcNullID(fid)
-        err=system('chmod +x '//pauseFileName%get()); err=system('chmod +x '//continueFileName%get())
-
         call PXFSTRUCTCREATE('sigset',SIGNSET,err)
         call PXFSIGADDSET(SIGNSET,SIGCONT,err)
         call PXFSIGADDSET(SIGNSET,SIGSTOP,err)
@@ -327,17 +364,14 @@
     subroutine finalizeHelios
     implicit none
 
-    integer(kind=i4kind) :: fid
+    integer(kind=iglu) :: err
 
 
+    ! only for POSIX systems
 #   if(__OS==2)
-        fid=fcNewID()
-        open (fid,file=pauseFileName%get())   ; close (fid,status='delete')
-        open (fid,file=continueFileName%get()); close (fid,status='delete')
-        void=fcNullID(fid)
+        err=system('rm '//controlFileName%get())
 #   endif
 
-    return
     end subroutine finalizeHelios
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -350,23 +384,42 @@
 
 
     rcode=0
+
+    ! only for POSIX systems
 #   if(__OS==2)
         call time(ttime); call date(ddate); write (ou,99) ddate,ttime
         select case (SIGNUM)
-            case (SIGHUP) ; write (ou,100) 'SIGHUP  received. Ignoring.  '; rcode=1; return
-            case (SIGINT) ; write (ou,100) 'SIGINT  received. Stopping.  '; call finalizeHelios; stop
-            case (SIGABRT); write (ou,100) 'SIGABRT received. Stopping.  '; call finalizeHelios; stop
-            case (SIGTERM); write (ou,100) 'SIGTERM received. Stopping.  '; call finalizeHelios; stop
-            case (SIGCONT); write (ou,100) 'SIGCONT received. Waking up. '; rcode=1; return
-            case (SIGSTOP); write (ou,100) 'SIGSTOP received. Suspending.'; call PXFPAUSE(err)
+            case (SIGINT) ; write (ou,100) 'SIGINT  received. Stopping.'; call finalizeHelios; stop
+            case (SIGABRT); write (ou,100) 'SIGABRT received. Stopping.'; call finalizeHelios; stop
+            case (SIGTERM); write (ou,100) 'SIGTERM received. Stopping.'; call finalizeHelios; stop
+
+            case (SIGSTOP)
+                write (ou,100) 'SIGSTOP received. Suspending.'
+                call PXFPAUSE(err)
+                rcode=1
+                return
+
+            case (SIGHUP)
+                write (ou,100) 'SIGHUP  received. Ignoring.'
+                rcode=1
+                return
+
+            case (SIGCONT)
+                write (ou,100) 'SIGCONT received. Waking up.'
+                iterationbd%afterPause=true
+                rcode=1
+                return
+
             case (SIGUSR1)
                 write (ou,101) SIGUSR1; rcode=1
                 if (iterationbd%chkStopIteration(1)) iterationbd%chkStopIteration(2)=true
                 return
+
         end select
      99 format (/2X,A9,1X,A8,1X\)
     100 format (2X,A/)
-    101 format (2X,'Defined StopIteration signal received (',i2,'). Iteration procedure will be interrupted.'/)
+    101 format ( 2X,'Defined StopIteration signal received (',i2,').'/&
+                22X,'Iteration procedure will be interrupted.'/)
 #   endif
 
     return
@@ -393,10 +446,6 @@
     cueConstant2=cueConstant1**2
     cueConstant4=cueConstant1**4
 
-    !define names.
-    pauseFileName   ='pauseproc.sh'
-    continueFileName='continueproc.sh'
-
     su=6 ! screen/console unit
     eu=6 ! error unit
 
@@ -417,7 +466,7 @@
     init =fcNewID()
     in   =fcNewID()
     ou   =fcNewID()
-    !rf   =fcNewID()
+    !rf   =fcNewID() !restart file
     !debug=fcNewID()
     !lsmf =fcNewID()
     lrg  =fcNewID()
@@ -438,12 +487,72 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    subroutine outOfMemory(label, req, left)
+    implicit none
+
+    character (len=*)   , intent(in) :: label
+    integer(kind=i8kind), intent(in) :: req,left
+
+    character (len=:), allocatable   :: units,creq,cleft
+
+
+    units=systembd%memoryUnits%get()
+    creq=trim(prStrByVal(glFromBytes(req, units), '^.00'))
+    cleft=trim(prStrByVal(glFromBytes(left, units), '^.00'))
+
+    ierror=label//': not enough memory. Required '//creq//' '//units//', left '//cleft//' '//units//'.'
+    call primaryInformation('error')
+
+    return
+    end subroutine outOfMemory
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine changeMemoryState(label, size)
+    implicit none
+
+    character (len=*)   , intent(in) :: label
+    integer(kind=i8kind), intent(in) :: size
+    real(kind=r16kind)               :: rsize,rleft
+    character (len=:), allocatable   :: units,csize,cleft
+
+
+    if (systembd%memoryReport) then
+        units=systembd%memoryUnits%get()
+
+        rsize=glFromBytes(size, units)
+        rleft=glFromBytes(glSharedMemory, units)
+
+        csize=prStrByVal(rsize, '^.00')
+        cleft=prStrByVal(rleft, '^.00')
+
+        if (rleft.LT.0) return
+
+        if (abs(rsize).GT.systembd%memoryThreshold) then
+            if (rsize.GT.0) then
+                write (ou,'(/A)') ' ***** '//label//'. Allocate: '//csize//' '//units//&
+                                                    ', Left: '//cleft//' '//units//' ***** '
+            elseif(rsize.LT.0) then
+                write (ou,'(/A)') ' ***** '//label//'. Free: '//csize//' '//units//&
+                                                    ', Left: '//cleft//' '//units//' ***** '
+            endif
+        endif
+
+    endif
+
+    return
+    end subroutine changeMemoryState
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     subroutine perturbate(output)
     implicit none
 
     logical(kind=lglu), optional :: output
     integer(kind=iglu)           :: i,j
 
+
+    noPerturbation=maxval(abs(mol%perturbation)).LE.gluCompare
 
     perturbationID=perturbationID+1
     do i = 1,mol%nAtoms
@@ -452,13 +561,66 @@
             mol%huckelCore(i,j)=mol%connect(i,j)  +mol%perturbation(i,j)
         enddo
     enddo
+    ! call prMatrix(mol%huckelCore,100,'Huckel core.','^.0000',maxwidth=200)
 
     if (present(output)) then
-        if (output) call prMatrix(mol%perturbation,ou,'Perturbation matrix','^.0000',maxwidth=ouWidth)
+        if (output) call prMatrix(mol%perturbation,ou,'Perturbation ('//&
+                                  prStrByVal(perturbationID)//')','^.0000',maxwidth=ouWidth)
     endif
 
     return
     end subroutine perturbate
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer(kind=iglu) function getMethodNumber(method) result(ret)
+    implicit none
+
+    character(len=*) :: method
+
+
+    ret=find(methodNames,method)
+    if (ret.GT.0) return
+
+    stop 'Internal error (hdb::getMethodNumber): Unknown method.'
+    end function getMethodNumber
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine singleSession(str)
+    implicit none
+
+    character (len=*), intent(in) :: str
+    integer(kind=iglu)            :: err
+
+
+    ! not enabled
+    if (.NOT.systembd%throughEnable(1)) return
+
+    ! need to open file
+    if (.NOT.systembd%throughEnable(2)) then
+        single_io=fcNewID()
+
+        ! check wether file exists
+        open(single_io, file=systembd%throughFile%get(), status='old', iostat=err)
+
+        ! file does not exist
+        if (err.NE.0) then
+            systembd%throughEnable(2)=true
+            open (single_io, file=systembd%throughFile%get())
+            write(single_io, '(A)') systembd%throughHeader%get()
+        else ! file exists
+            close(single_io)
+            systembd%throughEnable(2)=true
+            open (single_io, file=systembd%throughFile%get(), access='append')
+            write(single_io, *)
+        endif
+    endif
+
+    write(single_io, '(A\)') str
+
+    return
+    end subroutine singleSession
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
