@@ -557,9 +557,12 @@
             orderSet(k,2)=j
 
             if (atomEqu(i,j).LT.0) then
-                fatom=int(abs(atomEqu(i,j))/N)
+                fatom=max(int(abs(atomEqu(i,j))/N),1)
                 satom=mod(abs(atomEqu(i,j)),N)
-                if (fatom.EQ.0) fatom=satom
+                if (satom.EQ.0) then
+                    satom=N
+                    fatom=fatom-1
+                endif
             else
                 fatom=i; satom=j
             endif
@@ -1488,26 +1491,36 @@
             select case (coulsonbd%ctype%get())
                 case('atom-atom')
                     if (atomEqu(i,j).LT.0) then
-                        felem=int(abs(atomEqu(i,j))/UBnd(1))
+                        felem=max(int(abs(atomEqu(i,j))/UBnd(1)), 1)
                         selem=mod(abs(atomEqu(i,j)),UBnd(1))
-                        if (felem.EQ.0) felem=selem
+                        if (selem.EQ.0) then
+                            selem=UBnd(1)
+                            felem=felem-1
+                        endif
                     else
                         felem=i; selem=j
                     endif
 
                 case('bond-bond')
                     if (bondEqu(i,j).LT.0) then
-                        felem=int(abs(bondEqu(i,j))/UBnd(1))
+                        felem=max(int(abs(bondEqu(i,j))/UBnd(1)),1)
                         selem=mod(abs(bondEqu(i,j)),UBnd(1))
-                        if (felem.EQ.0) felem=selem
+                        if (selem.EQ.0) then
+                            selem=UBnd(1)
+                            felem=felem-1
+                        endif
                     else
                         felem=i; selem=j
                     endif
+
+                case ('atom-bond')
+                    felem=i; selem=j
             end select
 
             compGrid(felem,selem)=1
         enddo
 
+        ! ==========> TEST ON ATOM-BOND TYPE <==========
         ! prepare set of output offdiagonals
         do k = 1,UBnd(1)
         do l = k,UBnd(1)
