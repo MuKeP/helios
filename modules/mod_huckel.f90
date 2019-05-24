@@ -9,8 +9,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: huVersion='1.000'
-    character (len=*), parameter :: huDate   ='2017.12.10'
+    character (len=*), parameter :: huVersion='1.100'
+    character (len=*), parameter :: huDate   ='2019.05.24'
     character (len=*), parameter :: huAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -26,11 +26,166 @@
 
     private
     public :: setHuckelParameters,energyHuckel,getHuckRDMElement,getHuckelResult,finalizeHuck
-    public :: huckDensity,huckDensity2
+    public :: getHuckelCoulsonPolarizability
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     contains
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine setHuckelParameters
+    implicit none
+
+
+    N=mol%nAtoms; Nocc=mol%nEls/2
+    call controlMemoryHuck('general','allocate')
+
+    return
+    end subroutine setHuckelParameters
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine energyHuckel(energy)
+    implicit none
+
+    real   (kind=rglu) :: energy(5)
+    real   (kind=rglu) :: sum
+    integer(kind=iglu) :: mu,nu,i
+
+
+    call tred4(mol%huckelCore,V,E,N,1.e-100_rglu,1.e-300_rglu)
+
+    ! write (*,*) E
+
+    Eel=0
+    !$omp parallel default(shared) private(mu) reduction(+:Eel)
+    !$omp do
+    do mu = 1,Nocc
+        Eel=Eel+2*E(mu)
+    enddo
+    !$omp end parallel
+
+    !$omp parallel default(shared) private(mu,nu,i,sum)
+    !$omp do
+    do mu = 1,N
+        do nu = 1,N
+            sum=0
+            do i = 1,Nocc
+                sum=sum+V(mu,i)*V(nu,i)
+            enddo
+            D(mu,nu)=sum
+        enddo
+    enddo
+    !$omp end parallel
+
+    energy=0; energy(1)=Eel
+
+    return
+    end subroutine energyHuckel
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    real(kind=rglu) function getHuckRDMElement(i,j) result(ret)
+    implicit none
+
+    integer(kind=iglu), intent(in) :: i,j
+
+
+    ret=2*D(i,j); return
+    end function getHuckRDMElement
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    real(kind=rglu) function getHuckelCoulsonPolarizability(mu,nu) result(ret)
+    implicit none
+
+    integer(kind=iglu), intent(in) :: mu,nu
+    integer(kind=iglu)             :: i,j
+    real(kind=rglu)                :: Ax
+
+
+    ret=0
+    do i = 1,Nocc
+        Ax=V(mu,i)*V(nu,i)
+        do j = Nocc+1,N
+            ret=ret+Ax*V(mu,j)*V(nu,j)/(E(i)-E(j))
+        enddo
+    enddo
+    ret=4*ret
+
+    return
+    end function getHuckelCoulsonPolarizability
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine getHuckelResult(energy,vectors,energies,density,output)
+    implicit none
+
+    real   (kind=rglu), optional, intent(out) :: energy(:)
+    real   (kind=rglu), optional, intent(out) :: vectors(:,:),density(:,:),energies(:)
+    logical(kind=lglu), optional, intent(in)  :: output
+
+
+    if (present(output)) then
+        if (output) call prEigenProblem(V,E,ou,'Huckel solution','^.0000',maxwidth=ouWidth)
+    endif
+
+    if (present(vectors))  vectors=V
+    if (present(energies)) energies=E
+    if (present(density))  density=2*D
+
+    if (present(energy)) then
+        energy=0; energy(1)=Eel
+    endif
+
+    return
+    end subroutine getHuckelResult
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine finalizeHuck
+    implicit none
+
+
+    call controlMemoryHuck('general','deallocate')
+
+    return
+    end subroutine finalizeHuck
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine controlMemoryHuck(section,action)
+    implicit none
+
+    character (len=*)  :: section,action
+    integer(kind=iglu) :: err
+
+
+    select case (section)
+        case ('general')
+            select case (action)
+                case ('allocate')
+                    void=glControlMemory(int( rglu*(N*N+N+N*N) ,kind=i8kind),'Huckel')
+                    allocate(V(N,N),E(N),D(N,N)); V=0; E=0; D=0
+
+                    ! void=glControlMemory(int(rglu*(6*N*N+N),kind=i8kind),'SCF module')
+                    ! allocate (F(N,N),V(N,N),E(N),D(N,N))
+                    ! allocate (Fmin(N,N),Comut(N,N),Refl(N,N))
+                    ! F=0; V=0; E=0; D=0; Fmin=0; Comut=0; Refl=0
+
+                case ('deallocate')
+                    deallocate (V,E,D)
+                    void=glControlMemory(int( sizeof(V)+sizeof(E)+sizeof(D) ,kind=i8kind),'Huckel','free')
+
+                    ! deallocate (F,V,E,D,Fmin,Comut,Refl, stat=err)
+                    ! void=glControlMemory(int(rglu*(6*N*N+N),kind=i8kind),'SCF module','free')
+
+            end select
+    end select
+
+    return
+    end subroutine controlMemoryHuck
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -298,8 +453,8 @@
 
         integer(kind=iglu) :: mu
 
-        call tred4(H,V,E,N,1.e-100_rglu,1.e-300_rglu)
 
+        call tred4(H,V,E,N,1.e-100_rglu,1.e-300_rglu)
 
         ret=0
         do mu = 1,N/2
@@ -312,140 +467,6 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     end subroutine huckDensity
-
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    subroutine setHuckelParameters
-    implicit none
-
-
-    N=mol%nAtoms; Nocc=mol%nEls/2
-    call controlMemoryHuck('general','allocate')
-
-    return
-    end subroutine setHuckelParameters
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    subroutine energyHuckel(energy)
-    implicit none
-
-    real   (kind=rglu) :: energy(5)
-    real   (kind=rglu) :: sum
-    integer(kind=iglu) :: mu,nu,i
-
-
-    call tred4(mol%huckelCore,V,E,N,1.e-100_rglu,1.e-300_rglu)
-
-    ! write (*,*) E
-
-    Eel=0
-    !$omp parallel default(shared) private(mu) reduction(+:Eel)
-    !$omp do
-    do mu = 1,Nocc
-        Eel=Eel+2*E(mu)
-    enddo
-    !$omp end parallel
-
-    !$omp parallel default(shared) private(mu,nu,i,sum)
-    !$omp do
-    do mu = 1,N
-        do nu = 1,N
-            sum=0
-            do i = 1,Nocc
-                sum=sum+V(mu,i)*V(nu,i)
-            enddo
-            D(mu,nu)=sum
-        enddo
-    enddo
-    !$omp end parallel
-
-    energy=0; energy(1)=Eel
-
-    return
-    end subroutine energyHuckel
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    real(kind=rglu) function getHuckRDMElement(i,j) result(ret)
-    implicit none
-
-    integer(kind=iglu), intent(in) :: i,j
-
-
-    ret=2*D(i,j); return
-    end function getHuckRDMElement
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    subroutine getHuckelResult(energy,vectors,energies,density,output)
-    implicit none
-
-    real   (kind=rglu), optional, intent(out) :: energy(:)
-    real   (kind=rglu), optional, intent(out) :: vectors(:,:),density(:,:),energies(:)
-    logical(kind=lglu), optional, intent(in)  :: output
-
-
-    if (present(output)) then
-        if (output) call prEigenProblem(V,E,ou,'Huckel solution','^.0000',maxwidth=ouWidth)
-    endif
-
-    if (present(vectors))  vectors=V
-    if (present(energies)) energies=E
-    if (present(density))  density=2*D
-
-    if (present(energy)) then
-        energy=0; energy(1)=Eel
-    endif
-
-    return
-    end subroutine getHuckelResult
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    subroutine finalizeHuck
-    implicit none
-
-
-    call controlMemoryHuck('general','deallocate')
-
-    return
-    end subroutine finalizeHuck
-
-!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
-
-    subroutine controlMemoryHuck(section,action)
-    implicit none
-
-    character (len=*)  :: section,action
-    integer(kind=iglu) :: err
-
-
-    select case (section)
-        case ('general')
-            select case (action)
-                case ('allocate')
-                    void=glControlMemory(int( rglu*(N*N+N+N*N) ,kind=i8kind),'Huckel')
-                    allocate(V(N,N),E(N),D(N,N)); V=0; E=0; D=0
-
-                    ! void=glControlMemory(int(rglu*(6*N*N+N),kind=i8kind),'SCF module')
-                    ! allocate (F(N,N),V(N,N),E(N),D(N,N))
-                    ! allocate (Fmin(N,N),Comut(N,N),Refl(N,N))
-                    ! F=0; V=0; E=0; D=0; Fmin=0; Comut=0; Refl=0
-
-                case ('deallocate')
-                    deallocate (V,E,D)
-                    void=glControlMemory(int( sizeof(V)+sizeof(E)+sizeof(D) ,kind=i8kind),'Huckel','free')
-
-                    ! deallocate (F,V,E,D,Fmin,Comut,Refl, stat=err)
-                    ! void=glControlMemory(int(rglu*(6*N*N+N),kind=i8kind),'SCF module','free')
-
-            end select
-    end select
-
-    return
-    end subroutine controlMemoryHuck
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

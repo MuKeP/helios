@@ -1,4 +1,6 @@
 *.exe
+*.x
+*.sh
 *.bat
 *.out
 *.txt

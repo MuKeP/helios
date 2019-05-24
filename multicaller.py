@@ -2,23 +2,23 @@
 
 import subprocess
 import os
+import sys
+
+
+if os.path.isfile('logger.log'):
+    os.remove('logger.log')
 
 logger = open('logger.log', 'a')
 dnull = open(os.devnull, 'w')
 
 pid = str(os.getpid())
 
-#logger.write('My pid is: '+pid+'\n')
-# os.system('disown '+pid)
+logger.write('My pid is: '+pid+'\n')
 
-interval = list(range(-200,201))
-
-#interval = list(range(-240,-120))+list(range(121,241))
-#interval = list(range(226,241))
-#interval = list(range(-40,41))
+interval = list(range(-80,81))
 
 for k in interval:
-    line = './helios.x -f btransistor.inp -p field:along-x=%4.3f' % (k*0.05)
+    line = './helios.x -f %s -p field:along-x=%4.3f' % (sys.argv[1], k*0.05)
     logger.write(line+'\n')
     logger.flush()
     process = subprocess.Popen(line, stdout=logger, stderr=logger, shell=True)
