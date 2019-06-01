@@ -97,7 +97,7 @@
     end type bdgeometry
 
     type bdsystem
-        type(uch)            :: muttDestination,memoryUnits,throughHeader,throughFile
+        type(uch)            :: muttDestination,memoryUnits,throughHeader,throughFile,throughPrefix
         real(kind=rglu)      :: memory,memoryThreshold
         integer(kind=iglu)   :: nNodes,verboselvl
         integer(kind=i8kind) :: imemory

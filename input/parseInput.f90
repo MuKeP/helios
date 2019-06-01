@@ -7,6 +7,7 @@
     use hdb,        only: mol,generalbd,geometrybd,systembd,densitybd,scfbd,methodNames
     use hdb,        only: scfg,lrg,ierror,outOfMemory,changeMemoryState,cparamstring
     use datablock,  only: bdParseFile,bdPrintBlockData,bdCheckExternalParameter
+    use datablock,  only: bdReplaceRegisteredPatterns
     use argsParser, only: parseArgs,apArgumentFound
     use printmod,   only: prEchoFile,prJoin
     use txtParser,  only: tpAdjustc,tpIndex,operator(.in.)
@@ -84,6 +85,8 @@
     write (ou,'(/A/)') tpAdjustc('Molecule information',ouWidth,'=')
 
     void=glShareMemory(int(systembd%memory*1024*1024,kind=i8kind),outOfMemory,changeMemoryState)
+
+    void=bdReplaceRegisteredPatterns()
 
     return
     end subroutine parseInput

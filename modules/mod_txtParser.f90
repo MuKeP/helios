@@ -19,6 +19,11 @@
 
     module txtParser
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CHANGELOG ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!
+!   *** 2019.06.01 (v3.621):
+!   changed behaviour of tpSplit. Now if separator is absent - return the whole string.
+!
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     use glob    , only: assignment (=)
@@ -27,8 +32,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: tpVersion='3.611'
-    character (len=*), parameter :: tpDate   ='2018.12.11'
+    character (len=*), parameter :: tpVersion='3.621'
+    character (len=*), parameter :: tpDate   ='2019.06.01'
     character (len=*), parameter :: tpAuthor ='Anton B. Zakharov'
 
     integer*4, parameter         :: maxStrLen=1024,maxCommentDefLen=5
@@ -131,7 +136,6 @@
 
     private   :: fcNewID,fcBanID,fcUnBanID,fcNullID
     private   :: uch,void,voidl,true,false
-!    private   :: assignment (=)
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -898,13 +902,12 @@
 
     endpcor=0; if (dendp) endpcor=len_trim(sub)-1
 
-    !ustr=str; usub=sub
     if (drev) then
         ustr=tpReverse(ustr)
         usub=tpReverse(usub)
     endif
 
-!    write (*,*) 'Looking for '//trim(usub)//' in '//trim(ustr)
+    ! write (*,*) 'Looking for '//trim(usub)//' in '//trim(ustr)
 
     nrml=0
     do
@@ -970,24 +973,23 @@
     endif
 
     ln=tpCount(str,delim,overlap=false)+1
-
-    if (ln.LE.0) then; ret=false; return; endif
-
     tpSplitLen=ln; tpSplitAdress=int(loc(str),8)
-
     allocate (tpSplitHold(ln))
 
-!    write (*,*)
-!    write (*,'(A," looking for ",A)') trim(str)//'#','#'//delim//'#'
-!    write (*,'(A)') '         1         2         3         4         5'
-!    write (*,'(A)') '12345678901234567890123456789012345678901234567890'
+    ! write (*,*)
+    ! write (*,'(A," looking for ",A)') trim(str)//'#','#'//delim//'#'
+    ! write (*,'(A)') '         1         2         3         4         5'
+    ! write (*,'(A)') '12345678901234567890123456789012345678901234567890'
+
+    if (tpSplitLen.EQ.1) then
+        ! write(*,*) 'txtParser only one:','$'//str//'$'
+        ret=true; tpSplitHold(1)=str; return
+    endif
 
     sta=1
     do k = 1,ln-1
         sto=tpIndex(str,delim,cnt=k)
         tpSplitHold(k)=str(sta:sto-1)
-
-!        write (*,*) '#'//str(sta:sto-1)//'#'
 
         sta=sto+len(delim)
     enddo
@@ -1020,17 +1022,17 @@
     endif
 
     ln=tpCount(str%get(),delim,overlap=false)+1
-
-    if (ln.LE.0) then; ret=false; return; endif
-
     tpSplitLen=ln; tpSplitAdress=int(loc(str),8)
-
     allocate (tpSplitHold(ln))
 
-!    write (*,*)
-!    write (*,'(A," looking for ",A)') trim(str)//'#','#'//delim//'#'
-!    write (*,'(A)') '         1         2         3         4         5'
-!    write (*,'(A)') '12345678901234567890123456789012345678901234567890'
+    ! write (*,*)
+    ! write (*,'(A," looking for ",A)') trim(str)//'#','#'//delim//'#'
+    ! write (*,'(A)') '         1         2         3         4         5'
+    ! write (*,'(A)') '12345678901234567890123456789012345678901234567890'
+
+    if (tpSplitLen.EQ.1) then
+        ret=true; tpSplitHold(1)=str%get(); return
+    endif
 
     sta=1
     do k = 1,ln-1
@@ -1275,9 +1277,6 @@
         enddo
     endif
     i=i-1; tmp(sprev:)=ustr(fprev:)
-
-    !write (*,*) len(ustr),diff,rcnt
-    !write (*,*) len(ustr)+diff*rcnt
 
     allocate (character (len=len(ustr)+diff*rcnt) :: ret)
     ret=tmp(1:len(ustr)+diff*rcnt)
@@ -1577,9 +1576,6 @@
     ret=cstatus(whereIsIt).NE.0 !is quoted by none of quotes.
 
 100 format (i3,3A,1X,L,1X,L,i2,1X,i2,1X,L,1X,L,1X,i1)
-
-    !write (50,'(A)') trim(str)
-    !write (50,'(<len_trim(str)>i1)') cstatus
 
     deallocate (cstatus,num,opened,bcopened,cquo)
 

@@ -6,7 +6,7 @@
     use hdb,        only: coulsonbd,bdNames,eu,ou,init,ouWidth,controlFileName,ierror
     use printmod,   only: prJoin
     use txtParser,  only: tpIndex,tpCount,tpIntByStr,tpSplit,tpSplitLen,tpSplitHold,operator(.in.)
-    use txtParser,  only: tpIntArrayByStr,tpReplace
+    use txtParser,  only: tpIntArrayByStr,tpReplace,tpDigits,tpSetAccordance
 
     implicit none
 
@@ -162,6 +162,11 @@
                 ierror='For coulson:elements = diagonals, required coulson:selected-diagonals != none'
                 call primaryInformation('error')
             endif
+
+            if (.NOT.tpSetAccordance(coulsonbd%sdiagonals%get(),tpDigits()//';')) then
+                ierror='For coulson:elements = diagonals, incorrect syntax'
+                call primaryInformation('error')
+            endif
             void=tpSplit(coulsonbd%sdiagonals%get(),';'); nobjs=tpSplitLen
 
             if (nobjs.EQ.0) then
@@ -217,9 +222,9 @@
         generalbd%methods=prJoin(methodNames,'+')
     endif
 
-    if ('%methods%' .in. systembd%throughHeader%get()) then
-        systembd%throughHeader=tpReplace(systembd%throughHeader%get(), '%methods%', generalbd%methods%get())
-    endif
+    ! if ('%methods%' .in. systembd%throughHeader%get()) then
+    !     systembd%throughHeader=tpReplace(systembd%throughHeader%get(), '%methods%', generalbd%methods%get())
+    ! endif
 
     generalbd%bondsAlternated=abs(generalbd%alternation).GT.0
     geometrybd%searchLinear(2)=false

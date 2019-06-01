@@ -1,5 +1,10 @@
     module datablock
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CHANGELOG ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+!
+!   *** 2019.06.01 (v1.800):
+!   added pattern replace functional.
+!
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     use glob,      only: assignment (=)
@@ -21,8 +26,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: bdVersion='1.711'
-    character (len=*), parameter :: bdDate   ='2019.01.03'
+    character (len=*), parameter :: bdVersion='1.800'
+    character (len=*), parameter :: bdDate   ='2019.06.01'
     character (len=*), parameter :: bdAuthor ='Anton B. Zakharov'
 
     integer*4, parameter :: typeSetSize=12,mxKindNameLen=9,maxListSetLen=100
@@ -61,7 +66,7 @@
         type(uch)          :: name
         integer*8          :: address
         integer*4          :: position,kind,vlen,nvals
-        logical*1          :: opt,variable,several
+        logical*1          :: opt,variable,several,patterns
 
         character (len=1)  :: potentiate
 
@@ -126,13 +131,10 @@
     private
 
     public :: bdVersion,bdDate,bdAuthor
-
     public :: bdShareVariable,bdCollect,bdAddVariable,bdRemoveVariable,bdParseFile,&
               bdPrintBlockData,bdSetIOunit,bdSetERRunit,bdFinalize
-
     public :: bdAddDescription,bdVariableAddDescription,bdPrintHelp,bdCheckExternalParameter
-
-    !public :: checkExpectFormat,checkOnExpect,variableSet,varAppend
+    public :: bdReplacePattern,bdReplaceRegisteredPatterns
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -173,6 +175,7 @@
         write (unit,'(A,1X,A,1X,A,1X,A/)') tpFill(5,'*'),tpUpperCase('Variable'),prStrByVal(i),tpFill(5,'*')
         write (unit,'(A/A/)') tpUpperCase('Name:'),variableSet(j)%name%get()
         write (unit,'(A/A/)') tpUpperCase('Variable description:'),variableSet(j)%description%get()
+        write (unit,'(A/A/)') tpUpperCase('Variable supports patterns:'),prStrByVal(variableSet(j)%patterns)
 
         select case(variableSet(j)%kind)
             case (0)    ; write (unit,100) 'float128'
@@ -212,8 +215,12 @@
                 case ( 8); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntl4))
                 case ( 9); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntl2))
                 case (10); write (unit,101) prStrByVal(transfer(variableSet(j)%defstor,variableSet(j)%pntl1))
-                case (11); write (unit,101) prStrByVal(variableSet(j)%defc)
-                case (12); write (unit,101) prStrByVal(variableSet(j)%defc)
+                case (11,12)
+                    if (prStrByVal(variableSet(j)%defc).EQ.'') then
+                        write(unit,101) 'empty string'
+                    else
+                        write (unit,101) prStrByVal(variableSet(j)%defc)
+                    endif
             end select
 101         format (A)
             write (unit,*)
@@ -814,6 +821,178 @@
 
     return
     end function bdCheckExternalParameter
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    function bdReplacePattern(str) result(ret)
+
+    use txtParser, only: tpShowRuler
+
+    character(len=*), intent(in)  :: str
+    character(len=:), allocatable :: ret,spl,spl2
+    character(len=32)             :: mfmt
+    character(len=256)            :: valueString
+    integer*4                     :: k,l,j,cnt,pstart,pstop,tmp,rnumber,nobjs,bdPos,gstart,accuracy
+
+    real*8                        :: uReal
+    integer*4                     :: uInt
+    logical*4                     :: uLog
+
+
+    ret=str
+    cnt=1
+    do
+        if ((tpIndex(str,'%',cnt=cnt).EQ.0).OR.(tpIndex(str,'%',cnt=cnt+1).EQ.0)) exit
+        cnt=cnt+2
+    enddo
+
+    if (cnt.EQ.1) then
+        return
+    endif
+    rnumber=(cnt-1)/2
+
+    gstart=1
+    do k = 1,rnumber
+        pstart=tpIndex(str,'%',start=gstart)
+        pstop =tpIndex(str,'%',start=pstart+1)
+        gstart=pstop+1
+
+        spl=str(pstart+1:pstop-1); void=tpSplit(spl,':'); nobjs=tpSplitLen
+        if (nobjs.NE.2) then
+            write(errunit,'(A)') 'Warning! Incorrect pattern: ":" not found. '//trim(str)
+            return
+        endif
+
+        bdPos=find(bdSet(1:bdAppend)%name,tpRetSplit(spl,1))
+        if (bdPos.EQ.-1) then
+            write(errunit,'(A)') 'Warning! Incorrect pattern: can not find "bd-variable" pair.'//trim(str)
+            return
+        endif
+
+        spl2=tpRetSplit(spl,2); void=tpSplit(spl2,'$'); nobjs=tpSplitLen
+
+        ! write(*,*) '$'//str//'$',spl2
+
+        do l = 1,bdSet(bdPos)%arrayLen
+            j=bdSet(bdPos)%varSet(l)
+
+            ! write(*,*) variableSet(j)%name%get(), tpRetSplit(spl2,1), variableSet(j)%name%get().EQ.tpRetSplit(spl2,1)
+            if (variableSet(j)%name%get().EQ.tpRetSplit(spl2,1)) then
+                if (nobjs.EQ.1) then
+                    mfmt=tpFill(mfmt)
+                    select case (variableSet(j)%kind)
+                        case ( 0); uReal=variableSet(j)%pntr16
+                        case ( 1); uReal=variableSet(j)%pntr8
+                        case ( 2); uReal=variableSet(j)%pntr4
+                        case ( 3); uInt =variableSet(j)%pnti8
+                        case ( 4); uInt =variableSet(j)%pnti4
+                        case ( 5); uInt =variableSet(j)%pnti2
+                        case ( 6); uInt =variableSet(j)%pnti1
+                        case ( 7); uLog =variableSet(j)%pntl8
+                        case ( 8); uLog =variableSet(j)%pntl4
+                        case ( 9); uLog =variableSet(j)%pntl2
+                        case (10); uLog =variableSet(j)%pntl1
+                    end select
+
+                    select case (shortKindLabels(variableSet(j)%kind))
+                        case ('re')
+                            select case (variableSet(j)%kind)
+                                case (0); accuracy=31
+                                case (1); accuracy=15
+                                case (2); accuracy=7
+                            end select
+
+                            if ((abs(uReal).GT.1D+5).OR.(uReal.LT.1D-5)) then
+                                mfmt='0.'//tpFill(accuracy,'0')//'E00'
+                            else
+                                mfmt='^.'//tpFill(accuracy-mid(uReal),'0')
+                            endif
+
+                            if (abs(uReal)-abs(int(uReal)).LT.10.**(-accuracy)) then
+                                mfmt=tpFill(mfmt); mfmt='^.'
+                            endif
+
+                        case ('in'); mfmt='^'
+                    end select
+
+                    valueString=tpFill(valueString)
+
+                    select case(shortKindLabels(variableSet(j)%kind))
+                        case ('re'); valueString=trim(adjustl(prStrByVal(uReal,trim(mfmt))))
+                        case ('in'); valueString=trim(adjustl(prStrByVal(uInt ,trim(mfmt))))
+                        case ('lo'); valueString=trim(adjustl(prStrByVal(uLog)))
+                        case ('ch'); valueString=trim(variableSet(j)%pntch(1:variableSet(j)%vlen))
+                        case ('uc'); valueString=variableSet(j)%pntuch%get()
+                    end select
+
+                    if (shortKindLabels(variableSet(j)%kind).EQ.'re') then
+                        pos=tpIndex(valueString,'E')
+                        if (pos.EQ.0) then
+                            do while (tpEndsWith(trim(valueString),'0'))
+                                ln=len_trim(valueString)
+                                valueString(ln:ln)=' '
+                            enddo
+                        else
+                            do while ( tpEndsWith(valueString(:pos-1),'0') )
+                                ln=len_trim(valueString)
+                                valueString=valueString(:pos-2)//valueString(pos:ln)//tpFill(len(valueString)-ln+1)
+                                pos=pos-1
+                            enddo
+                        endif
+                    endif
+                elseif (nobjs.EQ.2) then
+                    mfmt=tpRetSplit(spl2,2)
+                    select case (variableSet(j)%kind)
+                        case ( 0); uReal=variableSet(j)%pntr16
+                        case ( 1); uReal=variableSet(j)%pntr8
+                        case ( 2); uReal=variableSet(j)%pntr4
+                        case ( 3); uInt =variableSet(j)%pnti8
+                        case ( 4); uInt =variableSet(j)%pnti4
+                        case ( 5); uInt =variableSet(j)%pnti2
+                        case ( 6); uInt =variableSet(j)%pnti1
+                        case ( 7); uLog =variableSet(j)%pntl8
+                        case ( 8); uLog =variableSet(j)%pntl4
+                        case ( 9); uLog =variableSet(j)%pntl2
+                        case (10); uLog =variableSet(j)%pntl1
+                    end select
+                    valueString=tpFill(valueString)
+                    select case(shortKindLabels(variableSet(j)%kind))
+                        case ('re'); valueString=prStrByVal(uReal,trim(mfmt))
+                        case ('in'); valueString=prStrByVal(uInt ,trim(mfmt))
+                        case ('lo'); valueString=prStrByVal(uLog)
+                        case ('ch'); valueString=variableSet(j)%pntch(1:variableSet(j)%vlen)
+                        case ('uc'); valueString=variableSet(j)%pntuch%get()
+                    end select
+                endif
+                ret=tpReplace(ret,str(pstart:pstop),trim(valueString),cnt=1)
+                exit
+            endif
+        enddo
+    enddo
+
+    return
+    end function bdReplacePattern
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    integer*4 function bdReplaceRegisteredPatterns() result(rcode)
+    implicit none
+
+    integer*4 :: k
+
+
+    do k = 1,varAppend
+        if (variableSet(k)%patterns) then
+            if (variableSet(k)%kind.EQ.11) then
+                void=bdSetValue(k, bdReplacePattern(variableSet(k)%pntch))
+            elseif(variableSet(k)%kind.EQ.12) then
+                void=bdSetValue(k, bdReplacePattern(variableSet(k)%pntuch%get()))
+            endif
+        endif
+    enddo
+
+    return
+    end function bdReplaceRegisteredPatterns
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -1617,6 +1796,7 @@
     variableSet(varAppend)%concatCh  =''
     variableSet(varAppend)%nvals     =0
     variableSet(varAppend)%potentiate='n'
+    variableSet(varAppend)%patterns  =false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -1706,6 +1886,7 @@
     variableSet(varAppend)%concatCh  =''
     variableSet(varAppend)%nvals     =0
     variableSet(varAppend)%potentiate='n'
+    variableSet(varAppend)%patterns  =false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -1795,6 +1976,7 @@
     variableSet(varAppend)%concatCh  =''
     variableSet(varAppend)%nvals     =0
     variableSet(varAppend)%potentiate='n'
+    variableSet(varAppend)%patterns  =false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -1880,6 +2062,7 @@
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -1955,6 +2138,7 @@
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -2030,6 +2214,7 @@
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -2105,6 +2290,7 @@
     variableSet(varAppend)%defstor =transfer(ddef,storeTemplate)
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -2175,6 +2361,7 @@
     variableSet(varAppend)%expect  ='any'
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(description)) then
         variableSet(varAppend)%description=description
@@ -2236,6 +2423,7 @@
     variableSet(varAppend)%expect  ='any'
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(description)) then
         variableSet(varAppend)%description=description
@@ -2297,6 +2485,7 @@
     variableSet(varAppend)%expect  ='any'
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(description)) then
         variableSet(varAppend)%description=description
@@ -2358,6 +2547,7 @@
     variableSet(varAppend)%expect  ='any'
     variableSet(varAppend)%concatCh=''
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(description)) then
         variableSet(varAppend)%description=description
@@ -2373,11 +2563,11 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer*8 function shareVariable_c(var,name,opt,def,expect,several,concat,description) result(rcode)
+    integer*8 function shareVariable_c(var,name,opt,def,expect,several,concat,description,register) result(rcode)
     implicit none
     character (len=*), target   :: var
     character (len=*), optional :: def
-    logical*1, optional         :: opt,several
+    logical*1        , optional :: opt,several,register
     character (len=*), optional :: expect,concat,description
 
     character (len=*)           :: name
@@ -2422,6 +2612,7 @@
     variableSet(varAppend)%variable=false
     variableSet(varAppend)%several =dseveral
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -2441,6 +2632,10 @@
         variableSet(varAppend)%description=''
     endif
 
+    if (present(register)) then
+        variableSet(varAppend)%patterns=register
+    endif
+
     if (present(def)) variableSet(varAppend)%defc=trim(def)
 
     return
@@ -2448,11 +2643,11 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer*8 function shareVariable_uc(var,name,opt,def,expect,several,concat,description) result(rcode)
+    integer*8 function shareVariable_uc(var,name,opt,def,expect,several,concat,description,register) result(rcode)
     implicit none
     type(uch), target           :: var
     character (len=*), optional :: def
-    logical*1, optional         :: opt,several
+    logical*1        , optional :: opt,several,register
     character (len=*), optional :: expect,concat,description
 
     character (len=*)           :: name
@@ -2497,6 +2692,7 @@
     variableSet(varAppend)%variable=false
     variableSet(varAppend)%several =dseveral
     variableSet(varAppend)%nvals   =0
+    variableSet(varAppend)%patterns=false
 
     if (present(expect)) then
         variableSet(varAppend)%expect=expect
@@ -2514,6 +2710,10 @@
         variableSet(varAppend)%description=description
     else
         variableSet(varAppend)%description=''
+    endif
+
+    if (present(register)) then
+        variableSet(varAppend)%patterns=register
     endif
 
     if (present(def)) variableSet(varAppend)%defc=trim(def)

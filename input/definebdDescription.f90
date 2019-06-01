@@ -59,6 +59,7 @@
     void=bdVariableAddDescription(loc(systembd%throughHeader)   ,'specifies header for through output file')
     void=bdVariableAddDescription(loc(systembd%throughFile)     ,'specifies file for through output')
     void=bdVariableAddDescription(loc(systembd%throughEnable(1)),'enables through output')
+    void=bdVariableAddDescription(loc(systembd%throughPrefix)   ,'specifies through prefix for every new line')
 
     void=bdAddDescription('iteration','contains general settings for iteration procedures performed during calculation')
     void=bdVariableAddDescription(loc(iterationbd%chkStagnation)      ,'enables iteration procedure stagnation determination')

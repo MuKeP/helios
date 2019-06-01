@@ -1399,7 +1399,7 @@
 
     character (len=:) , allocatable :: cmethod
 
-    integer(kind=iglu), allocatable :: compGrid(:,:),prDiagSet(:),prOffDiagSet(:,:)
+    integer(kind=iglu), allocatable :: compGrid(:,:),prDiagSet(:),prOffDiagSet(:,:),through(:,:)
     real(kind=rglu)   , allocatable :: d1Energies(:,:),d2Energies(:),coPolariz(:,:)
 
 
@@ -1419,6 +1419,7 @@
 
     void=glControlMemory(int( UBnd(1)*UBnd(2)*(rglu+iglu) ,kind=i8kind),'Coulson calculation')
     allocate (compGrid(UBnd(1),UBnd(2)),coPolariz(UBnd(1),UBnd(2)))
+    allocate (through(UBnd(1),UBnd(2))); through=0
 
     ! select Coulson Polarizability matrix elements to be computed
     compGrid=0
@@ -1429,6 +1430,7 @@
         allocate(prDiagSet(UBnd(1))); prDiagSet=0
         do k = 1,ndiagonals
             felem=tpIntByStr(tpSplitHold(k)%get())
+            through(felem,felem)=1
 
             select case (coulsonbd%ctype%get())
                 case('atom-atom')
@@ -1487,6 +1489,7 @@
             if (i.GT.j) then
                 swap=i; i=j; j=swap
             endif
+            through(i,j)=1
 
             select case (coulsonbd%ctype%get())
                 case('atom-atom')
@@ -1589,7 +1592,8 @@
         methodSet(ii)=tpSplitHold(ii)
     enddo
 
-    call singleSession('  '//prJoin([(prStrByVal(fieldbd%strength(k), '____.000'), k=1,3)], '  '))
+    ! call singleSession('  '//prJoin([(prStrByVal(fieldbd%strength(k), '____.000'), k=1,3)], '  '))
+    call singleSession(systembd%throughPrefix%get())
 
     do meth = 1,nmethods
         cmethod=methodSet(meth)%get()
@@ -1656,12 +1660,18 @@
                         do b = c,UBnd(1)
                             if (prOffDiagSet(c,b).EQ.1) then
                                 write (ou,101) c,b,coPolariz(c,b)
-                                call singleSession('  '//prStrByVal(coPolariz(c,b), '____.00000'))
                             endif
                         enddo
                     enddo
                     write (ou,*)
             end select
+            do c = 1,UBnd(1)
+                do b = 1,UBnd(2)
+                    if (through(c,b).EQ.1) then
+                        call singleSession('  '//prStrByVal(coPolariz(c,b), '____.00000'))
+                    endif
+                enddo
+            enddo
         else
             call prMatrix(coPolariz,ou,'Coulson '//coulsonbd%ctype%get()//' polarizabilities ('//cmethod//')',&
                           '^.'//tpFill(paccur, '0'),maxwidth=ouWidth)
@@ -1676,7 +1686,7 @@
                               sizeof(compGrid)  +sizeof(coPolariz)   ,kind=i8kind),&
                         'Coulson calculation', 'free')
 
-    deallocate ( d1Energies,d2Energies,compGrid,coPolariz )
+    deallocate ( d1Energies,d2Energies,compGrid,coPolariz,through )
 
     ! recover global output stream
     call glSetIOunit(svio)

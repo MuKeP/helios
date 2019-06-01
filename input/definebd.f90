@@ -42,13 +42,14 @@
     addr( 7)=bdShareVariable(systembd%memoryReport,    'memory-report'         ,opt=true,def=false)
     addr( 8)=bdShareVariable(systembd%memoryUnits,     'memory-units'          ,opt=true,def='Mb')                         !CHCK
     addr( 9)=bdShareVariable(systembd%memoryThreshold, 'memory-print-threshold',opt=true,def=8._rglu,expect='range(0:1024)')
-    addr(10)=bdShareVariable(systembd%throughHeader,   'through-header'        ,opt=true,def='== Header of through file ==')
-    addr(11)=bdShareVariable(systembd%throughFile,     'through-file'          ,opt=true,def='')
+    addr(10)=bdShareVariable(systembd%throughHeader,   'through-header'        ,opt=true,def='== Header of through file ==',register=true)
+    addr(11)=bdShareVariable(systembd%throughFile,     'through-file'          ,opt=true,def='',register=true)
     addr(12)=bdShareVariable(systembd%throughEnable(1),'through-enable'        ,opt=true,def=false)
+    addr(13)=bdShareVariable(systembd%throughPrefix,   'through-line-prefix'   ,opt=true,def='',register=true)
     !addr(10)=bdShareVariable(systembd%allowMutt,      'email-send'      ,opt=true,def=false)
     !addr(11)=bdShareVariable(systembd%muttSendTared,  'email-send-tared',opt=true,def=true)
     !addr(12)=bdShareVariable(systembd%muttDestination,'email-reciver'   ,opt=true,def='quant@mail.com')
-    void=bdCollect('system',addr(1:12),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+    void=bdCollect('system',addr(1:13),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
     addr(1)=bdShareVariable(iterationbd%chkStagnation      ,'enable-stagnation-check',opt=true,def=true)                 !CHCK
     addr(2)=bdShareVariable(iterationbd%chkDivergence      ,'enable-divergence-check',opt=true,def=true)
