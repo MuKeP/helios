@@ -61,7 +61,7 @@
             endif
 
         case ('end')
-            if (ipFailed) write (ou,'(/A/)') tpAdjustc('For one or more iteration procedures desired accuracy was not reached.', ouWidth)
+            if (ipFailed) write (ou,'(/A/)') tpAdjustc('Attention! For one or more iteration procedures desired accuracy was not reached.', ouWidth)
 
             write (ou,'(/A)') tpFill(ouWidth,'/\') !' sublime enjoyes escaping quotes
             timeSpent(1,2)=timeControl(timeSpent(2,2))

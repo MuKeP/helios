@@ -159,6 +159,9 @@
     void=bdVariableAddDescription(loc(scfbd%exctype) ,tpTranslateEscapes('specifies excited states calculation method:\n'//&
                                                                          'cis    - configuration interaction singles\n'//&
                                                                          'rpa    - random phase appriximation') )
+    void=bdVariableAddDescription(loc(scfbd%achieveSolution)  ,'forces to locate solution, when iteration step is not suitable')
+    void=bdVariableAddDescription(loc(scfbd%iterStepVariation),'specifies maximal variation of iteration step')
+    void=bdVariableAddDescription(loc(scfbd%iterStepChange)   ,'specifies the rate of iteration step change')
 
     void=bdAddDescription('local','contains settings for localization procedure')
     void=bdVariableAddDescription(loc(pipekbd%enabled) ,'enables localization procedure')

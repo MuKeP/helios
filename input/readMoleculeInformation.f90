@@ -211,7 +211,10 @@
 
 
         trConst=1/(BohrRadius*HartreeEnergy) !real coefficient
+        !write(*,*) trConst
         !trConst=0.0694589_rglu               !old value for compatibility
+        !write(*,*) trConst
+        !stop
 
         N=mol%nAtoms; mol%G=0
         select case (generalbd%coulombType%get())

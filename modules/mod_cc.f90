@@ -9,7 +9,7 @@
     use printmod , only: prMatrix,prStrByVal
     use math     , only: tred4
     use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
-    use scf      , only: energySCF,finalizeSCF,printSCFSolution
+    use scf      , only: energySCF,finalizeSCF,printSCFSolution,callbackSCF
     use hdb      , only: mol,ccbd,cuebd,systembd,scfbd,ou,ouWidth,cueConstant1
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -389,7 +389,7 @@
 
             call setSCFParameters
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,callbackSCF,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
 
@@ -441,7 +441,7 @@
 
             call setSCFParameters
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,callbackSCF,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
 
@@ -537,7 +537,7 @@
 
         case ('r-ccd','r-ccsd')
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,callbackSCF,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
             !call printSCFSolution
@@ -562,7 +562,7 @@
 
         case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,callbackSCF,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
             !call printSCFSolution

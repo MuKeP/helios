@@ -109,6 +109,11 @@
         logical(kind=lglu) :: chkStagnation,chkDivergence,chkStopIteration(2),afterPause
         real(kind=rglu)    :: feelDivergence,feelStagnation,thresholdStagnation
         real(kind=rglu)    :: printFrequency,printNotRearly
+
+        ! 0 - iteration, 1 - converged, -1 - failed, -2 - diverged, -3 - stagnated, -4 - iterrupted
+        integer(kind=iglu) :: lastProcedureStatus
+
+        logical(kind=lglu) :: doRestart
     end type bditeration
 
     type bdstates
@@ -153,8 +158,10 @@
     type bdscf
         type(uch)          :: guess,exctype
         integer(kind=iglu) :: maxiters
-        real(kind=rglu)    :: accuracy,iterStep
-        logical(kind=lglu) :: keep
+        real(kind=rglu)    :: accuracy,iterStep,iterStepVariation,iterStepChange
+        logical(kind=lglu) :: keep,achieveSolution
+
+        logical(kind=lglu) :: exceeded
     end type bdscf
 
     type bdpipek

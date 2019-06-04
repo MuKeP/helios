@@ -3,11 +3,11 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     use glob,      only: assignment(=)
-    use glob,      only: uch,rglu,iglu,lglu,true,false,void,i8kind,glControlMemory
+    use glob,      only: uch,rglu,iglu,lglu,true,false,void,i8kind,glControlMemory,nullsub
     use glob,      only: ivarVector,rvarVector
     use hdb,       only: mol,statesbd,lrbd
     use hdb,       only: scfbd,ou,ouWidth,cueConstant1
-    use scf,       only: setSCFParameters,initSCF,iterationSCF,getSCFResult
+    use scf,       only: setSCFParameters,initSCF,iterationSCF,getSCFResult,callbackSCF
     use scf,       only: energySCF,finalizeSCF,printSCFSolution
     use txtParser, only: tpFill,operator(.in.)
     use printmod,  only: prEigenProblem,prMatrix
@@ -146,7 +146,7 @@
         currentState=k
         call guessState(k)
 
-        call iterator(iterationLR,energylr,lrbd%maxiters,lrbd%accuracy*real(2**(k-1),rglu),false,converged)
+        call iterator(iterationLR,energylr,lrbd%maxiters,lrbd%accuracy*real(2**(k-1),rglu),false,nullsub,false,converged)
 
         lrHoldStateVectorR1(    :,:,k)=r1
         lrHoldStateVectorR2(:,:,:,:,k)=r2
@@ -1081,7 +1081,7 @@
         case ('lr-spin-cue-ccsd','lr-cue-ccsd')
             call setSCFParameters
             call initSCF
-            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
+            call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,callbackSCF,true,converged)
             call getSCFResult(vectors=hfV,energies=hfE)
 
         case ('lr-spin-u-ccsd','lr-spin-r-ccsd','lr-u-ccsd','lr-r-ccsd')

@@ -3,9 +3,9 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     use glob     , only: assignment(=)
-    use glob     , only: uch,iglu,rglu,lglu,true,false,void,i8kind,glControlMemory
+    use glob     , only: uch,iglu,rglu,lglu,true,false,void,i8kind,glControlMemory,nullsub
     use printmod , only: prMatrix,prEigenProblem
-    use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult
+    use scf      , only: setSCFParameters,initSCF,iterationSCF,getSCFResult,callbackSCF
     use scf      , only: energySCF,finalizeSCF,printSCFSolution
     use hdb      , only: mol,systembd,scfbd,ou,ouWidth
 
@@ -77,7 +77,7 @@
 
 
     call initSCF
-    call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,converged)
+    call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,callbackSCF,true,converged)
     call getSCFResult(vectors=V, energies=E)
 
     !call printSCFSolution

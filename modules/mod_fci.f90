@@ -3,7 +3,7 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     use glob,     only: assignment(=)
-    use glob,     only: true,false,rglu,iglu,lglu,void,glControlMemory,i8kind
+    use glob,     only: true,false,rglu,iglu,lglu,void,glControlMemory,i8kind,nullsub
     use math,     only: tred4
     use fcontrol, only: fcNewID,fcNullID
     use hdb,      only: mol,fcibd,statesbd,densitybd,ou,ierror
@@ -164,7 +164,7 @@
         endif
         AN0=ANOR(X,NN,NN1)
 
-        call iterator(iteractionFCI,energyFCI,fcibd%maxiters,fcibd%accuracy*real(2**istate,rglu),false,converged)
+        call iterator(iteractionFCI,energyFCI,fcibd%maxiters,fcibd%accuracy*real(2**istate,rglu),false,nullsub,false,converged)
 
         fciHoldStateEnergy(  istate)=currentEnergy
         fciHoldStateVector(:,istate)=X

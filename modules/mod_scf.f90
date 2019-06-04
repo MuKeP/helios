@@ -3,7 +3,7 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     use glob      , only: iglu,rglu,lglu,void,true,false,uch,i8kind,glControlMemory
-    use hdb       , only: mol,scfbd,ou,ouWidth
+    use hdb       , only: mol,scfbd,ou,ouWidth,iterationbd,ipFailed
     use txtParser , only: tpFill
     use math      , only: tred4
     use printmod  , only: prEigenProblem,prMatrix
@@ -22,13 +22,14 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     integer(kind=iglu) :: N,Nocc
-    logical(kind=lglu) :: hasGuess
+    logical(kind=lglu) :: hasGuess,saveKeepStatus
+    real   (kind=rglu) :: iterstep,variation
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     private
     public :: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFResult,&
-              finalizeSCF,printSCFSolution,getSCFRDMElement
+              finalizeSCF,printSCFSolution,getSCFRDMElement,callbackSCF
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -44,6 +45,9 @@
 
     call controlMemorySCF('general','allocate')
     hasGuess=false
+
+    variation=0
+    scfbd%exceeded=false
 
     return
     end subroutine setSCFParameters
@@ -63,6 +67,11 @@
     endif
 
     hasGuess=true
+
+    if ((iterationbd%lastProcedureStatus.GE.0).OR.(scfbd%exceeded)) then
+        ! write(ou,*) 'Dropping variation.'
+        variation=0
+    endif
 
     call prepareFockian
 
@@ -109,7 +118,7 @@
     !$omp do
     do mu = 1,N
         do nu = 1,N
-            D(mu,nu)=D(mu,nu)-scfbd%iterStep*Fmin(mu,nu)
+            D(mu,nu)=D(mu,nu)-(scfbd%iterStep+variation)*Fmin(mu,nu)
         enddo
     enddo
     !$omp end parallel
@@ -123,6 +132,32 @@
 
     return
     end subroutine iterationSCF
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine callbackSCF
+    implicit none
+
+
+    variation=variation+scfbd%iterStepChange
+    if (scfbd%achieveSolution) then
+        if (variation.LT.scfbd%iterStepVariation) then
+            scfbd%exceeded=false
+            write(ou,'(A,F5.3,A)') '**** Restarting SCF procedure. Current step: ',&
+                                   scfbd%iterStep+variation,' ****'
+            saveKeepStatus=scfbd%keep
+            scfbd%keep=false
+            call initSCF
+            scfbd%keep=saveKeepStatus
+            return
+        endif
+    endif
+
+    iterationbd%doRestart=false
+    scfbd%exceeded=true
+
+    return
+    end subroutine callbackSCF
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -316,6 +351,7 @@
     integer(kind=iglu) :: i,mu,nu
 
 
+    D=0
     !$omp parallel default(shared) private(mu,nu,sum,i)
     !$omp do
     do mu = 1,N
@@ -341,6 +377,7 @@
     integer(kind=iglu) :: mu,nu,i
 
 
+    F=0
     !$omp parallel default(shared) private(mu,nu,sum,i)
     !$omp do
     do mu = 1,N
@@ -369,6 +406,7 @@
     integer(kind=iglu) :: i,j,mu
 
 
+    Refl=0
     !$omp parallel default(shared) private(i,j)
     !$omp do
     do i = 1,N
@@ -379,6 +417,7 @@
     enddo
     !$omp end parallel
 
+    Comut=0
     !$omp parallel default(shared) private(i,j,sum1,sum2)
     !$omp do
     do i = 1,N
@@ -393,6 +432,7 @@
     enddo
     !$omp end parallel
 
+    Fmin=0
     !$omp parallel default(shared) private(i,j,sum1)
     !$omp do
     do i = 1,N

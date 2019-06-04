@@ -4,7 +4,7 @@
 
     use glob,           only: assignment(=),glGetIOunit,glSetIOunit,purifyValues,glControlMemory
     use glob,           only: rglu,iglu,lglu,true,false,uch,void,gluCompare,timeControlCheckpoint
-    use glob,           only: i8kind,i4kind,r8kind
+    use glob,           only: i8kind,i4kind,r8kind,nullsub
     use txtParser,      only: tpSplit,tpSplitLen,tpSplitHold,tpFill,tpAdjustc,operator(.in.)
     use txtParser,      only: tpIntByStr,tpIntArrayByStr,tpCount
     use printmod,       only: prStrByVal,prMatrix,prEigenProblem,prLongText,prJoin
@@ -17,7 +17,7 @@
     use huckel,         only: getHuckelResult,getHuckRDMElement,setHuckelParameters,energyHuckel
     use huckel,         only: finalizeHuck
     use scf,            only: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFRDMElement
-    use scf,            only: getSCFResult,finalizeSCF,printSCFSolution
+    use scf,            only: getSCFResult,finalizeSCF,printSCFSolution,callbackSCF
     use mbpt,           only: setMBPTParameters,initMBPT,energyMBPT,finalizeMBPT
     use coupledCluster, only: setCCParameters,initCC,iterationCC,energyCC,finalizeCC,analizewfCC
     use coupledCluster, only: getCCResults
@@ -121,7 +121,7 @@
                 case ('rhf') !done
                     call setSCFParameters
                     call initSCF
-                    call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,false,converged)
+                    call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,false,callbackSCF,true,converged)
                     call energySCF(holdEnergy)
                     call getSCFResult(vectors=V,energies=E)
 
@@ -158,7 +158,7 @@
                       'r-ccsd(t)','cue-ccsdt','u-ccsdt','r-ccsdt') !done
                     call setCCParameters(method)
                     call initCC
-                    call iterator(iterationCC,energyCC,ccbd%maxiters,ccbd%accuracy,false,converged)
+                    call iterator(iterationCC,energyCC,ccbd%maxiters,ccbd%accuracy,false,nullsub,false,converged)
                     call energyCC(holdEnergy)
 
                     lastEnergyHolder(0)=holdEnergy(1)
@@ -220,7 +220,7 @@
 
                     case ('rhf') !done
                         call initSCF
-                        call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,false,converged)
+                        call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,false,callbackSCF,true,converged)
                         call energySCF(holdEnergy)
                         call getSCFResult(vectors=V,energies=E)
 
@@ -253,7 +253,7 @@
                     case ('cue-ccs','r-ccd','u-ccd','cue-ccsd','r-ccsd','u-ccsd',&
                           'r-ccsd(t)','cue-ccsdt','u-ccsdt','r-ccsdt') !done
                         call initCC
-                        call iterator(iterationCC,energyCC,ccbd%maxiters,ccbd%accuracy,false,converged)
+                        call iterator(iterationCC,energyCC,ccbd%maxiters,ccbd%accuracy,false,nullsub,false,converged)
                         call energyCC(holdEnergy)
 
                         lastEnergyHolder(0)=holdEnergy(1)
