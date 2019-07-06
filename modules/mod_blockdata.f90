@@ -991,7 +991,7 @@
         endif
     enddo
 
-    return
+    rcode=0; return
     end function bdReplaceRegisteredPatterns
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

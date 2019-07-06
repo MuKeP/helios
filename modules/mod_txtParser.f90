@@ -982,18 +982,17 @@
     ! write (*,'(A)') '12345678901234567890123456789012345678901234567890'
 
     if (tpSplitLen.EQ.1) then
-        ! write(*,*) 'txtParser only one:','$'//str//'$'
-        ret=true; tpSplitHold(1)=str; return
+        ret=true; tpSplitHold(1)=str
+    else
+        sta=1
+        do k = 1,ln-1
+            sto=tpIndex(str,delim,cnt=k)
+            tpSplitHold(k)=str(sta:sto-1)
+
+            sta=sto+len(delim)
+        enddo
+        tpSplitHold(ln)=str(sta:)
     endif
-
-    sta=1
-    do k = 1,ln-1
-        sto=tpIndex(str,delim,cnt=k)
-        tpSplitHold(k)=str(sta:sto-1)
-
-        sta=sto+len(delim)
-    enddo
-    tpSplitHold(ln)=str(sta:)
 
     if (present(arr)) then
         if (allocated(arr)) then
@@ -1031,17 +1030,17 @@
     ! write (*,'(A)') '12345678901234567890123456789012345678901234567890'
 
     if (tpSplitLen.EQ.1) then
-        ret=true; tpSplitHold(1)=str%get(); return
+        ret=true; tpSplitHold(1)=str%get()
+    else
+        sta=1
+        do k = 1,ln-1
+            sto=tpIndex(str%get(),delim,cnt=k)
+            tpSplitHold(k)=str%get(sta,sto-1)
+
+            sta=sto+len(delim)
+        enddo
+        tpSplitHold(ln)=str%get(sta)
     endif
-
-    sta=1
-    do k = 1,ln-1
-        sto=tpIndex(str%get(),delim,cnt=k)
-        tpSplitHold(k)=str%get(sta,sto-1)
-
-        sta=sto+len(delim)
-    enddo
-    tpSplitHold(ln)=str%get(sta)
 
     if (present(arr)) then
         if (allocated(arr)) then
