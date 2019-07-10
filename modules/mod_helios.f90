@@ -114,6 +114,8 @@
         integer(kind=iglu) :: lastProcedureStatus
 
         logical(kind=lglu) :: doRestart
+
+        logical(kind=lglu) :: energy
     end type bditeration
 
     type bdstates
@@ -164,11 +166,12 @@
         logical(kind=lglu) :: exceeded
     end type bdscf
 
-    type bdpipek
+    type bdlocal
+        type(uch)          :: method
         integer(kind=iglu) :: maxiters
         real(kind=rglu)    :: accuracy
         logical(kind=lglu) :: enabled
-    end type bdpipek
+    end type bdlocal
 
     type bdcc
         type(uch)          :: projType,diisStorage
@@ -250,7 +253,7 @@
     type (bdcue)           :: cuebd
     type (bdfci)           :: fcibd
     type (bdscf)           :: scfbd
-    type (bdpipek)         :: pipekbd
+    type (bdlocal)         :: localbd
     type (bdcc)            :: ccbd
     type (bdlr)            :: lrbd
     type (bditeration)     :: iterationbd
@@ -489,6 +492,8 @@
     call definebd
     call defineArguments
 
+    call resetIterationState
+
     return
     end subroutine onLoad
 
@@ -580,6 +585,23 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    subroutine setIterationHeader(str)
+    implicit none
+
+    character(len=*), intent(in), optional :: str
+
+
+    if (present(str)) then
+        iheader=str
+    else
+        iheader=''
+    endif
+
+    return
+    end subroutine setIterationHeader
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     integer(kind=iglu) function getMethodNumber(method) result(ret)
     implicit none
 
@@ -628,6 +650,23 @@
 
     return
     end subroutine singleSession
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine resetIterationState(state)
+    implicit none
+
+    logical(kind=lglu), optional :: state
+
+
+    if (present(state)) then
+        iterationbd%energy=state
+    else
+        iterationbd%energy=true
+    endif
+
+    return
+    end subroutine resetIterationState
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

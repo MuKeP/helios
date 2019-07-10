@@ -2575,7 +2575,7 @@
 
     if (ccbd%dcue) then
         if (allocated(hV)) then
-            stop 'Internal error (coupledCluster::putCUEMOs): array have to be deallocated.'
+            stop 'Internal error (coupledCluster::putCUEMOs): array has to be deallocated.'
         endif
 
         N=UBound(V,1); M=UBound(V,2)

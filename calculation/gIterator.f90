@@ -3,7 +3,7 @@
     use glob,      only: rglu,iglu,lglu,true,false,timeControl,gluCompare
     use printmod,  only: prStrByVal
     use txtParser, only: tpFill,tpAdjustc
-    use hdb,       only: iterationbd,ou,iheader,ipFailed
+    use hdb,       only: iterationbd,ou,iheader,ipFailed,resetIterationState
 
     implicit none
 
@@ -75,9 +75,15 @@
         ipFailed=true
     endif
 
+    call resetIterationState
+
     return
 
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     contains
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
         subroutine performIterationProcedure
 
@@ -203,8 +209,7 @@
         return
         end subroutine performIterationProcedure
 
-
-
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
         subroutine printInfo(string,iou)
         implicit none
@@ -229,7 +234,11 @@
                     write (iou,'(/A)') tpFill(headLen,'=')
                 endif
                 write (iou, '(A)') tpAdjustc('1 - Iteration, 2 - Accuracy, 3 - Step efficiency, 4 - Time per iteration',headLen)
-                write (iou, '(A)') tpAdjustc('5 - Energy, 6 - Estimated iterations left, 7 - Estimated time left',headLen)
+                if (iterationbd%energy) then
+                    write (iou, '(A)') tpAdjustc('5 - Energy, 6 - Estimated iterations left, 7 - Estimated time left',headLen)
+                else
+                    write (iou, '(A)') tpAdjustc('5 - Fitness, 6 - Estimated iterations left, 7 - Estimated time left',headLen)
+                endif
                 write (iou, '(A)') tpFill(headLen,'=')
                 write (iou, '(2X,i1,2X,"|",6X,i1,6X,"|",4X,i1,3X,"|",6X,i1,5X,"|",9X,i1,9X,"|",2X,i1,2X,"|",5X,i1,5X)' ) (i, i = 1,7)
                 write (iou, '(A)') tpFill(headLen,'=')
@@ -246,7 +255,7 @@
                                 prStrByVal(timePerIter,0,4,'exp'),separator,&
                                 !prStrByVal(avgTimePerIter,0,4,'exp'),&
                                 prStrByVal(energy(1),0,12,'exp'),separator,&
-                                tpAdjustc(trim(adjustl(prStrByVal(int(estimatedIters),5))),5),separator,&
+                                tpAdjustc(trim(adjustl(prStrByVal(min(int(estimatedIters),maxiter-iteration+1),5))),5),separator,&
                                 prStrByVal(estimatedTime,0,4,'exp')
 
             case ('converged')
@@ -258,8 +267,14 @@
                 write (iou,'(A)') tpFill(headLen,'=')
                 write (iou,'(A)') tpAdjustc('Procedure converged after '//prStrByVal(iteration)//'('//prStrByVal(successfulIterations)//&
                                             ') iterations'//' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'.',headLen)
-                write (iou,'(A)') tpAdjustc('Resulting energy '//prStrByVal(energy(1),0,15,'exp')//' eV. '//&
-                                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+
+                if (iterationbd%energy) then
+                    write (iou,'(A)') tpAdjustc('Resulting energy '//prStrByVal(energy(1),0,15,'exp')//' eV. '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                else
+                    write (iou,'(A)') tpAdjustc('Resulting fitness '//prStrByVal(energy(1),0,15,'exp')//' '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                endif
                 write (iou,'(A)') tpAdjustc('Avg iteration efficiency'//prStrByVal(cummImprovement/iteration,3,2)//&
                                             '%. Avg iteration time '//trim(adjustl(prStrByVal(avgTimePerIter,8,5)))//' seconds.',headLen)
                 write (iou,'(A)') tpFill(headLen,'=')
@@ -273,8 +288,13 @@
                 write (iou,'(A)') tpFill(headLen,'=')
                 write (iou,'(A)') tpAdjustc('Accuracy was not reached after '//prStrByVal(iteration)//' iterations'//&
                                             ' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'.',headLen)
-                write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
-                                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                if (iterationbd%energy) then
+                    write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                else
+                    write (iou,'(A)') tpAdjustc('Fitness '//prStrByVal(energy(1),0,13,'exp')//' '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                endif
                 write (iou,'(A)') tpAdjustc('Avg iteration efficiency '//trim(adjustl(prStrByVal(cummImprovement/iteration,3,2)))//'%. '//&
                                             'Avg iteration time '//trim(adjustl(prStrByVal(avgTimePerIter,8,5)))//' seconds.',headLen)
                 write (iou,'(A)') tpFill(headLen,'=')
@@ -288,8 +308,13 @@
                 write (iou,'(A)') tpFill(headLen,'=')
                 write (iou,'(A)') tpAdjustc('Procedure diverged and stopped after '//prStrByVal(iteration)//' iterations'//&
                                             ' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'.',headLen)
-                write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
-                                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                if (iterationbd%energy) then
+                    write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                else
+                    write (iou,'(A)') tpAdjustc('Fitness '//prStrByVal(energy(1),0,13,'exp')//' '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                endif
                 write (iou,'(A)') tpAdjustc('Avg iteration efficiency '//trim(adjustl(prStrByVal(cummImprovement/iteration,3,2)))//'%. '//&
                                             'Avg iteration time '//trim(adjustl(prStrByVal(avgTimePerIter,8,5)))//' seconds.',headlen)
                 write (iou,'(A)') tpFill(headLen,'=')
@@ -303,8 +328,13 @@
                 write (iou,'(A)') tpFill(headLen,'=')
                 write (iou,'(A)') tpAdjustc('Procedure stagnated and stopped after '//prStrByVal(iteration)//' iterations'//&
                                             ' with accuracy'//prStrByVal(currentAccuracy,0,2,'exp')//'.',headLen)
-                write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
-                                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                if (iterationbd%energy) then
+                    write (iou,'(A)') tpAdjustc('Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                else
+                    write (iou,'(A)') tpAdjustc('Fitness '//prStrByVal(energy(1),0,13,'exp')//' '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                endif
                 write (iou,'(A)') tpAdjustc('Avg iteration efficiency '//trim(adjustl(prStrByVal(cummImprovement/iteration,3,2)))//'%. '//&
                                             'Avg iteration time '//trim(adjustl(prStrByVal(avgTimePerIter,8,5)))//' seconds.',headlen)
                 write (iou,'(A)') tpFill(headLen,'=')
@@ -317,9 +347,15 @@
 
                 write (iou,'(A)') tpFill(headLen,'=')
                 write (iou,'(A)') tpAdjustc('Procedure is interrupted due to StopIteration on '//prStrByVal(iteration)//' iteration at accuracy',headLen)
-                write (iou,'(A)') tpAdjustc(prStrByVal(currentAccuracy,0,2,'exp')//'. '//&
-                                            'Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
-                                            'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                if (iterationbd%energy) then
+                    write (iou,'(A)') tpAdjustc(prStrByVal(currentAccuracy,0,2,'exp')//'. '//&
+                                                'Energy '//prStrByVal(energy(1),0,13,'exp')//' eV. '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                else
+                    write (iou,'(A)') tpAdjustc(prStrByVal(currentAccuracy,0,2,'exp')//'. '//&
+                                                'Fitness '//prStrByVal(energy(1),0,13,'exp')//' '//&
+                                                'Total '//trim(adjustl(prStrByVal(fTime(1)-sTime(1),10,2)))//' seconds spent.',headLen)
+                endif
                 write (iou,'(A)') tpAdjustc('Avg iteration efficiency '//trim(adjustl(prStrByVal(cummImprovement/iteration,3,2)))//'%. '//&
                                             'Avg iteration time '//trim(adjustl(prStrByVal(avgTimePerIter,8,5)))//' seconds.',headlen)
                 write (iou,'(A)') tpFill(headLen,'=')
@@ -328,5 +364,7 @@
 
         return
         end subroutine printInfo
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     end subroutine iterator

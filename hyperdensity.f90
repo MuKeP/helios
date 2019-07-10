@@ -9,8 +9,8 @@
     use math,           only: LagrangeDerivative,tred4
     use hdb,            only: mol,scfbd,ccbd,statesbd,generalbd,polarizbd,ou,ouWidth,gEnergyHolder
     use hdb,            only: pointToCalc,pointSet,GlEt,perturbate,perturbationID,getMethodNumber
-    use hdb,            only: noPerturbation,iheader,densitybd,hyperchargesbd,atomEqu,bondEqu
-    use hdb,            only: HartreeEnergy,BohrRadius,dipoleToDeby,coulsonbd
+    use hdb,            only: noPerturbation,densitybd,hyperchargesbd,atomEqu,bondEqu
+    use hdb,            only: HartreeEnergy,BohrRadius,dipoleToDeby,coulsonbd,setIterationHeader
     use huckel,         only: getHuckelResult,getHuckRDMElement,setHuckelParameters,energyHuckel
     use huckel,         only: finalizeHuck
     use scf,            only: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFRDMElement
@@ -248,7 +248,7 @@
 !     ! recover global output stream
 !     call glSetIOunit(svio)
 
-!     iheader=''
+!     call setIterationHeader()
 
 ! 100 format (/1X,'Atom',4X,'Q',A,9X,'M',A,8X,'Q',A,7X,'M',A,8X,'Q',A,6X,'M',A,7X,'Q',A,5X,'M',A)
 ! 101 format ( 1X,i3    ,1X,4(1X,F7.4,1X,ES11.4))
@@ -312,7 +312,7 @@
 
 
         ! pcurr=pcurr+1
-        ! iheader=' hypercharges: '//cmethod//', '//message//' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] '
+        ! call setIterationHeader(' hypercharges: '//cmethod//', '//message//' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] ')
 
         ! return
         ! end subroutine updateHeader

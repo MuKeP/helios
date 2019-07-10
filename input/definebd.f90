@@ -5,7 +5,7 @@
     use hdb,       only: in,eu,lrg,scfg,ierror
     use hdb,       only: generalbd,systembd,geometrybd,statesbd,polarizbd,iterationbd
     use hdb,       only: densitybd,coulsonbd,hyperchargesbd,cuebd,fcibd,scfbd,lrbd,ccbd
-    use hdb,       only: pipekbd,fieldbd
+    use hdb,       only: localbd,fieldbd
     use fcontrol,  only: fcNewID,fcBanID
     use datablock, only: bdShareVariable,bdCollect
 
@@ -136,10 +136,11 @@
     addr(9)=bdShareVariable(scfbd%iterStepChange   ,'variation-rate'       ,opt=true,def=0.005_rglu,expect='range(0:1)')
     void=bdCollect('scf',addr(1:9),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
-    addr(1)=bdShareVariable(pipekbd%maxiters,'max-iterations',opt=true,def=800)
-    addr(2)=bdShareVariable(pipekbd%accuracy,'accuracy'      ,opt=true,def=10._rglu,expect='range(1:15)',potentiate='-')
-    addr(3)=bdShareVariable(pipekbd%enabled ,'enabled'       ,opt=true,def=false)
-    void=bdCollect('local',addr(1:3),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)                              !TODO
+    addr(1)=bdShareVariable(localbd%maxiters,'max-iterations',opt=true,def=400)
+    addr(2)=bdShareVariable(localbd%accuracy,'accuracy'      ,opt=true,def=8._rglu,expect='range(1:15)',potentiate='-')
+    addr(3)=bdShareVariable(localbd%enabled ,'enabled'       ,opt=true,def=false)
+    addr(4)=bdShareVariable(localbd%method  ,'procedure'     ,opt=true,def='pipek-mezey',expect='any')
+    void=bdCollect('local',addr(1:4),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
     addr( 1)=bdShareVariable(ccbd%projType      ,'projection-type'           ,opt=true,def='2-1',expect='list(1,2-1)')
     addr( 2)=bdShareVariable(ccbd%maxiters      ,'max-iterations'            ,opt=true,def=2000)

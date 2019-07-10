@@ -5,6 +5,7 @@ makefile
 *.sh
 *.bat
 *.out
+*.log
 *.txt
 *.obj
 *.mod
@@ -12,5 +13,5 @@ makefile
 *.dat
 *.bak*
 fort.*
-_tmp/
-\!bk/
+_*/
+\!*/

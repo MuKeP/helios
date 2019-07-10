@@ -1,10 +1,10 @@
     subroutine ivv_dens_hyper
 
-    use glob,           only: iglu,rglu,system,assignment(=),purifyValues,NaN
+    use glob,           only: iglu,rglu,system,purifyValues,NaN
     use glob,           only: lglu,true,false,uch,void,gluCompare,timeControlCheckpoint
     use printmod,       only: prStrByVal,prMatrix,prEigenProblem,prLongText
-    use hdb,            only: iheader,mol,hyperchargesbd,HartreeEnergy,BohrRadius,dipoleToDeby
-    use hdb,            only: perturbate,ou,ccbd
+    use hdb,            only: mol,hyperchargesbd,HartreeEnergy,BohrRadius,dipoleToDeby
+    use hdb,            only: perturbate,ou,ccbd,setIterationHeader
     use coupledCluster, only: R,F,Nel,No,t1,t2,hV,putCUEMOs
     use property,       only: getEnergy
     use math,           only: LagrangeDerivative
@@ -219,7 +219,7 @@
 
 
         pcurr=pcurr+1
-        iheader=' hypercharges: '//cmethod//', '//message//' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] '
+        call setIterationHeader(' hypercharges: '//cmethod//', '//message//' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] ')
 
         ret=0; return
         end function updateHeader

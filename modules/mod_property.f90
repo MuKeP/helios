@@ -11,9 +11,9 @@
     use math,           only: LagrangeDerivative,tred4
     use hdb,            only: mol,scfbd,ccbd,statesbd,generalbd,polarizbd,ou,ouWidth,gEnergyHolder
     use hdb,            only: pointToCalc,pointSet,GlEt,perturbate,perturbationID,getMethodNumber
-    use hdb,            only: noPerturbation,iheader,densitybd,hyperchargesbd,atomEqu,bondEqu
+    use hdb,            only: noPerturbation,densitybd,hyperchargesbd,atomEqu,bondEqu
     use hdb,            only: HartreeEnergy,BohrRadius,dipoleToDeby,coulsonbd,systembd,fieldbd
-    use hdb,            only: singleSession
+    use hdb,            only: singleSession,setIterationHeader
     use huckel,         only: getHuckelResult,getHuckRDMElement,setHuckelParameters,energyHuckel
     use huckel,         only: finalizeHuck
     use scf,            only: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFRDMElement
@@ -460,9 +460,9 @@
 
 
         pcurr=pcurr+1
-        iheader=' Polarizability: '//trim(cmethod)//', States '//prStrByVal(states+1)//&
-                ', Field '//prStrByVal(pX)//', '//prStrByVal(pY)//', '//prStrByVal(pZ)//&
-                ' ['//prStrByVal(pcurr)//'/'//prStrByVal(pointToCalc)//'] '
+        call setIterationHeader(' Polarizability: '//trim(cmethod)//', States '//prStrByVal(states+1)//&
+                                ', Field '//prStrByVal(pX)//', '//prStrByVal(pY)//', '//prStrByVal(pZ)//&
+                                ' ['//prStrByVal(pcurr)//'/'//prStrByVal(pointToCalc)//'] ')
 
         return
         end subroutine updateHeader
@@ -712,7 +712,7 @@
     endif
     deallocate (methodSet)
 
-    iheader=''
+    call setIterationHeader
 
     return
 
@@ -982,8 +982,8 @@
         if (present(p1)) pr2=p2
 
         ! header for iteration procedure
-        iheader=' RDM: '//trim(cmethod)//', '//message//&
-                ' ['//prStrByVal(pr1)//'/'//prStrByVal(pr2)//'] '
+        call setIterationHeader(' RDM: '//trim(cmethod)//', '//message//&
+                                ' ['//prStrByVal(pr1)//'/'//prStrByVal(pr2)//'] ')
 
         return
         end subroutine updateHeader
@@ -1312,8 +1312,7 @@
 
     ! recover global output stream
     call glSetIOunit(svio)
-
-    iheader=''
+    call setIterationHeader
 
 100 format (/1X,'Atom',4X,'Q',A,9X,'M',A,8X,'Q',A,7X,'M',A,8X,'Q',A,6X,'M',A,7X,'Q',A,5X,'M',A)
 101 format ( 1X,i3    ,1X,4(1X,F7.4,1X,ES11.4))
@@ -1375,8 +1374,8 @@
 
 
         pcurr=pcurr+1
-        iheader=' hypercharges: '//trim(cmethod)//', '//message//&
-                ' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] '
+        call setIterationHeader(' hypercharges: '//trim(cmethod)//', '//message//&
+                                ' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] ')
 
         return
         end subroutine updateHeader
@@ -1690,8 +1689,7 @@
 
     ! recover global output stream
     call glSetIOunit(svio)
-
-    iheader=''
+    call setIterationHeader
 
 100 format(2X,i4,2X,F<3+paccur>.<paccur>,2X,F<4+paccur>.<paccur>)
 101 format(2X,i4,2X,i4,3X,F<3+paccur>.<paccur>)
@@ -1817,8 +1815,8 @@
 
 
         pcurr=pcurr+1
-        iheader=' coulson: '//trim(cmethod)//', '//message//&
-                ' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] '
+        call setIterationHeader(' coulson: '//trim(cmethod)//', '//message//&
+                                ' ['//prStrByVal(pcurr)//'/'//prStrByVal(pcount)//'] ')
 
         return
         end subroutine updateHeader
@@ -1849,7 +1847,7 @@
         if (.NOT.(methodSet(i)%get() .in. ['cue-ccs','r-ccd','u-ccd','cue-ccsd','r-ccsd',&
                                            'u-ccsd','cue-ccsdt','u-ccsdt','r-ccsdt'])) cycle
 
-        iheader=' Wave-function analysis: '//methodSet(i)%get()//' '
+        call setIterationHeader(' Wave-function analysis: '//methodSet(i)%get()//' ')
         rez=getEnergy(methodSet(i)%get(),statesbd%nStates)
         call analizewfCC
 

@@ -2,7 +2,7 @@
 
     use glob,      only: iglu,void
     use hdb,       only: generalbd,systembd,iterationbd,geometrybd,statesbd,polarizbd,fieldbd
-    use hdb,       only: densitybd,coulsonbd,hyperchargesbd,cuebd,fcibd,scfbd,lrbd,ccbd,pipekbd
+    use hdb,       only: densitybd,coulsonbd,hyperchargesbd,cuebd,fcibd,scfbd,lrbd,ccbd,localbd
     use datablock, only: bdAddDescription,bdVariableAddDescription
     use txtParser, only: tpTranslateEscapes
 
@@ -164,9 +164,10 @@
     void=bdVariableAddDescription(loc(scfbd%iterStepChange)   ,'specifies the rate of iteration step change')
 
     void=bdAddDescription('local','contains settings for localization procedure')
-    void=bdVariableAddDescription(loc(pipekbd%enabled) ,'enables localization procedure')
-    void=bdVariableAddDescription(loc(pipekbd%maxiters),'specifies maximum number of iterations to be performed')
-    void=bdVariableAddDescription(loc(pipekbd%accuracy),'specifies accuracy to be reached')
+    void=bdVariableAddDescription(loc(localbd%enabled) ,'enables localization procedure')
+    void=bdVariableAddDescription(loc(localbd%maxiters),'specifies maximum number of iterations to be performed')
+    void=bdVariableAddDescription(loc(localbd%accuracy),'specifies accuracy to be reached')
+    void=bdVariableAddDescription(loc(localbd%method)  ,'specifies algorithm')
 
     void=bdAddDescription('coupled-cluster','contains settings for coupled-cluster methods')
     void=bdVariableAddDescription(loc(ccbd%projType),tpTranslateEscapes('specifies projection type onto doubles (for spatial orbitals):\n'//&
