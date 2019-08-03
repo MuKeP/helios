@@ -21,19 +21,27 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CHANGELOG ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 !
+!   *** 2019.07.27 (v3.700):
+!     > added tpIsAnyInList(flist, slist).
+!       If any in the first list present in the second list, returns true.
+!     > added tpGetSplit([str | uch], delim) + overrides .in. operator.
+!       Returns array of stings splited from str.
+!       !!!IMPORTANT, returns with trailing spaces,
+!       needs trim() for every array element: drawback of Fortran LHS procedure.
+!
 !   *** 2019.06.01 (v3.621):
-!   changed behaviour of tpSplit. Now if separator is absent - return the whole string.
+!     > changed behaviour of tpSplit. Now if separator is absent - return the whole string.
 !
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob    , only: assignment (=)
+    use glob    , only: assignment(=)
     use glob    , only: r8kind,void,voidl,true,false,NaN,uch
     use fcontrol, only: fcNewID,fcBanID,fcUnBanID,fcNullID
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: tpVersion='3.621'
-    character (len=*), parameter :: tpDate   ='2019.06.01'
+    character (len=*), parameter :: tpVersion='3.700'
+    character (len=*), parameter :: tpDate   ='2019.07.27'
     character (len=*), parameter :: tpAuthor ='Anton B. Zakharov'
 
     integer*4, parameter         :: maxStrLen=1024,maxCommentDefLen=5
@@ -119,8 +127,12 @@
 
     interface operator (.in.)
         module procedure tpIsIn_ch_ch,tpIsIn_ch_uc,tpIsIn_uc_ch,tpIsIn_uc_uc,&
-                         tpIsStrInList_ch,tpIsStrInList_uc
+                         tpIsStrInList_ch,tpIsStrInList_uc,tpIsAnyInList
     end interface
+
+    interface tpGetSplit
+        module procedure tpGetSplit_ch, tpGetSplit_uc
+    end interface tpGetSplit
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -132,7 +144,7 @@
                  tpIsStrInList_ch,tpIsStrInList_uc,tpLocateOne,          &
                  tpLocateOneOf,tpIsIn_ch_ch,tpIsIn_ch_uc,tpIsIn_uc_ch,   &
                  tpIsIn_uc_uc,tpSplit_uc,tpSplit_ch,tpRetSplit_ch,       &
-                 tpRetSplit_uc
+                 tpRetSplit_uc,tpIsAnyInList,tpGetSplit_ch,tpGetSplit_uc
 
     private   :: fcNewID,fcBanID,fcUnBanID,fcNullID
     private   :: uch,void,voidl,true,false
@@ -959,6 +971,69 @@
 
     !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    function tpGetSplit_ch(str,delim) result(ret)
+    implicit none
+
+    character (len=*)               , intent(in)  :: str,delim
+    character (len=:),   allocatable              :: ret(:)
+    type(uch), allocatable                        :: arr(:)
+    integer*4                                     :: k,ln,sta,sto
+
+
+    ln=tpCount(str,delim,overlap=false)+1
+    if (ln.EQ.1) then
+        allocate(ret, source=[str])
+    else
+        allocate (arr(ln))
+        sta=1
+        do k = 1,ln-1
+            sto=tpIndex(str,delim,cnt=k)
+            arr(k)=str(sta:sto-1)
+
+            sta=sto+len(delim)
+        enddo
+        arr(ln)=str(sta:)
+
+        allocate(ret, source=[(arr(k)%get(), k=1,ln)])
+    endif
+
+    return
+    end function tpGetSplit_ch
+
+    !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    function tpGetSplit_uc(str,delim) result(ret)
+    implicit none
+
+    type(uch)                       , intent(in)  :: str
+    character(len=*)                , intent(in)  :: delim
+    character (len=:),   allocatable              :: ret(:)
+    type(uch), allocatable                        :: arr(:)
+    integer*4                                     :: k,ln,sta,sto
+
+
+    ln=tpCount(str%get(),delim,overlap=false)+1
+    if (ln.EQ.1) then
+        allocate(ret, source=[str%get()])
+    else
+        allocate (arr(ln))
+        sta=1
+        do k = 1,ln-1
+            sto=tpIndex(str%get(),delim,cnt=k)
+            arr(k)=str%get(sta,sto-1)
+
+            sta=sto+len(delim)
+        enddo
+        arr(ln)=str%get(sta)
+
+        allocate(ret, source=[(arr(k)%get(), k=1,ln)])
+    endif
+
+    return
+    end function tpGetSplit_uc
+
+    !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     logical*1 function tpSplit_ch(str,delim,arr) result(ret)
     implicit none
 
@@ -1658,6 +1733,28 @@
 
     return
     end function tpIsStrInList_ch
+
+    !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    pure logical*1 function tpIsAnyInList(slist,tlist) result(ret)
+    implicit none
+
+    character (len=*), intent(in) :: slist(:),tlist(:)
+    integer*4                     :: i,j
+
+
+    ret=false
+    do i = 1,UBound(slist,1)
+        do j = 1,UBound(tlist,1)
+            if (trim(slist(i)).EQ.trim(tlist(j))) then
+                ret=true
+                return
+            endif
+        enddo
+    enddo
+
+    return
+    end function tpIsAnyInList
 
     !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

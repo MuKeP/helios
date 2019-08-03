@@ -24,7 +24,7 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     private
-    public :: localize
+    public :: localize,transformationMatrix
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -83,6 +83,30 @@
 
     return
     end subroutine localize
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine transformationMatrix(v1, v2, transformation)
+    implicit none
+
+    real(kind=rglu), intent(in)  :: v1(:,:), v2(:,:)
+    real(kind=rglu), intent(out) :: transformation(:,:)
+
+    integer(kind=iglu)           :: N,i,j,mu
+
+
+    N=UBound(v1,1)
+    do i = 1,N
+        do j = 1,N
+            transformation(i,j)=0
+            do mu = 1,N
+                transformation(i,j)=transformation(i,j)+v1(mu,i)*v2(mu,j)
+            enddo
+        enddo
+    enddo
+
+    return
+    end subroutine transformationMatrix
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !

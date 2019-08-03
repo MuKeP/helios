@@ -796,7 +796,11 @@
                         dy=dy+mol%atm(c)%coords(2)*(1-D(c,c,state))
                         dz=dz+mol%atm(c)%coords(3)*(1-D(c,c,state))
                     enddo
-                    write (ou,103) 'X',dx*dipoleToDeby,'Y',dy*dipoleToDeby,'Z',dz*dipoleToDeby
+                    dmod=sqrt(dx**2+dy**2+dz**2)
+                    write (ou,103) 'X',dx*dipoleToDeby,&
+                                   'Y',dy*dipoleToDeby,&
+                                   'Z',dz*dipoleToDeby,&
+                                   '|D|',dmod*dipoleToDeby
 
                     ! if group set is defined
                     if (densitybd%gcharges%get().NE.'none') then
@@ -868,7 +872,11 @@
                             dy=dy+mol%atm(c)%coords(2)*(1-D(c,c,state))
                             dz=dz+mol%atm(c)%coords(3)*(1-D(c,c,state))
                         enddo
-                        write (ou,103) 'X',dx*dipoleToDeby,'Y',dy*dipoleToDeby,'Z',dz*dipoleToDeby
+                        dmod=sqrt(dx**2+dy**2+dz**2)
+                        write (ou,103) 'X',dx*dipoleToDeby,&
+                                       'Y',dy*dipoleToDeby,&
+                                       'Z',dz*dipoleToDeby,&
+                                       '|D|',dmod*dipoleToDeby
                     endif
 
                     ! if group set is defined
@@ -944,7 +952,9 @@
                 call prEigenProblem(dmEVec,dmEVal,ou,cmethod//'. Natural orbitals'//&
                                     chState%get(),'^.'//tpFill(paccur,'0'),maxwidth=ouWidth)
                 write (ou,104) inds
-                write (ou,107) shell_check
+                if (int(shell_check).NE.N) then
+                    write (ou,107) N,shell_check
+                endif
             endif
         enddo
 
@@ -953,14 +963,18 @@
 100     format(2X,i4,2X,F<3+paccur>.<paccur>,2X,F<4+paccur>.<paccur>)
 101     format(2X,i4,2X,i4,3X,F<3+paccur>.<paccur>)
 102     format(/2X,A,2X,A,2X,A)
-103     format(<17+2*paccur>('_')//3(<10+paccur>X,A,' =',F<4+paccur>.<paccur>/))
-104     format(2X,'NO-occupancy-based indices:',3(1X,F<4+paccur>.<paccur>)/)
+103     format(<17+2*paccur>('_')//3(<10+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D'/),&
+                                      <8+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D')
+104     format(2X,'NO-occupancy-based indices (occ(i) - occupancy of the ith orbital):'/&
+               4X,'1)   SUM[(2-occ(i))*occ(i)]:   ',1X,F<4+paccur>.<paccur>/&
+               4X,'2)   SUM[min(2-occ(i),occ(i))]:',1X,F<4+paccur>.<paccur>/&
+               4X,'3) 2*SUM[occ(i)]:              ',1X,F<4+paccur>.<paccur>/)
 105     format(/2X,A)
 106     format(<17+2*paccur>('_')/&
                8X,F<3+paccur>.<paccur>,2X,F<4+paccur>.<paccur>//&
                3(<10+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D'/)&
                   <8+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D')
-107     format(2X,'Check the sum of occupancies:',1X,F10.5,1X,'electrons.'/)
+107     format(2X,"WARNING! The sum of orbitals' occupancies for ",i4,' electron system is ',F8.3,'.'/)
 
         return
         end subroutine printRDM
@@ -1667,7 +1681,7 @@
             do c = 1,UBnd(1)
                 do b = 1,UBnd(2)
                     if (through(c,b).EQ.1) then
-                        call singleSession('  '//prStrByVal(coPolariz(c,b), '____.00000'))
+                        call singleSession('  '//prStrByVal(coPolariz(c,b), '____.000000'))
                     endif
                 enddo
             enddo

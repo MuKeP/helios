@@ -9,8 +9,8 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    character (len=*), parameter :: huVersion='1.100'
-    character (len=*), parameter :: huDate   ='2019.05.24'
+    character (len=*), parameter :: huVersion='1.200'
+    character (len=*), parameter :: huDate   ='2019.07.27'
     character (len=*), parameter :: huAuthor ='Anton B. Zakharov'
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -103,6 +103,8 @@
     integer(kind=iglu), intent(in) :: mu,nu
     integer(kind=iglu)             :: i,j
     real(kind=rglu)                :: Ax
+    ! real(kind=rglu)                :: Bx,Cx,Dx,Ex,Fx
+    ! integer(kind=iglu)             :: k
 
 
     ret=0
@@ -113,6 +115,28 @@
         enddo
     enddo
     ret=4*ret
+
+    ! write(*,'(1X,"pi(",i2.2,",",i2.2,")=",F8.5)') mu,nu,ret
+    ! write(*,*)
+    !
+    ! k=0
+    ! Fx = 0
+    ! Ex = 5
+    ! do i = 1,Nocc
+    !     Ax=V(mu,i)*V(nu,i)
+    !     do j = Nocc+1,N
+    !         Cx = 4*Ax*V(mu,j)*V(nu,j)
+    !         Dx = (E(i)-E(j))
+    !         Bx = (100*Cx/Dx)/ret
+    !         if (abs(Bx).GT.Ex) then
+    !             Fx = Fx + Bx
+    !             k=k+1
+    !             write(*,'(1X,A,1X,i2,1X,i2,F12.6," (",F8.2,"%)",1X,E14.6,1X,F12.6)') 'Contribution', i, j, Cx/Dx, Bx, Cx, Dx
+    !         endif
+    !     enddo
+    ! enddo
+    ! write(*,'(1X,"Total contributions over ",F4.1,"%:",1X,i2)') Ex,k
+    ! write(*,'(1X,A,1X,F7.2)') 'Contribution from all greater than threshold:',Fx
 
     return
     end function getHuckelCoulsonPolarizability

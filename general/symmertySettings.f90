@@ -3,10 +3,10 @@
     use glob,      only: assignment (=)
     use glob,      only: rglu,iglu,lglu,true,false,mid,void,i8kind,glControlMemory
     use glob,      only: uch,mid
-    use hdb,       only: mol,geometrybd,polarizbd,generalbd,ou,ouWidth
+    use hdb,       only: mol,geometrybd,polarizbd,generalbd,fieldbd,ou,ouWidth
     use hdb,       only: gEnergyHolder,GlEt,Et,MEt,MMEt,MethodListLen
     use hdb,       only: pointAccordance,pointSet,pointToPut,pointToCalc,atomEqu,bondEqu
-    use txtParser, only: tpAdjustc,operator(.in.)
+    use txtParser, only: tpAdjustc,tpGetSplit,operator(.in.)
     use printmod,  only: prMatrix
     use math,      only: tred4
 
@@ -14,7 +14,7 @@
 
     real   (kind=rglu) :: symmetryTolerance,gridRange,sum,ul,dl,diff
     integer(kind=iglu) :: N,M,Np,Ncue,dSize,i,j,k,l,a,b,c,sta,sto,cElements,ubndDistr,&
-                          ipos,jpos,zpos,uniqueAtoms,writeMypnts
+                          ipos,jpos,zpos,uniqueAtoms,writeMypnts,scaleIndices(3)
 
     real   (kind=rglu), allocatable :: coords(:,:),distance(:,:),eigenVectors(:,:),eigenValues(:),&
                                        d1gridEquivalence(:),&
@@ -22,32 +22,188 @@
                                        d3gridEquivalence(:,:,:)
 
     integer(kind=iglu), allocatable :: d1grid(:),d2grid(:,:),d3grid(:,:,:),pntDistribution(:)
+    logical(kind=lglu)              :: dcue
 
 
+    symmetryTolerance=geometrybd%symmetryTolerance; N=mol%nAtoms; M=mol%nBonds; Ncue=mol%nEls/2
+
+    ! Symmetry analysis is switched off
+    if (.NOT.geometrybd%symmetryAccount) then
+        select case( generalbd%task%get() )
+
+            case ('polarizability')
+                Np=polarizbd%nPoints; sta=-(Np-1)/2; sto=-sta
+                void=glControlMemory(int( rglu*(Np+Np**2+Np**3*(2+6*MethodListLen)) ,kind=i8kind),'Symmetry settings')
+                allocate (GlEt(sta:sto,sta:sto,sta:sto))
+                allocate (gEnergyHolder(sta:sto,sta:sto,sta:sto,0:5,MethodListLen))
+                allocate (Et(sta:sto),MEt(sta:sto,sta:sto),MMEt(sta:sto,sta:sto,sta:sto))
+
+                allocate (pointSet       (3,Np**3  ))
+                allocate (pointAccordance(Np**3,2,3))
+
+                pointAccordance=0; pointSet=0; pointToCalc=1
+                select case (polarizbd%scales%get())
+
+                    ! single scale mode
+                    case ('x','y','z')
+
+                        scaleIndices=getScaleIndices()
+                        ipos=scaleIndices(1)
+
+                        pointToPut=0
+                        do i = sto,sta,-1
+                            ! define accordance of grid points (child == parent)
+                            pointToPut=pointToPut+1
+                            pointAccordance(pointToPut,1,ipos)=i
+                            pointAccordance(pointToPut,2,ipos)=i
+                        enddo
+
+                        ! select all points
+                        do i = sta,sto
+                            ! zero point is already included
+                            if (i.EQ.0) cycle
+                            pointToCalc=pointToCalc+1
+                            pointSet(ipos,pointToCalc)=i
+                        enddo
+
+                    ! double scale mode
+                    case ('xy','yx','xz','zx','yz','zy')
+
+                        scaleIndices=getScaleIndices()
+                        ipos=scaleIndices(1)
+                        jpos=scaleIndices(2)
+                        zpos=scaleIndices(3)
+
+                        pointToPut=0
+                        do i = sto,sta,-1
+                        do j = sto,sta,-1
+                            ! define accordance of grid points (child == parent)
+                            pointToPut=pointToPut+1
+                            pointAccordance(pointToPut,1,ipos)=i
+                            pointAccordance(pointToPut,1,jpos)=j
+
+                            pointAccordance(pointToPut,2,ipos)=i
+                            pointAccordance(pointToPut,2,jpos)=j
+                        enddo
+                        enddo
+
+                        ! select all points
+                        do i = sta,sto
+                        do j = sta,sto
+                            ! zero point is already included
+                            if ((i.EQ.0).AND.(j.EQ.0)) cycle
+                            pointToCalc=pointToCalc+1
+                            pointSet(ipos,pointToCalc)=i
+                            pointSet(jpos,pointToCalc)=j
+                        enddo
+                        enddo
+
+                    ! full scale mode
+                    case ('xyz')
+
+                        scaleIndices=getScaleIndices()
+
+                        pointToPut=0
+                        do i = sto,sta,-1
+                        do j = sto,sta,-1
+                        do k = sto,sta,-1
+                            ! define accordance of grid points (child == parent)
+                            pointToPut=pointToPut+1
+                            pointAccordance(pointToPut,1,1)=i
+                            pointAccordance(pointToPut,1,2)=j
+                            pointAccordance(pointToPut,1,3)=k
+
+                            pointAccordance(pointToPut,2,1)=i
+                            pointAccordance(pointToPut,2,2)=j
+                            pointAccordance(pointToPut,2,3)=k
+                        enddo
+                        enddo
+                        enddo
+
+                        ! select all points
+                        do i = sta,sto
+                        do j = sta,sto
+                        do k = sta,sto
+                            ! such combinations do not exist
+                            if ((i.NE.0).AND.(j.NE.0).AND.(k.NE.0)) cycle
+
+                            ! zero point is already included
+                            if ((i.EQ.0).AND.(j.EQ.0).AND.(k.EQ.0)) cycle
+                            pointToCalc=pointToCalc+1
+                            pointSet(1,pointToCalc)=i
+                            pointSet(2,pointToCalc)=j
+                            pointSet(3,pointToCalc)=k
+                        enddo
+                        enddo
+                        enddo
+
+                end select
+
+            case ('density','coulson','hypercharges')
+                allocate (atomEqu(N,N),bondEqu(M,M)); atomEqu=1; bondEqu=1
+
+                do i = 1,N
+                    atomEqu(i,i)=i
+
+                    if (i.EQ.N) exit
+                    do j = i+1,N
+                        atomEqu(i,j)=i*N+j
+                    enddo
+                enddo
+
+                do i = 1,M
+                    bondEqu(i,i)=i
+
+                    if (i.EQ.M) exit
+                    do j = i+1,M
+                        bondEqu(i,j)=i*N+j
+                    enddo
+                enddo
+
+        end select
+        return
+    endif
+
+    dcue = ['cue-ccs', 'cue-ccsd', 'cue-ccsdt'] .in. tpGetSplit(generalbd%methods%get(), '+')
+
+    ! Symmetry non-demanding cases
     if (generalbd%task%get() .in. ['energy','wf-analysis']) then
         void=glControlMemory(int( MethodListLen*2*2*2*6 ,kind=i8kind),'Symmetry settings')
         allocate(gEnergyHolder(0:1,0:1,0:1,0:5,MethodListLen))
         return
     endif
 
+    ! Start of symmetry analysis
     write (ou,'(/A/)') tpAdjustc('Symmetry analysis',ouWidth,'=')
 
-    symmetryTolerance=geometrybd%symmetryTolerance; N=mol%nAtoms; M=mol%nBonds; Ncue=mol%nEls/2
+    ! N atoms, 3 for field points
+    dSize=N+3
 
     write (ou,120) symmetryTolerance
-    Np=polarizbd%nPoints; sta=-(Np-1)/2; sto=-sta
     select case( generalbd%task%get() )
         case ('polarizability')
-            dSize=N+Ncue+Np**3
+            Np=polarizbd%nPoints; sta=-(Np-1)/2; sto=-sta
+            ! Np*Np*Np: for every of three grid points.
+            dSize=dSize+Np**3
+            if (dcue) dSize=dSize+Ncue
 
         case ('density','coulson','hypercharges')
-            dSize=N+Ncue+N*(N-1)/2
+            ! N*(N-1)/2: centroids for all atom pairs.
+            dSize=dSize+N*(N-1)/2
+            if (dcue) dSize=dSize+Ncue
+
+        case default
+            stop 'Internal error (general::symmetrySettings): Unexpected general:jobtype value.'
 
     end select
 
+    ! temporary array for analysis
     void=glControlMemory(int( rglu*(4*dSize+2*dSize*dSize) ,kind=i8kind),'tmp. Symmetry settings')
     allocate (coords(3,dSize),distance(dSize,dSize),eigenVectors(dSize,dSize),eigenValues(dSize))
 
+    coords=0
+
+    ! put atoms
     cElements=0
     do i = 1,N
         cElements=cElements+1
@@ -56,14 +212,28 @@
         enddo
     enddo
 
-    do i = 1,Ncue
-        cElements=cElements+1
-        do k = 1,3
-            coords(k,cElements)=mol%orb(i)%coords(k)
+    ! put cue orbitals
+    if (dcue) then
+        do i = 1,Ncue
+            cElements=cElements+1
+            do k = 1,3
+                coords(k,cElements)=mol%orb(i)%coords(k)
+            enddo
         enddo
+    endif
+
+    ! shift for field
+    do k = 1,3
+        cElements=cElements+1
+        if (abs(fieldbd%strength(k)).GT.1D-10) then
+            coords(k,cElements)=sign(maxval(abs(mol%atm(:)%coords(k))),fieldbd%strength(k))
+        endif
     enddo
 
+    ! set distance matrix structure
     select case( generalbd%task%get() )
+
+        ! add grid to the set of distance matrix elements
         case ('polarizability')
 
             void=glControlMemory(int( 9*iglu*Np**3 ,kind=i8kind),'Symmetry settings')
@@ -87,6 +257,7 @@
             enddo
             enddo
 
+        ! add atom pairs centroids to the set of distance matrix elements
         case ('density','coulson','hypercharges')
             do i = 1,N-1
                 do j = i+1,N
@@ -97,11 +268,9 @@
                 enddo
             enddo
 
-        case ('wf-analysis')
-            continue
-
     end select
 
+    ! proceed distance matrix
     !$omp parallel default(shared) private(i,j,k,sum)
     !$omp do
     do i = 1,dSize
@@ -114,7 +283,6 @@
     enddo
     enddo
     !$omp end parallel
-
     call tred4(distance,eigenVectors,eigenValues,dSize,1e-100_rglu,1e-100_rglu)
 
     select case( generalbd%task%get() )
@@ -130,11 +298,13 @@
             allocate (gEnergyHolder(sta:sto,sta:sto,sta:sto,0:5,MethodListLen))
             allocate (Et(sta:sto),MEt(sta:sto,sta:sto),MMEt(sta:sto,sta:sto,sta:sto))
 
+            ! collect grid equivalence
             d3gridEquivalence=0
             do i = dSize-Np**3+1,dSize
                 d3gridEquivalence( int(coords(1,i)/gridRange),int(coords(2,i)/gridRange),int(coords(3,i)/gridRange) )=eigenVectors(i,dSize)
             enddo
 
+            ! proceed all possible points and get distribution
             ubndDistr=16; allocate (pntDistribution(0:ubndDistr))
             do l = 0,ubndDistr
                 pntDistribution(l)=0; ul=10._rglu**(-l); dl=10._rglu**(-l-1)
@@ -144,13 +314,18 @@
                 do i = sta,sto
                 do j = sta,sto
                 do k = sta,sto
+
+                    ! such combinations do not exist
                     if ((i.NE.0).AND.(j.NE.0).AND.(k.NE.0)) cycle
 
                     do a = sta,sto
                     do b = sta,sto
                     do c = sta,sto
+
+                        ! such combinations do not exist
                         if ((a.NE.0).AND.(b.NE.0).AND.(c.NE.0)) cycle
 
+                        ! full match
                         if ((i.EQ.a).AND.(j.EQ.b).AND.(k.EQ.c)) cycle
 
                         diff=abs(d3gridEquivalence(i,j,k)-d3gridEquivalence(a,b,c))
@@ -176,33 +351,47 @@
             pointAccordance=0; pointSet=0; pointToCalc=1
             select case (polarizbd%scales%get())
 
+                ! single scale mode
                 case ('x','y','z')
 
+                    scaleIndices=getScaleIndices()
+                    ipos=scaleIndices(1)
+
                     select case (polarizbd%scales%get())
-                        case ('x');    d1gridEquivalence=d3gridEquivalence(:,0,0); ipos=1
-                        case ('y'); d1gridEquivalence=d3gridEquivalence(0,:,0); ipos=2
-                        case ('z'); d1gridEquivalence=d3gridEquivalence(0,0,:); ipos=3
+                        case ('x'); d1gridEquivalence=d3gridEquivalence(:,0,0)
+                        case ('y'); d1gridEquivalence=d3gridEquivalence(0,:,0)
+                        case ('z'); d1gridEquivalence=d3gridEquivalence(0,0,:)
                     end select
 
                     d1grid=0; pointToPut=0
                     do i = sto,sta,-1
+
+                        ! already proceeded
                         if (d1grid(i).NE.0) cycle
 
                         do a = sto,sta,-1
+
+                            ! already proceeded
                             if (d1grid(a).NE.0) cycle
 
                             diff=abs(d1gridEquivalence(i)-d1gridEquivalence(a))
 
+                            ! define accordance of grid points (child == parent)
                             if (diff.LT.symmetryTolerance) then
                                 pointToPut=pointToPut+1
                                 pointAccordance(pointToPut,1,ipos)=i
                                 pointAccordance(pointToPut,2,ipos)=a
+
+                                ! label as child
                                 d1grid(a)=-1
                             endif
                         enddo
+
+                        ! label as parent
                         d1grid(i)=1
                     enddo
 
+                    ! select points to be computed
                     do i = sta,sto
                         if (d1grid(i).EQ.1) then
                             if (i.EQ.0) cycle
@@ -211,37 +400,13 @@
                         endif
                     enddo
 
+                ! double scale mode
                 case ('xy','yx','xz','zx','yz','zy')
 
-                    if (polarizbd%scales%get().EQ.'yx') then
-                        polarizbd%scales='xy'
-                    elseif(polarizbd%scales%get().EQ.'zx') then
-                        polarizbd%scales='xz'
-                    elseif(polarizbd%scales%get().EQ.'zy') then
-                        polarizbd%scales='yz'
-                    endif
-
-                    select case (polarizbd%scales%get(1,1))
-                        case ('x'); ipos=1
-                        case ('y'); ipos=2
-                        case ('z'); ipos=3
-                    end select
-
-                    select case (polarizbd%scales%get(2,2))
-                        case ('x'); jpos=1
-                        case ('y'); jpos=2
-                        case ('z'); jpos=3
-                    end select
-
-                    if (ipos.GT.jpos) then
-                        i=jpos; jpos=ipos; ipos=i
-                    endif
-
-                    if (ipos.EQ.1) then
-                        if (jpos.EQ.2) zpos=3
-                        if (jpos.EQ.3) zpos=2
-                    else;              zpos=1
-                    endif
+                    scaleIndices=getScaleIndices()
+                    ipos=scaleIndices(1)
+                    jpos=scaleIndices(2)
+                    zpos=scaleIndices(3)
 
                     select case (zpos)
                         case (1); d2gridEquivalence=d3gridEquivalence(0,:,:)
@@ -252,29 +417,44 @@
                     d2grid=0; pointToPut=0
                     do i = sto,sta,-1
                     do j = sto,sta,-1
+
+                        ! already proceeded
                         if (d2grid(i,j).NE.0) cycle
 
                         do a = sto,sta,-1
                         do b = sto,sta,-1
+
+                            ! already proceeded
                             if (d2grid(a,b).NE.0) cycle
 
                             diff=abs(d2gridEquivalence(i,j)-d2gridEquivalence(a,b))
 
+                            ! define accordance of grid points (child == parent)
                             if (diff.LT.symmetryTolerance) then
                                 pointToPut=pointToPut+1
-                                pointAccordance(pointToPut,1,ipos)=i; pointAccordance(pointToPut,1,jpos)=j
-                                pointAccordance(pointToPut,2,ipos)=a; pointAccordance(pointToPut,2,jpos)=b
+                                pointAccordance(pointToPut,1,ipos)=i
+                                pointAccordance(pointToPut,1,jpos)=j
+
+                                pointAccordance(pointToPut,2,ipos)=a
+                                pointAccordance(pointToPut,2,jpos)=b
+
+                                ! label as child
                                 d2grid(a,b)=-1
                             endif
                         enddo
                         enddo
+
+                        ! label as parent
                         d2grid(i,j)=1
                     enddo
                     enddo
 
+                    ! select points to be computed
                     do i = sta,sto
                     do j = sta,sto
                         if (d2grid(i,j).EQ.1) then
+
+                            ! zero point is already included
                             if ((i.EQ.0).AND.(j.EQ.0)) cycle
                             pointToCalc=pointToCalc+1
                             pointSet(ipos,pointToCalc)=i
@@ -283,43 +463,66 @@
                     enddo
                     enddo
 
+                ! full scale mode
                 case ('xyz')
+
+                    scaleIndices=getScaleIndices()
 
                     d3grid=0; pointToPut=0
                     do i = sto,sta,-1
                     do j = sto,sta,-1
                     do k = sto,sta,-1
+
+                        ! such combinations do not exist
                         if ((i.NE.0).AND.(j.NE.0).AND.(k.NE.0)) cycle
 
+                        ! already proceeded
                         if (d3grid(i,j,k).NE.0) cycle
 
                         do a = sto,sta,-1
                         do b = sto,sta,-1
                         do c = sto,sta,-1
+
+                            ! already proceeded
                             if (d3grid(a,b,c).NE.0) cycle
 
                             diff=abs(d3gridEquivalence(i,j,k)-d3gridEquivalence(a,b,c))
 
+                            ! define accordance of grid points (child == parent)
                             if (diff.LT.symmetryTolerance) then
                                 pointToPut=pointToPut+1
-                                pointAccordance(pointToPut,1,1)=i; pointAccordance(pointToPut,1,2)=j; pointAccordance(pointToPut,1,3)=k
-                                pointAccordance(pointToPut,2,1)=a; pointAccordance(pointToPut,2,2)=b; pointAccordance(pointToPut,2,3)=c
+                                pointAccordance(pointToPut,1,1)=i
+                                pointAccordance(pointToPut,1,2)=j
+                                pointAccordance(pointToPut,1,3)=k
+
+                                pointAccordance(pointToPut,2,1)=a
+                                pointAccordance(pointToPut,2,2)=b
+                                pointAccordance(pointToPut,2,3)=c
+
+                                ! label as child
                                 d3grid(a,b,c)=-1
                             endif
                         enddo
                         enddo
                         enddo
+
+                        ! label as parent
                         d3grid(i,j,k)=1
                     enddo
                     enddo
                     enddo
 
+                    ! select points to be computed
                     do i = sta,sto
                     do j = sta,sto
                     do k = sta,sto
+
+                        ! such combinations do not exist
                         if ((i.NE.0).AND.(j.NE.0).AND.(k.NE.0)) cycle
 
                         if (d3grid(i,j,k).EQ.1) then
+
+                            ! zero point is already included
                             if ((i.EQ.0).AND.(j.EQ.0).AND.(k.EQ.0)) cycle
                             pointToCalc=pointToCalc+1
                             pointSet(1,pointToCalc)=i
@@ -332,17 +535,27 @@
 
             end select
 
+            ! free temporary arrays
             deallocate ( d1grid,d2grid,d3grid )
             deallocate ( d1gridEquivalence,d2gridEquivalence,d3gridEquivalence)
-            void=glControlMemory(int( sizeof(d1grid)+sizeof(d2grid)+sizeof(d3grid) ,kind=i8kind),'tmp. Symmetry settings','free')
-            void=glControlMemory(int( sizeof(d1gridEquivalence)+sizeof(d2gridEquivalence)+sizeof(d3gridEquivalence) ,kind=i8kind),'tmp. Symmetry settings','free')
+            void=glControlMemory(int( sizeof(d1grid)+&
+                                      sizeof(d2grid)+&
+                                      sizeof(d3grid) ,kind=i8kind),&
+                                      'tmp. Symmetry settings','free')
 
+            void=glControlMemory(int( sizeof(d1gridEquivalence)+&
+                                      sizeof(d2gridEquivalence)+&
+                                      sizeof(d3gridEquivalence) ,kind=i8kind),&
+                                      'tmp. Symmetry settings','free')
+
+            ! full set of points
             select case (polarizbd%scales%ln)
                 case (1); writeMypnts=Np
                 case (2); writeMypnts=Np**2
                 case (3); writeMypnts=3*(Np**2-2*Np+1)+3*(Np-1)+1 !unique+cross{x00,0y0,00z}+zero{000}
             end select
 
+            ! show grid points accordance
             write (ou,100)
             do i = 1,pointToPut
                 write (ou,101) (pointAccordance(i,1,k), k=1,3),(pointAccordance(i,2,k), k=1,3)
@@ -350,6 +563,7 @@
             write (ou,110) pointToCalc,writeMypnts
             write (ou,*)
 
+            ! show distribution
             write (ou,130) (3*(Np**2-2*Np+1)+3*(Np-1)+1) * (3*(Np**2-2*Np+1)+3*(Np-1))
             do l = 0,ubndDistr
                 ul=10._rglu**(-l); dl=10._rglu**(-l-1)
@@ -365,6 +579,7 @@
             allocate (atomEqu(N,N),bondEqu(M,M)); atomEqu=0; bondEqu=0
             allocate (evecDifference(dSize,dSize))
 
+            ! prepare storage
             do i = 1,dSize
             do j = i,dSize
                 evecDifference(i,j)=abs(eigenVectors(i,dSize)-eigenVectors(j,dSize))
@@ -372,6 +587,7 @@
             enddo
             enddo
 
+            ! get symmetry information
             call defAtomsEquivalence
             call defBondsEquivalence
 
@@ -386,6 +602,7 @@
             enddo
             write (ou,133) uniqueAtoms
 
+            ! compute distribution
             do l = 0,ubndDistr
                 pntDistribution(l)=0; ul=10._rglu**(-l); dl=10._rglu**(-l-1)
 
@@ -401,6 +618,7 @@
                 enddo
             enddo
 
+            ! show distribution
             write (ou,132) N*N
             do l = 0,ubndDistr
                 ul=10._rglu**(-l); dl=10._rglu**(-l-1)
@@ -408,7 +626,10 @@
                 write (ou,131) ul,dl,pntDistribution(l)
             enddo
             write (ou,*)
-            !call prMatrix(evecDifference(1:N,1:N),ou,'Atom equivalence','0.00E00',maxwidth=ouWidth)
+
+            ! call prMatrix(evecDifference(1:N,1:N),ou,'Atom equivalence','0.00E00',maxwidth=ouWidth)
+
+            ! free temporary arrays
             deallocate (pntDistribution,evecDifference)
             void=glControlMemory(int( sizeof(evecDifference) ,kind=i8kind),'tmp. Symmetry settings','free')
 
@@ -441,9 +662,10 @@
         implicit none
 
         logical(kind=lglu) :: once
-        integer(kind=iglu) :: i,j,k,l,a,b
+        integer(kind=iglu) :: i,j,k,l,a,b,shft
 
 
+        shft=dSize-N*(N-1)/2
         do i = 1,N
             if (atomEqu(i,i).NE.0) cycle
             atomEqu(i,i)=i
@@ -468,7 +690,7 @@
             do b = a+1,N
                 l=l+1; if (atomEqu(a,b).NE.0) cycle
 
-                if (evecDifference(N+Ncue+k,N+Ncue+l).LE.symmetryTolerance) then
+                if (evecDifference(shft+k,shft+l).LE.symmetryTolerance) then
                     if ((abs(distance(i,j)-distance(a,b)).LE.symmetryTolerance)&
                     &  .AND.( abs(atomEqu(i,i)).EQ.abs(atomEqu(a,a)) )&
                     &  .AND.( abs(atomEqu(j,j)).EQ.abs(atomEqu(b,b)) )) atomEqu(a,b)=-atomEqu(i,j)
@@ -536,12 +758,15 @@
         enddo
 
         allocate (d(N,N))
-        ! omp private (j)
+
+        !$omp parallel default(shared) private(j)
+        !$omp do
         do i = 1,N
             do j = 1,N
                 d(i,j)=abs(atomEqu(i,i)).EQ.abs(atomEqu(j,j))
             enddo
         enddo
+        !$omp end parallel
 
         write (ou,'(4X,A/)') 'Bonds:'
         do i = 1,M
@@ -670,6 +895,7 @@
         real   (kind=rglu) :: dx,dy,dz
 
 
+        ! to be finished
         mol%inverse=0
         do i = 1,N-1
             do j = i+1,N
@@ -686,6 +912,68 @@
 
         return
         end subroutine defInverse
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+        function getScaleIndices() result(ret)
+        implicit none
+
+        integer(kind=iglu) :: ipos,jpos,kpos,ret(3)
+
+
+        select case (polarizbd%scales%ln)
+
+            case(1)
+                select case (polarizbd%scales%get())
+                    case ('x'); ipos=1
+                    case ('y'); ipos=2
+                    case ('z'); ipos=3
+                end select
+
+                ret=[ipos,0,0]
+
+            case(2)
+                ! normalize scale label
+                if (polarizbd%scales%get().EQ.'yx') then
+                    polarizbd%scales='xy'
+                elseif(polarizbd%scales%get().EQ.'zx') then
+                    polarizbd%scales='xz'
+                elseif(polarizbd%scales%get().EQ.'zy') then
+                    polarizbd%scales='yz'
+                endif
+
+                ! determine appropriate case
+                select case (polarizbd%scales%get(1,1))
+                    case ('x'); ipos=1
+                    case ('y'); ipos=2
+                    case ('z'); ipos=3
+                end select
+
+                select case (polarizbd%scales%get(2,2))
+                    case ('x'); jpos=1
+                    case ('y'); jpos=2
+                    case ('z'); jpos=3
+                end select
+
+                if (ipos.GT.jpos) then
+                    i=jpos; jpos=ipos; ipos=i
+                endif
+
+                if (ipos.EQ.1) then
+                    if (jpos.EQ.2) zpos=3
+                    if (jpos.EQ.3) zpos=2
+                else;              zpos=1
+                endif
+
+                ret=[ipos,jpos,zpos]
+
+            case(3)
+                ret=[1,2,3]
+
+        end select
+
+        return
+        end function getScaleIndices
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

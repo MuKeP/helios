@@ -65,11 +65,13 @@
                             int(mol%nAtoms,i4kind),int(mol%nEls,i4kind),&
                             int(polarizbd%nPoints,i4kind),real(polarizbd%derivStep,r8kind),&
                             polarizbd%scales%get())
-    endif
-    harv%Energies=GlEt
 
-    harv%sigmaContributionAlpha=sigmaContributionAlpha
-    harv%sigmaContributionGamma=sigmaContributionGamma
+        harv%Energies=GlEt
+
+        harv%sigmaContributionAlpha=sigmaContributionAlpha
+        harv%sigmaContributionGamma=sigmaContributionGamma
+    endif
+
 
     bstDeriv=0
 
@@ -481,7 +483,9 @@
 
     write (ou,'(/A)') tpFill(width, '#')
 
-    call store_harvester(harv,generalbd%harvestfile%get())
+    if (doharvest) then
+        call store_harvester(harv,generalbd%harvestfile%get())
+    endif
     return
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -499,9 +503,9 @@
 201 format (2X,24X,9(6X,i2,' points'))
 211 format (2X,'Dipole moment           deby',1X,ES14.7,1X,ES14.7,1X,ES14.7,1X,ES14.7)
 212 format (2X,'Polarizability          au  ',1X,ES14.7,1X,ES14.7,1X,ES14.7,1X,ES14.7)
-213 format (2X,'1st hyperpolarizability au  ',1X,15X,      ES14.7,1X,ES14.7,1X,ES14.7)
-214 format (2X,'2nd hyperpolarizability au  ',1X,15X,      ES14.7,1X,ES14.7,1X,ES14.7/&
-            2X,'2nd hyperpolarizability esu ',1X,15X,      ES14.7,1X,ES14.7,1X,ES14.7)
+213 format (2X,'1st hyperpolarizability au  ',1X,15X,      ES14.7,1X,ES14.7)
+214 format (2X,'2nd hyperpolarizability au  ',1X,15X,      ES14.7,1X,ES14.7/&
+            2X,'2nd hyperpolarizability esu ',1X,15X,      ES14.7,1X,ES14.7)
 
 281 format (/'         Average polarizability                =',1X,F13.4,1X,'au'/&
              'Specific average polarizability (per electron) =',1X,F13.4,1X,'au' )

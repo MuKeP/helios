@@ -38,7 +38,7 @@
     addr( 3)=bdShareVariable(systembd%allowRestart,    'restart'               ,opt=true,def=false)                        !TODO
     addr( 4)=bdShareVariable(systembd%verboselvl,      'verbose'               ,opt=true,def=2,expect='range(1:6)')        !TODO
     addr( 5)=bdShareVariable(systembd%ignoreSIGHUP,    'ignore-sighup'         ,opt=true,def=true)
-    addr( 6)=bdShareVariable(systembd%harvest,         'harvest'               ,opt=true,def=true)
+    addr( 6)=bdShareVariable(systembd%harvest,         'harvest'               ,opt=true,def=false)
     addr( 7)=bdShareVariable(systembd%memoryReport,    'memory-report'         ,opt=true,def=false)
     addr( 8)=bdShareVariable(systembd%memoryUnits,     'memory-units'          ,opt=true,def='Mb')                         !CHCK
     addr( 9)=bdShareVariable(systembd%memoryThreshold, 'memory-print-threshold',opt=true,def=8._rglu,expect='range(0:1024)')
