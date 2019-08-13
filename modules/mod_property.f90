@@ -88,7 +88,7 @@
             ret=lastEnergyHolder(0)
             return
         elseif ((dstate.GT.0).AND.(excitedReady)) then
-            ret=lastEnergyHolder(dstate)
+            ret=lastEnergyHolder(0)+lastEnergyHolder(dstate)
             return
         else
             continue
@@ -110,7 +110,8 @@
                     lastEnergyHolder(0)=holdEnergy(1)
 
                     if (dstate.GT.0) then
-                        ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                        ! ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                        ret=lastEnergyHolder(0)+getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
                         excitedReady=true
                     else
                         ret=holdEnergy(1)
@@ -125,12 +126,13 @@
                     call energySCF(holdEnergy)
                     call getSCFResult(vectors=V,energies=E)
 
-                    !call printSCFSolution
+                    ! call printSCFSolution
 
                     lastEnergyHolder(0)=holdEnergy(1)
 
                     if (dstate.GT.0) then
-                        ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                        ! ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                        ret=lastEnergyHolder(0)+getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
                         excitedReady=true
                     else
                         ret=holdEnergy(1)
@@ -167,7 +169,8 @@
                         call setLRParameters(method)
                         call initLR
 
-                        ret=lrHoldStateEnergy(dstate)
+                        ! ret=lrHoldStateEnergy(dstate)
+                        ret=lastEnergyHolder(0)+lrHoldStateEnergy(dstate)
                         lastEnergyHolder(1:statesbd%nStates)=lrHoldStateEnergy(1:statesbd%nStates)
                         excitedReady=true
                     else
@@ -185,12 +188,13 @@
                     lastEnergyHolder(0)=fciHoldStateEnergy(0)
 
                     excitedReady=true
-                    lastEnergyHolder(1:statesbd%nStates)=fciHoldStateEnergy(1:statesbd%nStates)-&
-                                                         fciHoldStateEnergy(0)
+                    ! lastEnergyHolder(1:statesbd%nStates)=fciHoldStateEnergy(1:statesbd%nStates)-&
+                    !                                      fciHoldStateEnergy(0)
                     ret=lastEnergyHolder(dstate)
                     lastPerturbationID=perturbationID
 
                 case default
+                    ! stop 'Internal error (property::getEnergy): Unknown method.'
                     ret=0
                     lastEnergyHolder=0
                     excitedReady=false
@@ -210,7 +214,8 @@
                         lastEnergyHolder(0)=holdEnergy(1)
 
                         if (dstate.GT.0) then
-                            ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                            ! ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                            ret=lastEnergyHolder(0)+getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
                             excitedReady=true
                         else
                             ret=holdEnergy(1)
@@ -227,7 +232,8 @@
                         lastEnergyHolder(0)=holdEnergy(1)
 
                         if (dstate.GT.0) then
-                            ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                            ! ret=getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
+                            ret=lastEnergyHolder(0)+getExcitationEnergy(V,E,dstate,lastEnergyHolder(1:statesbd%nStates))
                             excitedReady=true
                         else
                             ret=holdEnergy(1)
@@ -261,7 +267,8 @@
                         if ((method .in. ['cue-ccsd','r-ccsd','u-ccsd']).AND.(dstate.GT.0)) then
                             call initLR
 
-                            ret=lrHoldStateEnergy(dstate)
+                            ! ret=lrHoldStateEnergy(dstate)
+                            ret=lastEnergyHolder(0)+lrHoldStateEnergy(dstate)
                             lastEnergyHolder(1:statesbd%nStates)=lrHoldStateEnergy(1:statesbd%nStates)
                             excitedReady=true
                         else
@@ -279,13 +286,15 @@
                         excitedReady=true
                         if (dstate.GT.0) then
                             lastEnergyHolder(1:statesbd%nStates)=fciHoldStateEnergy(1:statesbd%nStates)-fciHoldStateEnergy(0)
-                            ret=lastEnergyHolder(dstate)
+                            ! ret=lastEnergyHolder(dstate)
+                            ret=lastEnergyHolder(0)+lastEnergyHolder(dstate)
                         else
                             ret=lastEnergyHolder(0)
                         endif
                         lastPerturbationID=perturbationID
 
                     case default
+                        ! stop 'Internal error (property::getEnergy): Unknown method.'
                         ret=0
                         lastEnergyHolder=0
                         excitedReady=false
@@ -410,6 +419,10 @@
             do state = 0,statesbd%nStates
                 gEnergyHolder(pX,pY,pZ,state,k)=getEnergy(cmethod,state)
             enddo
+            ! write(*,100) pp, gEnergyHolder(pX,pY,pZ,0,k),&
+            !              gEnergyHolder(pX,pY,pZ,1:statesbd%nStates,k)-gEnergyHolder(pX,pY,pZ,0,k)
+! 100         format('Point', 1X, i2, <statesbd%nStates+1>(1X,F13.6))
+            ! if (pp.EQ.2) stop
         enddo
 
         do state = 0,statesbd%nStates
@@ -477,8 +490,8 @@
 
     implicit none
 
-    integer(kind=iglu)              :: N,k,l,a,b,field,state,fatom,satom,derivPoints,sta,sto,pair(2)
-    integer(kind=iglu)              :: pcount,pcurr,meth,nmethods,ncharges,norders,ln,swap,i,j
+    integer(kind=iglu)              :: N,M,k,l,a,b,field,state,fatom,satom,derivPoints,sta,sto
+    integer(kind=iglu)              :: pcount,pcurr,meth,nmethods,ncharges,norders,ln,swap,i,j,pair(2)
     real   (kind=rglu)              :: rez,derivStep,zpEnergy(0:statesbd%nStates)
 
     character (len=:), allocatable  :: cmethod
@@ -498,7 +511,7 @@
     enddo
 
     ! extracting parameters
-    N=mol%nAtoms
+    N=mol%nAtoms; M=mol%nBonds
     derivPoints=densitybd%nPoints
     derivStep=densitybd%derivStep; sta=-derivPoints/2; sto= derivPoints/2
 
@@ -764,7 +777,7 @@
         subroutine printRDM
         implicit none
         integer(kind=iglu) :: c,b,k,l,paccur,ngroups,count
-        real   (kind=rglu) :: swap,dx,dy,dz,dmod,dsum,csum,inds(3),shell_check
+        real   (kind=rglu) :: swap,dx,dy,dz,dmod,dsum,csum,inds(5),shell_check
         type(uch)          :: chState
 
         integer(kind=iglu), allocatable :: array(:)
@@ -862,7 +875,7 @@
 
                     ! if whole RDM1 is computed
                     if (densitybd%dtype%get().EQ.'all') then
-                        write (ou,102) 'Atom',tpAdjustc('Density',paccur+3),&
+                        write (ou,102) 'Atom',tpAdjustc('Density',paccur+4),&
                                               tpAdjustc('Charge' ,paccur+4)
 
                         dx=0; dy=0; dz=0
@@ -877,6 +890,13 @@
                                        'Y',dy*dipoleToDeby,&
                                        'Z',dz*dipoleToDeby,&
                                        '|D|',dmod*dipoleToDeby
+
+                        write(ou,108) 'Bond   mu   nu   Bond order'
+                        do c = 1,M
+                            k=mol%bnd(c)%atoms(1)
+                            l=mol%bnd(c)%atoms(2)
+                            write(ou,109) c,k,l,D(k,l,state)
+                        enddo
                     endif
 
                     ! if group set is defined
@@ -938,10 +958,9 @@
                     inds(2)=inds(2)+min(2-dmEVal(c),dmEVal(c))
                 enddo
 
-                do c = N/2+1,N
-                    inds(3)=inds(3)+dmEVal(c)
-                enddo
-                inds(3)=2*inds(3)
+                inds(3)=2*sum(dmEVal(N/2+1:))
+                inds(4)=inds(3)/N
+                inds(5)=2-(dmEVal(N/2)-dmEVal(N/2+1))
 
                 shell_check=0
                 do c = 1,N
@@ -955,6 +974,12 @@
                 if (int(shell_check).NE.N) then
                     write (ou,107) N,shell_check
                 endif
+                call singleSession('  '//&
+                                   '  '//prStrByVal(inds(1), '__.000000')//&
+                                   '  '//prStrByVal(inds(2), '__.000000')//&
+                                   '  '//prStrByVal(inds(3), '__.000000')//&
+                                   '  '//prStrByVal(inds(4), '__.000000')//&
+                                   '  '//prStrByVal(inds(5), '__.000000'))
             endif
         enddo
 
@@ -965,16 +990,21 @@
 102     format(/2X,A,2X,A,2X,A)
 103     format(<17+2*paccur>('_')//3(<10+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D'/),&
                                       <8+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D')
-104     format(2X,'NO-occupancy-based indices (occ(i) - occupancy of the ith orbital):'/&
+104     format(2X,'NO-occupancy-based indices [occ(r) - rth orbital occupancy; i=occ, a=vac]:'/&
                4X,'1)   SUM[(2-occ(i))*occ(i)]:   ',1X,F<4+paccur>.<paccur>/&
                4X,'2)   SUM[min(2-occ(i),occ(i))]:',1X,F<4+paccur>.<paccur>/&
-               4X,'3) 2*SUM[occ(i)]:              ',1X,F<4+paccur>.<paccur>/)
+               4X,'3) 2*SUM[occ(a)]:              ',1X,F<4+paccur>.<paccur>/&
+               4X,'4) 2*SUM[occ(a)]/N:            ',1X,F<4+paccur>.<paccur>/&
+               4X,'5) 2-(occ(HOMO)-occ(LUMO)):    ',1X,F<4+paccur>.<paccur>/)
+
 105     format(/2X,A)
 106     format(<17+2*paccur>('_')/&
                8X,F<3+paccur>.<paccur>,2X,F<4+paccur>.<paccur>//&
                3(<10+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D'/)&
                   <8+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D')
 107     format(2X,"WARNING! The sum of orbitals' occupancies for ",i4,' electron system is ',F8.3,'.'/)
+108     format(//2X,A/)
+109     format(2X,i4,1X,i4,1X,i4,3X,F<5+paccur>.<paccur>)
 
         return
         end subroutine printRDM
@@ -1604,9 +1634,6 @@
     do ii = 1,nmethods
         methodSet(ii)=tpSplitHold(ii)
     enddo
-
-    ! call singleSession('  '//prJoin([(prStrByVal(fieldbd%strength(k), '____.000'), k=1,3)], '  '))
-    call singleSession(systembd%throughPrefix%get())
 
     do meth = 1,nmethods
         cmethod=methodSet(meth)%get()

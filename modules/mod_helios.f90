@@ -29,10 +29,10 @@
 
     ! ~~~~~ Module information ~~~~~ !
 
-    character (len=*), parameter :: heVersion   ='1.610a'
-    character (len=*), parameter :: heDate      ='11-Dec-2018'
+    character (len=*), parameter :: heVersion   ='1.710a'
+    character (len=*), parameter :: heDate      ='14-Aug-2019'
     character (len=*), parameter :: heAuthor    ='Anton B. Zakharov'
-    character (len=*), parameter :: heCompilDate='11-Dec-2018'
+    character (len=*), parameter :: heCompilDate='14-Aug-2019'
     ! Memory: 45 bytes
 
     ! ~~~~~ Fundamental constants ~~~~~ !
@@ -181,10 +181,10 @@
     end type bdcc
 
     type bdlr
-        type(uch)          :: guess,diisStorage
+        type(uch)          :: guess,diisStorage,storeSolutionMode
         integer(kind=iglu) :: maxiters,diisSteps
-        real(kind=rglu)    :: accuracy,iterStep(2),guessThreshold
-        logical(kind=lglu) :: orthogonalize,diisEnabled
+        real(kind=rglu)    :: accuracy,iterStep(2),guessThreshold,storeSolutionThreshold
+        logical(kind=lglu) :: orthogonalize,diisEnabled,storeSolution(2)
     end type bdlr
 
     type bdfield
@@ -277,8 +277,11 @@
     ! ~~~~~ File IDs ~~~~~ !
     ! su=screen; in=input; ou=output; rf=restart file; eu=error unit
     ! debug=debug file; lsmf=for lsm check; unul=/dev/null or NUL
-    integer(kind=iglu)   :: su,init,in,ou,eu,unul,lrg,scfg
-    ! Memory: 8*iglu
+    ! lrg=guess linear response in case of manual guess
+    ! lrst=store linear response solution if enebled
+    ! scfg=guess for SCF procedure in case of manual guess
+    integer(kind=iglu)   :: su,init,in,ou,eu,unul,lrg,lrst,scfg
+    ! Memory: 9*iglu
 
     ! ~~~~~ Service ~~~~~ !
 
@@ -479,6 +482,7 @@
     !rf   =fcNewID() !restart file
     !debug=fcNewID()
     !lsmf =fcNewID()
+    lrst =fcNewID(); open(lrst,status='scratch',form='binary')
     lrg  =fcNewID()
     scfg =fcNewID()
 
@@ -637,12 +641,14 @@
         if (err.NE.0) then
             systembd%throughEnable(2)=true
             open (single_io, file=systembd%throughFile%get())
-            write(single_io, '(A)') systembd%throughHeader%get()
+            write(single_io, '(A)' ) systembd%throughHeader%get()
+            write(single_io, '(A\)') systembd%throughPrefix%get()
         else ! file exists
             close(single_io)
             systembd%throughEnable(2)=true
             open (single_io, file=systembd%throughFile%get(), access='append')
-            write(single_io, *)
+            write(single_io,      *)
+            write(single_io, '(A\)') systembd%throughPrefix%get()
         endif
     endif
 

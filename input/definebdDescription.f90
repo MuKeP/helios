@@ -205,6 +205,9 @@
                                                                            'hdd - hard disk (slow)') )
     void=bdVariableAddDescription(loc(lrbd%diisSteps)  ,'specifies steps number for interpolation')
     void=bdVariableAddDescription(loc(lrbd%diisEnabled),'enables DIIS procedure for linear-reponse')
+    void=bdVariableAddDescription(loc(lrbd%storeSolution),'enables previous linear response solution')
+    void=bdVariableAddDescription(loc(lrbd%storeSolutionThreshold),'threshold for linear response amplitudes selection as guess for next computation')
+    void=bdVariableAddDescription(loc(lrbd%storeSolutionMode),'storage mode for guess (r1, r2, r1r2)')
 
     void=bdAddDescription('molecule',tpTranslateEscapes('contains molecular information in the following format:\n\n'//&
                                                         'MOLECULE NAME\n'//&

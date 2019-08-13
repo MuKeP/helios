@@ -30,6 +30,8 @@
     ! call ivv_dens_hyper
     ! call hyperdensity
 
+    ! call transistor
+
     select case(generalbd%task%get())
         case ('energy')        ; call getOnlyEnergies
         case ('wf-analysis')   ; call getWaveFunctionAnalize

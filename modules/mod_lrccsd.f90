@@ -5,7 +5,7 @@
     use glob,      only: assignment(=)
     use glob,      only: uch,rglu,iglu,lglu,true,false,void,i8kind,glControlMemory,nullsub
     use glob,      only: ivarVector,rvarVector
-    use hdb,       only: mol,statesbd,lrbd
+    use hdb,       only: mol,statesbd,lrbd,lrst
     use hdb,       only: scfbd,ou,ouWidth,cueConstant1
     use scf,       only: setSCFParameters,initSCF,iterationSCF,getSCFResult,callbackSCF
     use scf,       only: energySCF,finalizeSCF,printSCFSolution
@@ -67,13 +67,14 @@
     real(kind=rglu),    allocatable :: lrHoldStateVectorR2(:,:,:,:,:)
     real(kind=rglu),    allocatable :: lrHoldStateVectorR1(:,:,:)
     real(kind=rglu),    allocatable :: lrHoldStateEnergy(:)
+    real(kind=rglu),    allocatable :: lrHoldStateProperties(:,:)
     real(kind=rglu),    allocatable :: lrOrthogonality(:)
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     type(uch)          :: umethod
     integer(kind=iglu) :: N,Nocc,Nel,No,Nd,Ne,currentState
-    real   (kind=rglu) :: omega,currentEnergy
+    real   (kind=rglu) :: omega,currentEnergy,AEL,RSCon
     logical(kind=lglu) :: converged,guessReady
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -84,7 +85,7 @@
     public :: setLRParameters,initLR,energyLR,finalizeLR,analizewfLR
 
     ! to harvest the results
-    public :: lrHoldStateEnergy
+    public :: lrHoldStateEnergy,lrHoldStateProperties
 
     ! access for projection subroutines
     public :: Nel,No
@@ -125,6 +126,7 @@
     implicit none
 
     integer(kind=iglu) :: k
+    logical(kind=lglu) :: convergence
 
 
     if (.NOT.guessReady) call prepareGuess
@@ -139,20 +141,29 @@
     !write (*,*) 'DONE'
     !stop
 
+    convergence=true
+
     lrHoldStateVectorR1=0; lrHoldStateVectorR2=0
 
     lrHoldStateEnergy=0
     do k = 1,statesbd%nStates
         currentState=k
+
         call guessState(k)
 
         call iterator(iterationLR,energylr,lrbd%maxiters,lrbd%accuracy*real(2**(k-1),rglu),false,nullsub,false,converged)
 
-        lrHoldStateVectorR1(    :,:,k)=r1
-        lrHoldStateVectorR2(:,:,:,:,k)=r2
-        lrHoldStateEnergy  (        k)=omega
+        ! convergence=convergence.AND.converged
+
+        lrHoldStateVectorR1  (    :,:,k)=r1
+        lrHoldStateVectorR2  (:,:,:,:,k)=r2
+        lrHoldStateEnergy    (        k)=omega
+        lrHoldStateProperties(      :,k)=[AEL,RSCon]
     enddo
 
+    if (convergence) then
+        call dumpSolution
+    endif
     call controlMemoryLR('intermediates','deallocate')
     call controlMemoryLR('diis','deallocate')
     call resortStates
@@ -371,6 +382,9 @@
     energy(2)=r0
     energy(3)=avgExcitationLvl
 
+    AEL=avgExcitationLvl
+    RSCon=r0
+
     return
     end subroutine energyLR
 
@@ -576,6 +590,151 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    subroutine dumpSolution
+    implicit none
+
+    integer(kind=iglu) :: i,j,a,b,k,nonzero(2)
+
+
+    if (.NOT.lrbd%storeSolution(1)) return
+
+    rewind(lrst)
+    do k = 1,statesbd%nStates
+        nonzero(1)=0
+        do i = 1,Nel
+        do a = Nel+1,No
+            if (abs(lrHoldStateVectorR1(i,a,k)).GT.lrbd%storeSolutionThreshold) then
+                nonzero(1)=nonzero(1)+1
+            endif
+        enddo
+        enddo
+
+        nonzero(2)=0
+        do i = 1,Nel-1
+        do j = i+1,Nel
+        do a = Nel+1,No-1
+        do b = a+1,No
+            if (abs(lrHoldStateVectorR2(i,j,a,b,k)).GT.lrbd%storeSolutionThreshold) then
+                nonzero(2)=nonzero(2)+1
+            endif
+        enddo
+        enddo
+        enddo
+        enddo
+
+        ! write(ou,'(A,1X,i1,1X,A,i5,1X,i5)') ' >>> state',k,'elements to be dumped',nonzero
+
+        write(lrst) k
+        write(lrst) nonzero
+
+        select case (lrbd%storeSolutionMode%get())
+
+            case('r1')
+                do i = 1,Nel
+                do a = Nel+1,No
+                    if (abs(lrHoldStateVectorR1(i,a,k)).GT.lrbd%storeSolutionThreshold) then
+                        write(lrst) i,a,lrHoldStateVectorR1(i,a,k)
+                    endif
+                enddo
+                enddo
+
+            case('r2')
+                do i = 1,Nel-1
+                do j = i+1,Nel
+                do a = Nel+1,No-1
+                do b = a+1,No
+                    if (abs(lrHoldStateVectorR2(i,j,a,b,k)).GT.lrbd%storeSolutionThreshold) then
+                        write(lrst) i,j,a,b,lrHoldStateVectorR2(i,j,a,b,k)
+                    endif
+                enddo
+                enddo
+                enddo
+                enddo
+
+            case('r1r2')
+                do i = 1,Nel
+                do a = Nel+1,No
+                    if (abs(lrHoldStateVectorR1(i,a,k)).GT.lrbd%storeSolutionThreshold) then
+                        write(lrst) i,a,lrHoldStateVectorR1(i,a,k)
+                    endif
+                enddo
+                enddo
+
+                do i = 1,Nel-1
+                do j = i+1,Nel
+                do a = Nel+1,No-1
+                do b = a+1,No
+                    if (abs(lrHoldStateVectorR2(i,j,a,b,k)).GT.lrbd%storeSolutionThreshold) then
+                        write(lrst) i,j,a,b,lrHoldStateVectorR2(i,j,a,b,k)
+                    endif
+                enddo
+                enddo
+                enddo
+                enddo
+
+        end select
+    enddo
+
+    lrbd%storeSolution(2)=true
+
+    return
+    end subroutine dumpSolution
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine loadSolution(istate)
+    implicit none
+
+    integer(kind=iglu), intent(in) :: istate
+    integer(kind=iglu)             :: i,j,a,b,k,c,dmp,nonzero(2)
+    real(kind=rglu)                :: value
+
+
+    if (istate.EQ.1) then
+        rewind(lrst)
+    endif
+
+    read(lrst) dmp
+    read(lrst) nonzero
+
+    select case (lrbd%storeSolutionMode%get())
+
+        case('r1')
+            do c = 1,nonzero(1)
+                read(lrst) i,a,value
+                r1(i,a)=value
+            enddo
+
+        case('r2')
+            do c = 1,nonzero(2)
+                read(lrst) i,j,a,b,value
+                r2(i,j,a,b)= value
+                r2(j,i,a,b)=-value
+                r2(i,j,b,a)=-value
+                r2(j,i,b,a)= value
+            enddo
+
+        case('r1r2')
+            do c = 1,nonzero(1)
+                read(lrst) i,a,value
+                r1(i,a)=value
+            enddo
+
+            do c = 1,nonzero(2)
+                read(lrst) i,j,a,b,value
+                r2(i,j,a,b)= value
+                r2(j,i,a,b)=-value
+                r2(i,j,b,a)=-value
+                r2(j,i,b,a)= value
+            enddo
+
+    end select
+
+    return
+    end subroutine loadSolution
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     subroutine getCCSolution
 
     use coupledCluster, only: ccmethod => umethod
@@ -758,7 +917,7 @@
                     allocate (hfV(N,N),cueV(N,N),hfE(N),excSet(2,Ne),iapairs(No))
                     hfV=0; cueV=0; hfE=0; excSet=0; iapairs=0
 
-                    void=glControlMemory(int( rglu*(N*N+statesbd%nStates*(Nel*(No-Nel)+Nel*Nel*(No-Nel)*(No-Nel)))+&
+                    void=glControlMemory(int( rglu*(N*N+statesbd%nStates*(Nel*(No-Nel)+Nel*Nel*(No-Nel)*(No-Nel))+2*statesbd%nStates)+&
                                               iglu*(0)+&
                                               1*(0) ,kind=i8kind),'Linear response module')
 
@@ -767,7 +926,8 @@
                     allocate (lrHoldStateVectorR1(Nel,Nel+1:No,statesbd%nStates),&
                               lrHoldStateVectorR2(Nel,Nel,Nel+1:No,Nel+1:No,statesbd%nStates),&
                               lrHoldStateEnergy(statesbd%nStates),&
-                              lrOrthogonality(statesbd%nStates))
+                              lrOrthogonality(statesbd%nStates),&
+                              lrHoldStateProperties(2,statesbd%nStates))
 
                     lrHoldStateVectorR1=0; lrHoldStateVectorR2=0; lrHoldStateEnergy=0; lrOrthogonality=0
 
@@ -775,20 +935,22 @@
                     allocate (guessConfigurations(statesbd%nStates),guessCoefficients(statesbd%nStates))
 
                 case ('deallocate')
-                    deallocate (lrHoldStateEnergy,lrHoldStateVectorR1,lrHoldStateVectorR2,&
-                                lrOrthogonality,hfV,cueV,hfE,excSet,iapairs,stat=err)
 
                     void=glControlMemory(int( sizeof(lrHoldStateEnergy)+sizeof(lrHoldStateVectorR1)+&
                                               sizeof(lrHoldStateVectorR2)+sizeof(lrOrthogonality)+&
-                                              sizeof(hfV)+sizeof(cueV)+sizeof(hfE)+sizeof(excSet)+sizeof(iapairs)&
+                                              sizeof(hfV)+sizeof(cueV)+sizeof(hfE)+sizeof(excSet)+&
+                                              sizeof(iapairs)+sizeof(lrHoldStateProperties)&
                                                ,kind=i8kind),'Linear response module', 'free')
-
-                    deallocate (r1,r2,t1,t2,d1,d2,F,R, stat=err)
-                    deallocate (basisTransformation,stat=err)
 
                     void=glControlMemory(int( sizeof(r1)+sizeof(r2)+sizeof(t1)+sizeof(t2)+sizeof(d1)+&
                                               sizeof(d2)+sizeof(F)+sizeof(R)+sizeof(basisTransformation)&
                                                ,kind=i8kind),'Linear response module', 'free')
+
+                    deallocate (lrHoldStateEnergy,lrHoldStateVectorR1,lrHoldStateVectorR2,&
+                                lrOrthogonality,lrHoldStateProperties,hfV,cueV,hfE,excSet,iapairs,stat=err)
+
+                    deallocate (r1,r2,t1,t2,d1,d2,F,R, stat=err)
+                    deallocate (basisTransformation,stat=err)
 
                     call guessConfigurations%del()
                     call guessCoefficients%del()
@@ -1119,7 +1281,8 @@
 
     call tred4(HH,Vectors,Values,2*Ne,1.e-100_rglu,1.e-300_rglu)
 
-    !call prEigenProblem(Vectors(1:Ne,1:Ne),Values(1:Ne),6,guess//' solution','^.00000',maxwidth=79)
+    ! call prMatrix(hfV,6,'HF orbitals','^.00000',maxwidth=79)
+    ! call prEigenProblem(Vectors(1:Ne,1:Ne),Values(1:Ne),6,guess//' solution','^.00000',maxwidth=79)
 
     select case (guess)
         case ('cis')
@@ -1212,6 +1375,11 @@
 !    enddo
 !
 !    return
+
+    if (lrbd%storeSolution(2)) then
+        call loadSolution(istate)
+        return
+    endif
 
     do k = 1,guessConfigurations(istate)%ln
         l=guessConfigurations(istate)%v(k)

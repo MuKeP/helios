@@ -5,6 +5,7 @@
     use glob,       only: uch,mid
     use hdb,        only: bdNames,eu,ou,init,ouWidth,controlFileName
     use hdb,        only: mol,generalbd,geometrybd,systembd,densitybd,scfbd,methodNames
+    use hdb,        only: iterationbd,lrbd
     use hdb,        only: scfg,lrg,ierror,outOfMemory,changeMemoryState,cparamstring
     use datablock,  only: bdParseFile,bdPrintBlockData,bdCheckExternalParameter
     use datablock,  only: bdReplaceRegisteredPatterns
@@ -87,6 +88,13 @@
     void=glShareMemory(int(systembd%memory*1024*1024,kind=i8kind),outOfMemory,changeMemoryState)
 
     void=bdReplaceRegisteredPatterns()
+
+    ! preset default values
+    geometrybd%searchPlanar(2)=false
+    geometrybd%searchLinear(2)=false
+    systembd%throughEnable(2)=false
+    iterationbd%chkStopIteration(2)=false
+    lrbd%storeSolution(2)=false
 
     return
     end subroutine parseInput

@@ -23,6 +23,7 @@
     use txtParser, only: tpQuoted,tpStartsWith,tpEndsWith
     use txtParser, only: tpRealByStr,tpIntByStr,tpLogByStr,tpRealArrayByStr,tpIntArrayByStr
     use txtParser, only: tpRealNumber,tpLetters,tpSetAccordance
+    use txtParser, only: quoset
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -1007,8 +1008,11 @@
     type(uch)              :: ustr
     integer*4, allocatable :: variables(:,:)
 
+    character(len=:), allocatable :: followbd
 
-    ! if (bdSet(bdPos)%name%get().EQ.'iteration') then
+
+    ! followbd='linear-response'
+    ! if (bdSet(bdPos)%name%get().EQ.followbd) then
     ! call system('CLS')
     ! write (*,*)
     ! write (*,'(A)' ) bdSet(bdPos)%name%get()
@@ -1067,13 +1071,24 @@
 
             if (j.LT.0) then; write (errunit,*) 'Internal error.'; stop; endif
 
-            ! write (*,*) 'Variable: ', variableSet(j)%name%get()
+            ! if (bdSet(bdPos)%name%get().EQ.followbd) then
+            !     write (*,*) 'Variable: ', variableSet(j)%name%get()
+            ! endif
 
             if (variableSet(j)%opt) void=bdSetDefaultValue(variableSet(j)%address)
 
             if ( (bdsta.GT.bdsto).AND.(isBlank) ) cycle
 
             fnd=tpIndex( bdSet(bdPos)%bdStr%get(),variableSet(j)%name%get(),endp=true )
+
+            ! ====> one of modifications. need time to be tested <====
+            if (.NOT.(bdSet(bdPos)%bdStr%get(fnd+1,fnd+1) .in. [bdSet(bdPos)%endCh%get(),&
+                                                                bdSet(bdPos)%accordCh%get(),&
+                                                                bdSet(bdPos)%separatorCh%get(),&
+                                                                "'",&
+                                                                '"'])) then
+                cycle
+            endif
 
             if ( (fnd.EQ.0).AND.variableSet(j)%opt) then
                 cycle
@@ -1120,13 +1135,6 @@
                 pEnd=pEnd-1
             endif
 
-            ! if (bdSet(bdPos)%name%get().EQ.'rdm') then
-            !     write (*,*) 'Accord ',bdSet(bdPos)%accordCh%get()
-            !     write (*,*) 'Separator ',bdSet(bdPos)%separatorCh%get()
-            !     write (*,*) 'Bounds ',pStart,pEnd,bdSet(bdPos)%bdStr%ln
-            !     write (*,*) 'Statement ',bdSet(bdPos)%bdStr%get(pStart,pEnd)
-            ! endif
-
             if (pEnd.GT.0) then
                 do while ( tpQuoted(bdSet(bdPos)%bdStr%get(),pEnd) )
                     pEnd=tpIndex( bdSet(bdPos)%bdStr%get(), bdSet(bdPos)%separatorCh%get(), start=pEnd+1)
@@ -1134,7 +1142,15 @@
             else
                 pEnd=bdSet(bdPos)%bdStr%ln-1
             endif
-            ! if (bdSet(bdPos)%name%get().EQ.'rdm') then
+
+            ! if (bdSet(bdPos)%name%get().EQ.followbd) then
+            !     write (*,*) 'Accord ',bdSet(bdPos)%accordCh%get()
+            !     write (*,*) 'Separator ',bdSet(bdPos)%separatorCh%get()
+            !     write (*,*) 'Bounds ',pStart,pEnd,bdSet(bdPos)%bdStr%ln
+            !     write (*,*) 'Statement ',bdSet(bdPos)%bdStr%get(pStart,pEnd)
+            ! endif
+
+            ! if (bdSet(bdPos)%name%get().EQ.followbd) then
             !     write (*,*) variableSet(j)%name%get(),pStart,pEnd
             ! endif
 
@@ -1146,7 +1162,7 @@
             end if
 
             ustr=bdSet(bdPos)%bdStr%get(pStart,pEnd)
-            ! if (bdSet(bdPos)%name%get().EQ.'rdm') then
+            ! if (bdSet(bdPos)%name%get().EQ.followbd) then
             !     write (*,*) '#'//ustr%get()//'#'
             !     write (*,*) variableSet(j)%name%get()//' ===> '//bdSet(bdPos)%bdStr%get(pStart,pEnd)//' ===> '//variableSet(j)%expect%get()
             ! endif
