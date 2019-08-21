@@ -631,12 +631,12 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    integer*4 function bdPrintBlockData(name,trgt,width,namePattern,nameSelector,ignoreFreeBlock) result(rcode)
+    integer*4 function bdPrintBlockData(name,trgt,width,namePattern,nameSelector,ignoreFreeBlock,lwidth) result(rcode)
     implicit none
 
     character (len=*)           :: name
     integer*4                   :: trgt
-    integer*4        , optional :: width
+    integer*4        , optional :: width,lwidth
     character (len=*), optional :: namePattern,nameSelector
     logical*1        , optional :: ignoreFreeBlock
 
@@ -653,13 +653,14 @@
     character (len=32)          :: mfmt
 
     real*8                      :: uReal
-    integer*4                   :: uInt
-    logical*4                   :: uLog
+    integer*4                   :: uInt,dlwidth
+    logical*4                   :: uLog,longfound
 
     integer*4                   :: bdPos,accuracy,ln,k,j,err,pos
 
 
     rcode=0
+    longfound=false
     bdPos=find(bdSet(1:bdAppend)%name,trim(name))
 
     if (bdPos.LT.0) then
@@ -668,6 +669,7 @@
         return
     endif
 
+    dlwidth=25; if (present(lwidth)) dlwidth=lwidth
     dwidth=80; if (present(width)) dwidth=width
     dnamePattern=tpFill(dnamePattern); dnamePattern='%name option'
     dignoreFreeBlock=false; if (present(ignoreFreeBlock)) dignoreFreeBlock=ignoreFreeBlock
@@ -742,8 +744,20 @@
             case ('re'); valueString=trim(adjustl(prStrByVal(uReal,trim(mfmt))))
             case ('in'); valueString=trim(adjustl(prStrByVal(uInt ,trim(mfmt))))
             case ('lo'); valueString=trim(adjustl(prStrByVal(uLog)))
-            case ('ch'); valueString=trim(variableSet(j)%pntch(1:variableSet(j)%vlen))
-            case ('uc'); valueString=variableSet(j)%pntuch%get()
+            case ('ch')
+                if (variableSet(j)%vlen.GT.dlwidth) then
+                    longfound=true
+                    valueString='***'
+                else
+                    valueString=trim(variableSet(j)%pntch(1:variableSet(j)%vlen))
+                endif
+            case ('uc')
+                if (variableSet(j)%pntuch%ln.GT.dlwidth) then
+                    longfound=true
+                    valueString='***'
+                else
+                    valueString=variableSet(j)%pntuch%get()
+                endif
         end select
 
         if (shortKindLabels(variableSet(j)%kind).EQ.'re') then
@@ -767,7 +781,12 @@
     enddo
 
     !write (*,'(A)') '#'//trim(resStr)//'#'
-    call prTable(trim(resStr),trgt,adjust='left',width=dwidth,indent=2,separator='&&&',spacer=' ',interColWidth=2,saveOrder=false,equalWidth=false)
+    call prTable(trim(resStr),trgt,adjust='left',width=dwidth,indent=2,separator='&&&',spacer=' ',&
+                 interColWidth=2,saveOrder=false,equalWidth=false)
+
+    if (longfound) then
+        write(trgt,'(/2X,A)') '*** Too long strings, truncated. See input card.'
+    endif
 
     return
     end function bdPrintBlockData

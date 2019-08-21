@@ -46,6 +46,8 @@
 
     void=bdVariableAddDescription(loc(generalbd%alternation),'specifies the values of single/double bond resonant integrals alternation')
 
+    void=bdVariableAddDescription(loc(generalbd%outfile),'specifies the name of output file. use %input% to get the name from input file. (.inp will be omitted)')
+
     void=bdAddDescription('system','contains global system settings for calculation.')
     void=bdVariableAddDescription(loc(systembd%memory)          ,'specifies maximum amount of shared RAM (i.e. in MB: x1024*1024 bytes)')
     void=bdVariableAddDescription(loc(systembd%nNodes)          ,'specifies maximum number of cores to use for parallel execution')
@@ -59,7 +61,7 @@
     void=bdVariableAddDescription(loc(systembd%throughHeader)   ,'specifies header for through output file')
     void=bdVariableAddDescription(loc(systembd%throughFile)     ,'specifies file for through output')
     void=bdVariableAddDescription(loc(systembd%throughEnable(1)),'enables through output')
-    void=bdVariableAddDescription(loc(systembd%throughPrefix)   ,'specifies through prefix for every new line')
+    void=bdVariableAddDescription(loc(systembd%throughPrefix)   ,'specifies "through" prefix for every new line')
 
     void=bdAddDescription('iteration','contains general settings for iteration procedures performed during calculation')
     void=bdVariableAddDescription(loc(iterationbd%chkStagnation)      ,'enables iteration procedure stagnation determination')

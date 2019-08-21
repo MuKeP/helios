@@ -31,7 +31,8 @@
     addr(3)=bdShareVariable(generalbd%coulombType,'coulomb-integrals'   ,opt=true ,several=false,def='ohno-klopman',&
     expect='list(ohno-klopman,mataga-nishimoto,hubbard)')
     addr(4)=bdShareVariable(generalbd%alternation,'bond-alternation'    ,opt=true ,def=0._rglu,expect='range(-1:1)')
-    void=bdCollect('general',addr(1:4),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+    addr(5)=bdShareVariable(generalbd%outfile    ,'output-file'         ,opt=true ,def='%input%',expect='any',register=true)
+    void=bdCollect('general',addr(1:5),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
     addr( 1)=bdShareVariable(systembd%memory,          'memory'                ,opt=true,def=1024._rglu)
     addr( 2)=bdShareVariable(systembd%nNodes,          'nproc'                 ,opt=true,def=1,expect='range(1:128)')
