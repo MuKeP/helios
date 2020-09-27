@@ -26,7 +26,7 @@
     allocate (moDist(Nocc,Nocc)); modist=0
     allocate (cueDistance(N,N)) ; cueDistance=mol%cueDist
 
-    write (ou,'(A/)') tpAdjustc('CUE analysis',ouWidth,'=')
+    write (ou,'(A/)') tpAdjustc(' CUE analysis ',ouWidth,'=')
 
     write (ou,'(A/)') tpAdjustc('CUE-MO Centroids',73)
 

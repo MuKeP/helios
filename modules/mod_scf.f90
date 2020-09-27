@@ -2,11 +2,13 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MODULES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    use glob      , only: iglu,rglu,lglu,void,true,false,uch,i8kind,glControlMemory
-    use hdb       , only: mol,scfbd,ou,ouWidth,iterationbd,ipFailed
-    use txtParser , only: tpFill
-    use math      , only: tred4
-    use printmod  , only: prEigenProblem,prMatrix
+    use glob,      only: iglu,rglu,lglu,void,true,false,uch,i8kind,glControlMemory
+    use hdb,       only: mol,scfbd,ou,ouWidth,iterationbd,ipFailed,dipoleToDeby,throughbd
+    use hdb,       only: singleSession,localbd
+    use localizer, only: localize
+    use txtParser, only: tpFill,tpAdjustc
+    use math,      only: tred4
+    use printmod,  only: prEigenProblem,prMatrix,prStrByVal
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CONSTANTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -22,8 +24,8 @@
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     integer(kind=iglu) :: N,Nocc
-    logical(kind=lglu) :: hasGuess,saveKeepStatus
-    real   (kind=rglu) :: iterstep,variation
+    logical(kind=lglu) :: hasGuess,saveKeepStatus,localized
+    real   (kind=rglu) :: iterstep,variation,Eel,Enuc
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ACCESS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -67,9 +69,9 @@
     endif
 
     hasGuess=true
+    localized=false
 
     if ((iterationbd%lastProcedureStatus.GE.0).OR.(scfbd%exceeded)) then
-        ! write(ou,*) 'Dropping variation.'
         variation=0
     endif
 
@@ -165,7 +167,6 @@
     implicit none
 
     real   (kind=rglu) :: energy(5)
-    real   (kind=rglu) :: Eel,Enuc
     integer(kind=iglu) :: mu,nu
 
 
@@ -206,6 +207,13 @@
     real   (kind=rglu), optional :: fockian(:,:),vectors(:,:),energies(:),density(:,:)
     integer(kind=iglu)           :: i,j
 
+
+    if (localbd%enabled) then
+        if (.NOT.localized) then
+            call localize(V,V,true)
+            localized=true
+        endif
+    endif
 
     if (present(fockian)) then
         if (UBound(fockian,1).NE.N) then
@@ -284,8 +292,44 @@
     subroutine printSCFSolution
     implicit none
 
+    integer(kind=iglu) :: c,paccur
+    real   (kind=rglu) :: dx,dy,dz,dmod
 
-    call prEigenProblem(V,E,ou,'SCF procedure solution','^.0000',maxwidth=ouWidth)
+
+    paccur=5
+
+    write (ou,'(/A)') tpAdjustc(' RHF results ',ouWidth,'=')
+    call prEigenProblem(V,E,ou,'RHF solution','^.0000',maxwidth=ouWidth)
+    write (ou,99) Eel,Enuc,Eel+Enuc,E(Nocc+1)-E(Nocc)
+    call prMatrix(2*D,ou,'RHF RDM1', '^.0000',maxwidth=ouWidth)
+
+    ! write(*,*) throughbd%enabled(1), throughbd%property%get()
+    if (throughbd%enabled(1) .AND. (throughbd%property%get().EQ.'gap')) then
+         call singleSession('  '//prStrByVal(E(Nocc+1)-E(Nocc),'__.0000')//'  ')
+    endif
+
+    write (ou,100) 'Atom',tpAdjustc('Density',paccur+3),tpAdjustc('Charge',paccur+4)
+    dx=0; dy=0; dz=0
+    do c = 1,N
+        write (ou,101) c,2*D(c,c),1-2*D(c,c)
+        dx=dx+mol%atm(c)%coords(1)*(1-2*D(c,c))
+        dy=dy+mol%atm(c)%coords(2)*(1-2*D(c,c))
+        dz=dz+mol%atm(c)%coords(3)*(1-2*D(c,c))
+    enddo
+    dmod=sqrt(dx**2+dy**2+dz**2)
+    write (ou,102) 'X',dx*dipoleToDeby,'Y',dy*dipoleToDeby,&
+                   'Z',dz*dipoleToDeby,'|D|',dmod*dipoleToDeby
+
+    write (ou,'(/A)') tpAdjustc(' End of RHF results ',ouWidth,'=')
+
+ 99 format(4X,'Electron energy:',1X,F16.8,1X,'eV'/&
+           4X,'Nuclear energy: ',1X,F16.8,1X,'eV'/&
+           4X,'Total energy:   ',1X,F16.8,1X,'eV'/&
+           4X,'HOMO-LUMO gap:  ',5X,F8.4,5X,'eV')
+100 format(/2X,A,2X,A,3X,A)
+101 format(2X,i4,2X,F<3+paccur>.<paccur>,2X,F<4+paccur>.<paccur>)
+102 format(<17+2*paccur>('_')//3(<10+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D'/),&
+                                  <8+paccur>X,A,' =',F<4+paccur>.<paccur>,1X,'D'/)
 
     return
     end subroutine printSCFSolution

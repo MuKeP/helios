@@ -3,13 +3,14 @@
     use glob,      only: iglu,void
     use hdb,       only: generalbd,systembd,iterationbd,geometrybd,statesbd,polarizbd,fieldbd
     use hdb,       only: densitybd,coulsonbd,hyperchargesbd,cuebd,fcibd,scfbd,lrbd,ccbd,localbd
+    use hdb,       only: throughbd,parametrizationbd
     use datablock, only: bdAddDescription,bdVariableAddDescription
     use txtParser, only: tpTranslateEscapes
 
     implicit none
 
 
-    void=bdAddDescription('general','contains general semi-empirical parameters and calculation settings.')
+    void=bdAddDescription('general','contains calculation settings.')
     void=bdVariableAddDescription(loc(generalbd%methods),&
                                   tpTranslateEscapes('specifies method(s) to be used for calculation (use "+" as separator):\n'//&
                                                      'huckel           - Molecular orbitals Huckel method\n'//&
@@ -37,16 +38,15 @@
                                                      'hypercharges     - hypercharges and hypermoments (according to Bredas\n'//&
                                                      '                   real-space finite field approach)\n'//&
                                                      'coulson          - Coulson atom-atom, atom-bond, bond-bond polarizabilities') )
+    void=bdVariableAddDescription(loc(generalbd%outfile),'specifies the name of output file. use %input% to get the name from input file. (.inp will be omitted)')
 
-    void=bdVariableAddDescription(loc(generalbd%coulombType),&
+    void=bdAddDescription('parametrization','contains parametrization settings')
+    void=bdVariableAddDescription(loc(parametrizationbd%coulombType),&
                                   tpTranslateEscapes('specifies empirical formula to describe two-center Coulomb integrals:\n'//&
                                                      'ohno-klopman     - Ohno-Klopman formula\n'//&
                                                      'mataga-nishimoto - Mataga-Nishimoto formula\n'//&
                                                      'hubbard          - use Hubbard approximation (only diagonal elements)') )
-
-    void=bdVariableAddDescription(loc(generalbd%alternation),'specifies the values of single/double bond resonant integrals alternation')
-
-    void=bdVariableAddDescription(loc(generalbd%outfile),'specifies the name of output file. use %input% to get the name from input file. (.inp will be omitted)')
+    void=bdVariableAddDescription(loc(parametrizationbd%alternation),'specifies the values of single/double bond resonant integrals alternation')
 
     void=bdAddDescription('system','contains global system settings for calculation.')
     void=bdVariableAddDescription(loc(systembd%memory)          ,'specifies maximum amount of shared RAM (i.e. in MB: x1024*1024 bytes)')
@@ -58,10 +58,6 @@
     void=bdVariableAddDescription(loc(systembd%memoryReport)    ,'enables memory report on every allocation/deallocation')
     void=bdVariableAddDescription(loc(systembd%memoryUnits)     ,'specifies the units of shared memory value')
     void=bdVariableAddDescription(loc(systembd%memoryThreshold) ,'specifies threshold of memory report messages (reported more than)')
-    void=bdVariableAddDescription(loc(systembd%throughHeader)   ,'specifies header for through output file')
-    void=bdVariableAddDescription(loc(systembd%throughFile)     ,'specifies file for through output')
-    void=bdVariableAddDescription(loc(systembd%throughEnable(1)),'enables through output')
-    void=bdVariableAddDescription(loc(systembd%throughPrefix)   ,'specifies "through" prefix for every new line')
 
     void=bdAddDescription('iteration','contains general settings for iteration procedures performed during calculation')
     void=bdVariableAddDescription(loc(iterationbd%chkStagnation)      ,'enables iteration procedure stagnation determination')
@@ -71,7 +67,7 @@
     void=bdVariableAddDescription(loc(iterationbd%feelStagnation)     ,'specifies iteration part of successful iterations to determine stagnation')
     void=bdVariableAddDescription(loc(iterationbd%thresholdStagnation),'specifies iteration number to start stagnation determination after')
     void=bdVariableAddDescription(loc(iterationbd%printFrequency)     ,'specifies print frequency during iterations (in seconds)')
-    void=bdVariableAddDescription(loc(iterationbd%printNotRearly)     ,'specifies iteration frequency to be print not rearly than (in iterations)')
+    void=bdVariableAddDescription(loc(iterationbd%printNotRarely)     ,'specifies iteration frequency to be print not rarely than (in iterations)')
 
     void=bdAddDescription('geometry','contains settings for geometry manipulations')
     void=bdVariableAddDescription(loc(geometrybd%symmetryAccount)      ,'enables account of symmetry')
@@ -211,6 +207,14 @@
     void=bdVariableAddDescription(loc(lrbd%storeSolutionThreshold),'threshold for linear response amplitudes selection as guess for next computation')
     void=bdVariableAddDescription(loc(lrbd%storeSolutionMode),'storage mode for guess (r1, r2, r1r2)')
 
+    void=bdAddDescription('through','contains settings for through mode')
+    void=bdVariableAddDescription(loc(throughbd%enabled(1)),'enables through output')
+    void=bdVariableAddDescription(loc(throughbd%header)    ,'specifies header for through output file')
+    void=bdVariableAddDescription(loc(throughbd%file)      ,'specifies file for through output')
+    void=bdVariableAddDescription(loc(throughbd%prefix)    ,'specifies "through" prefix for every new line')
+    void=bdVariableAddDescription(loc(throughbd%property)  ,'specifies property to "through"')
+    ! expect='list(gap,total-energy,x,y,z,|D|,xx,yy,zz,<A>,xxx,yyy,zzz,|B|,xxxx,yyyy,zzzz,<G>,coulson,density,no_index,hypercharges)')
+
     void=bdAddDescription('molecule',tpTranslateEscapes('contains molecular information in the following format:\n\n'//&
                                                         'MOLECULE NAME\n'//&
                                                         'NUMBER OF ATOMS\n'//&
@@ -232,7 +236,7 @@
                                                         'FA = first  atom of the bond\n'//&
                                                         'SA = second atom of the bond\n'//&
                                                         'RI = resonant integral (eV)\n'//&
-                                                        'K = kind of the bond (single/double)\n'//&
+                                                        'K = kind of the bond (single/double/nonset)\n'//&
                                                         'D = bond length (angstroms)\n\n'//&
                                                         '* any blank lines/spaces/tabs are allowed\n'//&
                                                        '* every atom and every bond must be written on the new line') )

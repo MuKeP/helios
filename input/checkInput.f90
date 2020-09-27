@@ -4,6 +4,7 @@
     use glob,       only: true,false,void,iglu,glControlMemory
     use hdb,        only: generalbd,geometrybd,systembd,densitybd,mol,methodNames,hyperchargesbd
     use hdb,        only: coulsonbd,bdNames,eu,ou,init,ouWidth,controlFileName,ierror
+    use hdb,        only: parametrizationbd
     use printmod,   only: prJoin
     use txtParser,  only: tpIndex,tpCount,tpIntByStr,tpSplit,tpSplitLen,tpSplitHold,operator(.in.)
     use txtParser,  only: tpIntArrayByStr,tpReplace,tpDigits,tpSetAccordance
@@ -222,11 +223,7 @@
         generalbd%methods=prJoin(methodNames,'+')
     endif
 
-    ! if ('%methods%' .in. systembd%throughHeader%get()) then
-    !     systembd%throughHeader=tpReplace(systembd%throughHeader%get(), '%methods%', generalbd%methods%get())
-    ! endif
-
-    generalbd%bondsAlternated=abs(generalbd%alternation).GT.0
+    parametrizationbd%bondsAlternated=abs(parametrizationbd%alternation).GT.0
     geometrybd%searchLinear(2)=false
     geometrybd%searchPlanar(2)=false
 

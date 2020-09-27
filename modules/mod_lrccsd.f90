@@ -5,7 +5,7 @@
     use glob,      only: assignment(=)
     use glob,      only: uch,rglu,iglu,lglu,true,false,void,i8kind,glControlMemory,nullsub
     use glob,      only: ivarVector,rvarVector
-    use hdb,       only: mol,statesbd,lrbd,lrst
+    use hdb,       only: mol,statesbd,lrbd,lrst,ccbd
     use hdb,       only: scfbd,ou,ouWidth,cueConstant1
     use scf,       only: setSCFParameters,initSCF,iterationSCF,getSCFResult,callbackSCF
     use scf,       only: energySCF,finalizeSCF,printSCFSolution
@@ -886,7 +886,7 @@
     r1=lrHoldStateVectorR1(:,:,state)
     r2=lrHoldStateVectorR2(:,:,:,:,state)
 
-    call wfAnalize(umethod%get(), int4(2#111100))
+    call wfAnalize(umethod%get(), ccbd%wfSwitches, true)
 
     return
     end subroutine analizewfLR

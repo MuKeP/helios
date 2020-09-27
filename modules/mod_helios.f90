@@ -60,19 +60,20 @@
     ! ~~~~~ Service ~~~~~ !
 
     ! preset of the line length for output file
-    integer(kind=iglu)  , parameter :: setfLineLen=79
+    integer(kind=iglu)  , parameter :: setfLineLen=100
     ! signals
     integer(kind=i4kind), parameter :: SIGHUP=1,SIGUSR1=10,SIGCONT=18,SIGSTOP=19
     ! Memory: iglu+16
 
     ! ~~~~~ Block data names ~~~~~ !
-    integer(kind=iglu)  , parameter :: bdListLen=19
+    integer(kind=iglu)  , parameter :: bdListLen=21
     character (len=*), dimension(bdListLen), parameter :: bdNames=['general','system','geometry',&
                                                             'polariz','rdm','scf','hypercharges',&
                                                             'states','coulson','coupled-cluster',&
                                                             'linear-response','molecule','local',&
-                                                            'lrguess','iteration','scfguess',    &
-                                                            'fci','cue','field']
+                                                            'lrguess','iteration','fci','field', &
+                                                            'parametrization','cue','scfguess',  &
+                                                            'through']
 
     ! ~~~~~ Methods names ~~~~~ !
     integer(kind=iglu)  , parameter :: MethodListLen=15
@@ -81,15 +82,20 @@
                                                               'cue-ccsd','u-ccsd','r-ccsd(t)','fci',&
                                                               'cue-ccsdt','u-ccsdt','r-ccsdt']
 
-    ! Memory: ~19*10+15*10 bytes
+    ! Memory: ~20*10+15*10 bytes
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DATA BLOCKS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
     type bdgeneral
-        type(uch)          :: methods,task,infile,outfile,harvestfile,coulombType
+        type(uch)          :: methods,task,infile,outfile,harvestfile
+
+    end type bdgeneral
+
+    type bdparametrization
+        type(uch)          :: coulombType
         real(kind=rglu)    :: alternation
         logical(kind=lglu) :: bondsAlternated
-    end type bdgeneral
+    end type bdparametrization
 
     type bdgeometry
         logical(kind=lglu) :: symmetryAccount,searchPlanar(2),searchLinear(2)
@@ -97,18 +103,18 @@
     end type bdgeometry
 
     type bdsystem
-        type(uch)            :: muttDestination,memoryUnits,throughHeader,throughFile,throughPrefix
+        type(uch)            :: muttDestination,memoryUnits
         real(kind=rglu)      :: memory,memoryThreshold
         integer(kind=iglu)   :: nNodes,verboselvl
         integer(kind=i8kind) :: imemory
         logical(kind=lglu)   :: allowRestart,allowMutt,muttSendTared,ignoreSIGHUP,harvest
-        logical(kind=lglu)   :: memoryReport,throughEnable(2)
+        logical(kind=lglu)   :: memoryReport
     end type bdsystem
 
     type bditeration
         logical(kind=lglu) :: chkStagnation,chkDivergence,chkStopIteration(2),afterPause
         real(kind=rglu)    :: feelDivergence,feelStagnation,thresholdStagnation
-        real(kind=rglu)    :: printFrequency,printNotRearly
+        real(kind=rglu)    :: printFrequency,printNotRarely
 
         ! 0 - iteration, 1 - converged, -1 - failed, -2 - diverged, -3 - stagnated, -4 - iterrupted
         integer(kind=iglu) :: lastProcedureStatus
@@ -149,7 +155,7 @@
 
     type bdcue
         integer(kind=iglu) :: radius(0:3)
-        logical(kind=lglu) :: sparse,showBasis,local(0:3)
+        logical(kind=lglu) :: sparse,showBasis,local(0:3),nonset
     end type bdcue
 
     type bdfci
@@ -179,6 +185,11 @@
         real(kind=rglu)    :: accuracy,iterStep(3),printThreshold
         logical(kind=lglu) :: dcue,forceSpin,storeIntegrals,diisEnabled
     end type bdcc
+
+    type bdthrough
+        type(uch)          :: header,file,prefix,property
+        logical(kind=lglu) :: enabled(2)
+    end type bdthrough
 
     type bdlr
         type(uch)          :: guess,diisStorage,storeSolutionMode
@@ -241,23 +252,25 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    type (molecule)        :: mol
-    type (bdgeneral)       :: generalbd
-    type (bdsystem)        :: systembd
-    type (bdgeometry)      :: geometrybd
-    type (bdstates)        :: statesbd
-    type (bdpolariz)       :: polarizbd
-    type (bddensity)       :: densitybd
-    type (bdcoulson)       :: coulsonbd
-    type (bdhypercharges)  :: hyperchargesbd
-    type (bdcue)           :: cuebd
-    type (bdfci)           :: fcibd
-    type (bdscf)           :: scfbd
-    type (bdlocal)         :: localbd
-    type (bdcc)            :: ccbd
-    type (bdlr)            :: lrbd
-    type (bditeration)     :: iterationbd
-    type (bdfield)         :: fieldbd
+    type (molecule)          :: mol
+    type (bdgeneral)         :: generalbd
+    type (bdparametrization) :: parametrizationbd
+    type (bdsystem)          :: systembd
+    type (bdgeometry)        :: geometrybd
+    type (bdstates)          :: statesbd
+    type (bdpolariz)         :: polarizbd
+    type (bddensity)         :: densitybd
+    type (bdcoulson)         :: coulsonbd
+    type (bdhypercharges)    :: hyperchargesbd
+    type (bdcue)             :: cuebd
+    type (bdfci)             :: fcibd
+    type (bdscf)             :: scfbd
+    type (bdlocal)           :: localbd
+    type (bdcc)              :: ccbd
+    type (bdthrough)         :: throughbd
+    type (bdlr)              :: lrbd
+    type (bditeration)       :: iterationbd
+    type (bdfield)           :: fieldbd
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ARRAYS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
@@ -628,27 +641,27 @@
 
 
     ! not enabled
-    if (.NOT.systembd%throughEnable(1)) return
+    if (.NOT.throughbd%enabled(1)) return
 
     ! need to open file
-    if (.NOT.systembd%throughEnable(2)) then
+    if (.NOT.throughbd%enabled(2)) then
         single_io=fcNewID()
 
         ! check wether file exists
-        open(single_io, file=systembd%throughFile%get(), status='old', iostat=err)
+        open(single_io, file=throughbd%file%get(), status='old', iostat=err)
 
         ! file does not exist
         if (err.NE.0) then
-            systembd%throughEnable(2)=true
-            open (single_io, file=systembd%throughFile%get())
-            write(single_io, '(A)' ) systembd%throughHeader%get()
-            write(single_io, '(A\)') systembd%throughPrefix%get()
+            throughbd%enabled(2)=true
+            open (single_io, file=throughbd%file%get())
+            write(single_io, '(A)' ) throughbd%header%get()
+            write(single_io, '(A\)') throughbd%prefix%get()
         else ! file exists
             close(single_io)
-            systembd%throughEnable(2)=true
-            open (single_io, file=systembd%throughFile%get(), access='append')
+            throughbd%enabled(2)=true
+            open (single_io, file=throughbd%file%get(), access='append')
             write(single_io,      *)
-            write(single_io, '(A\)') systembd%throughPrefix%get()
+            write(single_io, '(A\)') throughbd%prefix%get()
         endif
     endif
 

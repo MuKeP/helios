@@ -5,7 +5,7 @@
     use hdb,       only: in,eu,lrg,scfg,ierror
     use hdb,       only: generalbd,systembd,geometrybd,statesbd,polarizbd,iterationbd
     use hdb,       only: densitybd,coulsonbd,hyperchargesbd,cuebd,fcibd,scfbd,lrbd,ccbd
-    use hdb,       only: localbd,fieldbd
+    use hdb,       only: localbd,fieldbd,throughbd,parametrizationbd
     use fcontrol,  only: fcNewID,fcBanID
     use datablock, only: bdShareVariable,bdCollect
 
@@ -24,15 +24,17 @@
         call primaryInformation('error')
     endif
 
-    addr(1)=bdShareVariable(generalbd%methods        ,'method'          ,opt=false,several=true,&
+    addr(1)=bdShareVariable(generalbd%methods,'method'          ,opt=false,several=true,&
     expect='list(all,huckel,rhf,cue-ccs,r-ccd,u-ccd,mp2,mp3,cue-ccsd,r-ccsd,u-ccsd,r-ccsd(t),cue-ccsdt,u-ccsdt,r-ccsdt,fci)')
-    addr(2)=bdShareVariable(generalbd%task           ,'jobtype'         ,opt=false,several=true,&
+    addr(2)=bdShareVariable(generalbd%task   ,'jobtype'         ,opt=false,several=true,&
     expect='list(polarizability,density,coulson,hypercharges,energy,wf-analysis)')
-    addr(3)=bdShareVariable(generalbd%coulombType,'coulomb-integrals'   ,opt=true ,several=false,def='ohno-klopman',&
+    addr(3)=bdShareVariable(generalbd%outfile,'output-file'         ,opt=true ,def='%input%',expect='any',register=true)
+    void=bdCollect('general',addr(1:3),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+
+    addr(1)=bdShareVariable(parametrizationbd%coulombType,'coulomb-integrals'   ,opt=true ,several=false,def='ohno-klopman',&
     expect='list(ohno-klopman,mataga-nishimoto,hubbard)')
-    addr(4)=bdShareVariable(generalbd%alternation,'bond-alternation'    ,opt=true ,def=0._rglu,expect='range(-1:1)')
-    addr(5)=bdShareVariable(generalbd%outfile    ,'output-file'         ,opt=true ,def='%input%',expect='any',register=true)
-    void=bdCollect('general',addr(1:5),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+    addr(2)=bdShareVariable(parametrizationbd%alternation,'bond-alternation'    ,opt=true ,def=0._rglu,expect='range(-1:1)')
+    void=bdCollect('parametrization',addr(1:2),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
     addr( 1)=bdShareVariable(systembd%memory,          'memory'                ,opt=true,def=1024._rglu)
     addr( 2)=bdShareVariable(systembd%nNodes,          'nproc'                 ,opt=true,def=1,expect='range(1:128)')
@@ -43,14 +45,10 @@
     addr( 7)=bdShareVariable(systembd%memoryReport,    'memory-report'         ,opt=true,def=false)
     addr( 8)=bdShareVariable(systembd%memoryUnits,     'memory-units'          ,opt=true,def='Mb')                         !CHCK
     addr( 9)=bdShareVariable(systembd%memoryThreshold, 'memory-print-threshold',opt=true,def=8._rglu,expect='range(0:1024)')
-    addr(10)=bdShareVariable(systembd%throughHeader,   'through-header'        ,opt=true,def='== Header of through file ==',register=true)
-    addr(11)=bdShareVariable(systembd%throughFile,     'through-file'          ,opt=true,def='',register=true)
-    addr(12)=bdShareVariable(systembd%throughEnable(1),'through-enable'        ,opt=true,def=false)
-    addr(13)=bdShareVariable(systembd%throughPrefix,   'through-line-prefix'   ,opt=true,def='',register=true)
     !addr(10)=bdShareVariable(systembd%allowMutt,      'email-send'      ,opt=true,def=false)
     !addr(11)=bdShareVariable(systembd%muttSendTared,  'email-send-tared',opt=true,def=true)
     !addr(12)=bdShareVariable(systembd%muttDestination,'email-reciver'   ,opt=true,def='quant@mail.com')
-    void=bdCollect('system',addr(1:13),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+    void=bdCollect('system',addr(1:9),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
     addr(1)=bdShareVariable(iterationbd%chkStagnation      ,'enable-stagnation-check',opt=true,def=true)                 !CHCK
     addr(2)=bdShareVariable(iterationbd%chkDivergence      ,'enable-divergence-check',opt=true,def=true)
@@ -59,7 +57,7 @@
     addr(5)=bdShareVariable(iterationbd%feelStagnation     ,'stagnation-threshold'   ,opt=true,def=60._rglu ,expect='range(20:70)')
     addr(6)=bdShareVariable(iterationbd%thresholdStagnation,'stagnation-check-after' ,opt=true,def=200._rglu,expect='range(50:)')
     addr(7)=bdShareVariable(iterationbd%printFrequency     ,'print-frequency'        ,opt=true,def=0.5_rglu ,expect='range(0:)')
-    addr(8)=bdShareVariable(iterationbd%printNotRearly     ,'print-upper-threshold'  ,opt=true,def=20._rglu ,expect='range(1:)')
+    addr(8)=bdShareVariable(iterationbd%printNotRarely     ,'print-upper-threshold'  ,opt=true,def=20._rglu ,expect='range(1:)')
     void=bdCollect('iteration',addr(1:8),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
     addr(1)=bdShareVariable(geometrybd%symmetryAccount      ,'symmetry-account'   ,opt=true,def=true)
@@ -154,7 +152,7 @@
     addr( 9)=bdShareVariable(ccbd%diisSteps     ,'diis-steps'                ,opt=true,def=20,expect='range(2:50)')
     addr(10)=bdShareVariable(ccbd%diisStorage   ,'diis-storage'              ,opt=true,def='ram',expect='list(ram,hdd)') !TODO
     addr(11)=bdShareVariable(ccbd%storeIntegrals,'store-integrals'           ,opt=true,def=true)                         !X3
-    addr(12)=bdShareVariable(ccbd%wfSwitches    ,'wf-switches'               ,opt=true,def=int(2#111110, kind=iglu),expect='range(1:255)')
+    addr(12)=bdShareVariable(ccbd%wfSwitches    ,'wf-switches'               ,opt=true,def=int(2#1111111, kind=iglu),expect='range(1:255)')
     addr(13)=bdShareVariable(ccbd%printThreshold,'amplitudes-print-threshold',opt=true,def=2._rglu,expect='range(1:15)',potentiate='-')
     void=bdCollect('coupled-cluster',addr(1:13),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
@@ -172,6 +170,20 @@
     addr(12)=bdShareVariable(lrbd%storeSolutionThreshold,'store-solution-threshold',opt=true,def=2._rglu,expect='range(1:4)',potentiate='-')
     addr(13)=bdShareVariable(lrbd%storeSolutionMode     ,'store-solution-mode'     ,opt=true,def='r1r2',expect='list(r1,r2,r1r2)')
     void=bdCollect('linear-response',addr(1:13),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
+
+    addr(1)=bdShareVariable(throughbd%enabled(1),'enabled'    ,opt=true,def=false)
+    addr(2)=bdShareVariable(throughbd%header,   'header'     ,opt=true,def='== Header of through file ==',register=true)
+    addr(3)=bdShareVariable(throughbd%file,     'file'       ,opt=true,def='',register=true)
+    addr(4)=bdShareVariable(throughbd%prefix,   'line-prefix',opt=true,def='',register=true)
+    addr(5)=bdShareVariable(throughbd%property, 'property'   ,opt=true,def='total-energy',&
+            expect='list(gap,total-energy,'//&
+                        'x,y,z,|D|,'//&
+                        'xx,yy,zz,<A>,'//&
+                        'xxx,yyy,zzz,xyy,yxx,xzz,zxx,yzz,zyy,|B|,'//&
+                        'xxxx,yyyy,zzzz,xxyy,yyxx,xxzz,zzxx,yyzz,zzyy,<G>,'//&
+                        'coulson,density,no_index,hypercharges)')
+
+    void=bdCollect('through',addr(1:5),bdstart,bdstop,bdcomment,bdaccord,bdseparator,false,0)
 
     addr(1)=bdShareVariable(fieldbd%strength(1),'along-x',opt=true,def=0._rglu,expect='any')
     addr(2)=bdShareVariable(fieldbd%strength(2),'along-y',opt=true,def=0._rglu,expect='any')

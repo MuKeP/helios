@@ -32,12 +32,13 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
-    subroutine localize(initvecs,localvecs,fitness,centroids)
+    subroutine localize(initvecs,localvecs,silent,fitness,centroids)
     implicit none
 
-    real(kind=rglu), intent(in)            :: initvecs(:,:)
-    real(kind=rglu), intent(out)           :: localvecs(:,:)
-    real(kind=rglu), intent(out), optional :: fitness(:),centroids(:,:)
+    real(kind=rglu),    intent(in)            :: initvecs(:,:)
+    logical(kind=lglu), intent(in)            :: silent
+    real(kind=rglu),    intent(out)           :: localvecs(:,:)
+    real(kind=rglu),    intent(out), optional :: fitness(:),centroids(:,:)
 
     real(kind=rglu) :: energy(5)
 
@@ -47,25 +48,32 @@
 
     lvecs=initvecs
 
-    if (localbd%method%get().EQ.'pipek-mezey') then
-        call setIterationHeader(' Localization procedure: Pipek-Mezey ')
-    else
-        ! not implemented
+    if (.NOT.silent) then
+        if (localbd%method%get().EQ.'pipek-mezey') then
+            call setIterationHeader(' Localization procedure: Pipek-Mezey ')
+        else
+            ! not implemented
+        endif
     endif
 
     block_converged=false
 
     ! if verbose
     call energyLC(energy)
-    call prEigenProblem(lvecs,dmo,ou,'Localization: Init vectors (with localization numbers)','^.0000',ouWidth)
+
+    if (.NOT.silent) then
+        call prEigenProblem(lvecs,dmo,ou,'Localization: Init vectors (with localization numbers)','^.0000',ouWidth)
+    endif
 
     call resetIterationState(false)
-    call iterator(iterationLC,energyLC,localbd%maxiters,localbd%accuracy,false,nullsub,false,converged)
+    call iterator(iterationLC,energyLC,localbd%maxiters,localbd%accuracy,true,nullsub,false,converged)
 
     call checkOrthonormality
 
     ! if verbose
-    call prEigenProblem(lvecs,dmo,ou,'Localization: Resulting vectors (with localization numbers)','^.0000',ouWidth)
+    if (.NOT.silent) then
+        call prEigenProblem(lvecs,dmo,ou,'Localization: Resulting vectors (with localization numbers)','^.0000',ouWidth)
+    endif
 
     localvecs=lvecs
 
@@ -79,7 +87,9 @@
     endif
 
     deallocate(lvecs,dmo,mocentroids)
-    call setIterationHeader
+    if (.NOT.silent) then
+        call setIterationHeader
+    endif
 
     return
     end subroutine localize

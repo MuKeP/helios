@@ -89,8 +89,8 @@
                 write (ou,211) [(deLagDeriv(j,tpLowerCase(sX)   ),j=3,Np,2)]*PDip
                 write (ou,212) [(deLagDeriv(j,tpLowerCase(sXX)  ),j=3,Np,2)]*PPol
                 write (ou,213) [(deLagDeriv(j,tpLowerCase(sXXX) ),j=5,Np,2)]*PHpl1
-                write (ou,214) [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2,&
-                               [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2*esu
+                write (ou,214) [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2
+                write (ou,215) [(deLagDeriv(j,tpLowerCase(sXXXX)),j=5,Np,2)]*PHpl2*esu
 
                 write (ou,281) deLagDeriv(Np,tpLowerCase(sXX))*PPol/3,&
                                deLagDeriv(Np,tpLowerCase(sXX))*PPol/(3*Nel)
@@ -501,11 +501,11 @@
 200 format (///4X,'~~~~~~~~~~ Axis ',A1,' ~~~~~~~~~~'/)
 
 201 format (2X,24X,9(6X,i2,' points'))
-211 format (2X,'Dipole moment           deby',1X,ES14.7,1X,ES14.7,1X,ES14.7,1X,ES14.7)
-212 format (2X,'Polarizability          au  ',1X,ES14.7,1X,ES14.7,1X,ES14.7,1X,ES14.7)
-213 format (2X,'1st hyperpolarizability au  ',1X,15X,      ES14.7,1X,ES14.7)
-214 format (2X,'2nd hyperpolarizability au  ',1X,15X,      ES14.7,1X,ES14.7/&
-            2X,'2nd hyperpolarizability esu ',1X,15X,      ES14.7,1X,ES14.7)
+211 format (2X,'Dipole moment           deby',10(1X,ES14.7))
+212 format (2X,'Polarizability          au  ',10(1X,ES14.7))
+213 format (2X,'1st hyperpolarizability au  ',1X,14X,   9(1X,ES14.7))
+214 format (2X,'2nd hyperpolarizability au  ',1X,14X,   9(1X,ES14.7))
+215 format (2X,'2nd hyperpolarizability esu ',1X,14X,   9(1X,ES14.7))
 
 281 format (/'         Average polarizability                =',1X,F13.4,1X,'au'/&
              'Specific average polarizability (per electron) =',1X,F13.4,1X,'au' )

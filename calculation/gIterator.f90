@@ -122,12 +122,12 @@
                     printRate=1
                 else
                     if (avgTimePerIter.LT.10**6*gluCompare) then
-                        printRate=iterationbd%printNotRearly
+                        printRate=iterationbd%printNotRarely
                     else
                         printRate=int(iterationbd%printFrequency/avgTimePerIter)
                     endif
                 endif
-                if (printRate.GT.iterationbd%printNotRearly) printRate=iterationbd%printNotRearly
+                if (printRate.GT.iterationbd%printNotRarely) printRate=iterationbd%printNotRarely
 
                 improvementPercent=0
                 successPercent=100

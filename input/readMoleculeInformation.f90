@@ -6,7 +6,7 @@
     use glob,      only: mid,rangen
     use hdb,       only: in,ou,ouWidth,ierror
     use hdb,       only: BohrRadius,HartreeEnergy
-    use hdb,       only: mol,generalbd,geometrybd
+    use hdb,       only: mol,generalbd,geometrybd,parametrizationbd,cuebd
     use txtParser, only: operator(.in.)
     use printmod,  only: prMatrix
 
@@ -88,6 +88,10 @@
         read (in,*,err=668) mol%bnd(k)%atoms(1),mol%bnd(k)%atoms(2),&
                             mol%bnd(k)%beta    ,mol%bnd(k)%kind
 
+        if (mol%bnd(k)%kind.EQ.'nonset') then
+            cuebd%nonset=true
+        endif
+
         i=mol%bnd(k)%atoms(1); j=mol%bnd(k)%atoms(2)
 
         do l = 1,3
@@ -114,17 +118,21 @@
 
     call checkUniqueness
 
-    if (generalbd%bondsAlternated) then
+    if (parametrizationbd%bondsAlternated) then
         do k = 1,M
             i=mol%bnd(k)%atoms(1); j=mol%bnd(k)%atoms(2)
 
             select case (mol%bnd(k)%kind)
                 case ('single')
-                    mol%connect(i,j)=mol%bnd(k)%beta*(1-generalbd%alternation)
-                    mol%connect(j,i)=mol%bnd(k)%beta*(1-generalbd%alternation)
+                    mol%connect(i,j)=mol%bnd(k)%beta*(1-parametrizationbd%alternation)
+                    mol%connect(j,i)=mol%bnd(k)%beta*(1-parametrizationbd%alternation)
                 case ('double')
-                    mol%connect(i,j)=mol%bnd(k)%beta*(1+generalbd%alternation)
-                    mol%connect(j,i)=mol%bnd(k)%beta*(1+generalbd%alternation)
+                    mol%connect(i,j)=mol%bnd(k)%beta*(1+parametrizationbd%alternation)
+                    mol%connect(j,i)=mol%bnd(k)%beta*(1+parametrizationbd%alternation)
+                case ('nonset')
+                    exit
+                case default
+                    goto 668
             endselect
         enddo
     endif
@@ -170,9 +178,11 @@
         write (ou,104) k,i,j,mol%atmdist(i,j),mol%bnd(k)%beta,mol%bnd(k)%kind
     enddo
 
-    call prMatrix(mol%G,ou,'Gammas: '//generalbd%coulombType%get(),'^.0000',maxwidth=ouWidth)
+    call prMatrix(mol%G,ou,'Gammas: '//parametrizationbd%coulombType%get(),'^.0000',maxwidth=ouWidth)
 
-    call cueOrbitals
+    if (.NOT.cuebd%nonset) then
+        call cueOrbitals
+    endif
     call symmetrySettings
 
     return
@@ -217,7 +227,7 @@
         !stop
 
         N=mol%nAtoms; mol%G=0
-        select case (generalbd%coulombType%get())
+        select case (parametrizationbd%coulombType%get())
 
             case ('ohno-klopman')
                 !$omp parallel default(shared) private(mu,nu,med)

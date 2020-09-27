@@ -1,8 +1,8 @@
     program HELIOS
 
-    use glob,     only: void,signal
+    use glob,     only: void,signal,nullSub
 
-    use hdb,      only: onLoad,trapSignals,generalbd,setParams,onTrap
+    use hdb,      only: onLoad,trapSignals,generalbd,setParams,onTrap,ou
     use hdb,      only: sighup,sigabrt,sigint,sigterm,sigcont,sigstop,sigusr1
 
     use property, only: getPolarizability,getEnergy,getRDM,getCoulson
@@ -32,14 +32,20 @@
 
     ! call transistor
 
-    select case(generalbd%task%get())
-        case ('energy')        ; call getOnlyEnergies
-        case ('wf-analysis')   ; call getWaveFunctionAnalize
-        case ('polarizability'); call getPolarizability
-        case ('density')       ; call getRDM
-        case ('coulson')       ; call getCoulson
-        case ('hypercharges')  ; call getHypercharges
-    end select
+    ! ou=6
+
+    ! void=getEnergy('cue-ccsd', 1)
+    call getWaveFunctionAnalize
+
+    ! select case(generalbd%task%get())
+    !     case ('energy')        ; call getOnlyEnergies
+    !     case ('wf-analysis')   ; call getWaveFunctionAnalize
+    !     ! case ('wf-analysis')   ; call nullSub
+    !     case ('polarizability'); call getPolarizability
+    !     case ('density')       ; call getRDM
+    !     case ('coulson')       ; call getCoulson
+    !     case ('hypercharges')  ; call getHypercharges
+    ! end select
 
     call primaryInformation('end')
 

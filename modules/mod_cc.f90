@@ -57,7 +57,7 @@
 
     ! globally used routines
     public :: setCCParameters,initCC,guessCC,iterationCC,energyCC,finalizeCC,analizewfCC,&
-              getCCResults
+              getCCResults,printCCSolution
 
     ! for special use (lr module or analize)
     public :: convertSpatialToSpinCC
@@ -540,6 +540,7 @@
             call iterator(iterationSCF,energySCF,scfbd%maxiters,scfbd%accuracy,true,callbackSCF,true,converged)
             call getSCFResult(vectors=hV)
             call prepareDensity(hV)
+            !call prMatrix(hV,ou,'Local MOs','^.00000',maxwidth=ouWidth)
             !call printSCFSolution
             call prepareFock('spatial')
 
@@ -1210,59 +1211,42 @@
         case ('spare-cue-ccsd')
 
         case ('cue-ccs','cue-ccsd')
-            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
-                           prStrByVal(Enuc,0,14,'exp'),&
-                           prStrByVal(Eel+Enuc,0,14,'exp'),&
-                           prStrByVal(genergy(1),0,14,'exp')
-
-            call wfAnalize(umethod%get(), int4(2#000001), false)
+            ! call wfAnalize(umethod%get(), int4(2#000001), false)
+            ! call cue_cc_analize(umethod%get())
 
         case ('spin-cue-ccs','spin-cue-ccsd','spin-cue-ccsdt')
-            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
-                           prStrByVal(Enuc,0,14,'exp'),&
-                           prStrByVal(Eel+Enuc,0,14,'exp'),&
-                           prStrByVal(genergy(1),0,14,'exp')
-            call wfAnalize(umethod%get(), int4(2#000001), false)
+            ! call wfAnalize(umethod%get(), int4(2#000001), false)
 
         case ('u-ccd','u-ccsd')
             call printSCFSolution
-            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
-                           prStrByVal(Enuc,0,14,'exp'),&
-                           prStrByVal(Eel+Enuc,0,14,'exp'),&
-                           prStrByVal(genergy(1),0,14,'exp')
-            call wfAnalize(umethod%get(), int4(2#000001), false)
+            ! call wfAnalize(umethod%get(), int4(2#000001), false)
 
         case ('r-ccd','r-ccsd')
             call printSCFSolution
-            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
-                           prStrByVal(Enuc,0,14,'exp'),&
-                           prStrByVal(Eel+Enuc,0,14,'exp'),&
-                           prStrByVal(genergy(1),0,14,'exp')
-            call wfAnalize(umethod%get(), int4(2#000001), false)
+            ! call wfAnalize(umethod%get(), int4(2#000001), false)
 
         case ('spin-u-ccd','spin-u-ccsd','spin-u-ccsdt')
             call printSCFSolution
-            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
-                           prStrByVal(Enuc,0,14,'exp'),&
-                           prStrByVal(Eel+Enuc,0,14,'exp'),&
-                           prStrByVal(genergy(1),0,14,'exp')
-            call wfAnalize(umethod%get(), int4(2#000001), false)
+            ! call wfAnalize(umethod%get(), int4(2#000001), false)
 
         case ('spin-r-ccd','spin-r-ccsd','spin-r-ccsdt','spin-r-ccsd(t)')
             call printSCFSolution
-            write (ou,100) prStrByVal(Eel,0,14,'exp'),&
-                           prStrByVal(Enuc,0,14,'exp'),&
-                           prStrByVal(Eel+Enuc,0,14,'exp'),&
-                           prStrByVal(genergy(1),0,14,'exp')
-            call wfAnalize(umethod%get(), int4(2#000001), false)
+            ! call wfAnalize(umethod%get(), int4(2#000001), false)
 
     end select
+    write (ou,100) prStrByVal(Eel,0,14,'exp'),&
+                   prStrByVal(Enuc,0,14,'exp'),&
+                   prStrByVal(Eel+Enuc,0,14,'exp'),&
+                   prStrByVal(genergy(1)-genergy(2),0,14,'exp'),&
+                   prStrByVal(genergy(1),0,14,'exp')
+
 
     write (ou,'(A//)') tpFill(ouWidth,'=')
 
 100 format ('Electronic energy:       ',1X,A/&
             'Nuclear repulsion energy:',1X,A/&
             'Reference state energy:  ',1X,A/&
+            'CC correction:           ',1X,A/&
             'Total energy:            ',1X,A)
 
     return
@@ -1270,10 +1254,21 @@
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 
+    subroutine printCCSolution
+    implicit none
+
+    return
+    end subroutine printCCSolution
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
     subroutine analizewfCC
     implicit none
 
+    ! call cue_cc_analize(umethod%get())
 
+
+    call getCCResults
     call wfAnalize(umethod%get(), ccbd%wfSwitches, true)
     !call analize_azulenes
 

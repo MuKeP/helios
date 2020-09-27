@@ -5,7 +5,7 @@
     use glob,       only: uch,mid
     use hdb,        only: bdNames,eu,ou,init,ouWidth,controlFileName
     use hdb,        only: mol,generalbd,geometrybd,systembd,densitybd,scfbd,methodNames
-    use hdb,        only: iterationbd,lrbd
+    use hdb,        only: iterationbd,lrbd,throughbd
     use hdb,        only: scfg,lrg,ierror,outOfMemory,changeMemoryState,cparamstring
     use datablock,  only: bdParseFile,bdPrintBlockData,bdCheckExternalParameter
     use datablock,  only: bdReplaceRegisteredPatterns
@@ -75,9 +75,9 @@
     open (ou  ,file=generalbd%outfile%get())
 
     call primaryInformation('init')
-    write (ou,'(A/)') tpAdjustc('Input file',ouWidth,'=')
+    write (ou,'(A/)') tpAdjustc(' Input file ',ouWidth,'=')
     call prEchoFile(init,ou,'input %numeration >>'); close(init)
-    write (ou,'(/A)') tpAdjustc('Computation settings',ouWidth,'=')
+    write (ou,'(/A)') tpAdjustc(' Computation settings ',ouWidth,'=')
     do k = 1,UBound(bdNames,1)
         if ((bdNames(k).EQ.'general').AND.(generalbd%methods%ln+10.GT.ouWidth)) then
             void=bdPrintBlockData(bdNames(k),ou,width=generalbd%methods%ln+20,ignoreFreeBlock=true) ! fix?
@@ -85,14 +85,14 @@
             void=bdPrintBlockData(bdNames(k),ou,width=ouWidth,ignoreFreeBlock=true)
         endif
     enddo
-    write (ou,'(/A/)') tpAdjustc('Molecule information',ouWidth,'=')
+    write (ou,'(/A/)') tpAdjustc(' Molecule information ',ouWidth,'=')
 
     void=glShareMemory(int(systembd%memory*1024*1024,kind=i8kind),outOfMemory,changeMemoryState)
 
     ! preset default values
     geometrybd%searchPlanar(2)=false
     geometrybd%searchLinear(2)=false
-    systembd%throughEnable(2)=false
+    throughbd%enabled(2)=false
     iterationbd%chkStopIteration(2)=false
     lrbd%storeSolution(2)=false
 

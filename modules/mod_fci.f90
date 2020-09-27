@@ -50,7 +50,7 @@
 
     public :: ciVersion,ciDate,ciAuthor
     public :: setFCIParameters,initFCI,energyFCI,finalizeFCI
-    public :: getFCIRDM,getFCIRDMElement
+    public :: getFCIRDM,getFCIRDMElement,printFCISolution
     public :: fciHoldStateEnergy
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
@@ -278,6 +278,15 @@
     ret=fciHoldStateRDM(i,j,state)
     return
     end function getFCIRDMElement
+
+!   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
+
+    subroutine printFCISolution
+    implicit none
+
+
+    return
+    end subroutine printFCISolution
 
 !   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   !
 

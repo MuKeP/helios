@@ -33,7 +33,7 @@
         i=spinInds(mm,1)
         a=spinInds(mm,2)
 
-        Ax=c1_t1([i,a])**2
+        Ax=cc_c1_t1([i,a])**2
         sumw=sumw+Ax
         call put_matrix(Ax, [i,a,0,0,0,0,0,0])
 
@@ -46,8 +46,8 @@
 
             if ((j.LE.i).OR.(b.LE.a)) cycle
 
-            Bx=c2_t2([i,j,a,b])**2
-            Cx=c2_t1t1([i,j,a,b])**2
+            Bx=cc_c2_t2([i,j,a,b])**2
+            Cx=cc_c2_t1t1([i,j,a,b])**2
             sumw=sumw+Bx+Cx
             call put_matrix(Bx+Cx, [i,a,j,b,0,0,0,0])
 
@@ -57,9 +57,9 @@
 
                 if ((k.LE.j).OR.(c.LE.b)) cycle
 
-                Dx = c3_t1t2([i,j,k,a,b,c])**2
-                Ex = c3_t1t1t1([i,j,k,a,b,c])**2
-                Fx = c3_t3([i,j,k,a,b,c])**2
+                Dx = cc_c3_t2t1([i,j,k,a,b,c])**2
+                Ex = cc_c3_t1t1t1([i,j,k,a,b,c])**2
+                Fx = cc_c3_t3([i,j,k,a,b,c])**2
                 sumw=sumw+Dx+Ex+Fx
                 call put_matrix(Dx+Ex, [i,a,j,b,k,c,0,0])
 
@@ -69,10 +69,10 @@
 
                     if ((l.LE.k).OR.(d.LE.c)) cycle
 
-                    Gx=c4_t2t2([i,j,k,l,a,b,c,d])**2
-                    Hx=c4_t1t1t2([i,j,k,l,a,b,c,d])**2
-                    Ix=c4_t1t1t1t1([i,j,k,l,a,b,c,d])**2
-                    Jx=c4_t1t3([i,j,k,l,a,b,c,d])**2
+                    Gx=cc_c4_t2t2([i,j,k,l,a,b,c,d])**2
+                    Hx=cc_c4_t2t1t1([i,j,k,l,a,b,c,d])**2
+                    Ix=cc_c4_t1t1t1t1([i,j,k,l,a,b,c,d])**2
+                    Jx=cc_c4_t3t1([i,j,k,l,a,b,c,d])**2
                     sumw=sumw+Gx+Hx+Ix+Jx
                     call put_matrix(Gx+Hx+Ix+Jx, [i,a,j,b,k,c,l,d])
 

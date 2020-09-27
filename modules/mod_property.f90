@@ -13,16 +13,16 @@
     use hdb,            only: pointToCalc,pointSet,GlEt,perturbate,perturbationID,getMethodNumber
     use hdb,            only: noPerturbation,densitybd,hyperchargesbd,atomEqu,bondEqu
     use hdb,            only: HartreeEnergy,BohrRadius,dipoleToDeby,coulsonbd,systembd,fieldbd
-    use hdb,            only: singleSession,setIterationHeader
+    use hdb,            only: singleSession,setIterationHeader,throughbd
     use huckel,         only: getHuckelResult,getHuckRDMElement,setHuckelParameters,energyHuckel
-    use huckel,         only: finalizeHuck
+    use huckel,         only: finalizeHuck,printHuckelSolution
     use scf,            only: setSCFParameters,initSCF,iterationSCF,energySCF,getSCFRDMElement
     use scf,            only: getSCFResult,finalizeSCF,printSCFSolution,callbackSCF
     use mbpt,           only: setMBPTParameters,initMBPT,energyMBPT,finalizeMBPT
     use coupledCluster, only: setCCParameters,initCC,iterationCC,energyCC,finalizeCC,analizewfCC
-    use coupledCluster, only: getCCResults
+    use coupledCluster, only: getCCResults,printCCSolution
     use fci,            only: setFCIParameters,initFCI,energyFCI,finalizeFCI,fciHoldStateEnergy
-    use fci,            only: getFCIRDM,getFCIRDMElement
+    use fci,            only: getFCIRDM,getFCIRDMElement,printFCISolution
     use excitedStates,  only: getExcitationEnergy
     use lrccsdModule,   only: setLRParameters,initLR,energyLR,finalizeLR
     use lrccsdModule,   only: lrHoldStateEnergy,analizewfLR
@@ -342,8 +342,27 @@
     subroutine getOnlyEnergies
     implicit none
 
+    integer(kind=iglu)              :: state,nmethods,meth
+    real   (kind=rglu)              :: rez
+    real   (kind=rglu), allocatable :: energies(:, :)
 
-    ! TODO
+
+    void=tpSplit(generalbd%methods%get(),'+'); nmethods=tpSplitLen
+    allocate (methodSet(nmethods))
+
+    allocate(energies(nmethods, 0:statesbd%nStates)); energies=0
+
+    do meth = 1,nmethods
+        methodSet(meth)=tpSplitHold(meth)
+    enddo
+
+    do meth = 1,nmethods
+        mol%perturbation=0; void=applyField(); call perturbate
+
+        rez=getEnergy(methodSet(meth)%get(),statesbd%nStates); call getResults
+    enddo
+
+    deallocate(methodSet)
 
     return
     end subroutine getOnlyEnergies
@@ -359,6 +378,7 @@
     select case (lastMethod%get())
 
         case ('huckel')
+            call printHuckelSolution
 
         case ('rhf')
             call printSCFSolution
@@ -368,9 +388,10 @@
 
         case ('cue-ccs','r-ccd','u-ccd','cue-ccsd','r-ccsd','u-ccsd',&
               'r-ccsd(t)','cue-ccsdt','u-ccsdt','r-ccsdt')
-            call getCCResults
+            call printCCSolution
 
         case ('fci')
+            call printFCISolution
 
         case default
 
@@ -974,12 +995,14 @@
                 if (int(shell_check).NE.N) then
                     write (ou,107) N,shell_check
                 endif
-                call singleSession('  '//&
-                                   '  '//prStrByVal(inds(1), '__.000000')//&
-                                   '  '//prStrByVal(inds(2), '__.000000')//&
-                                   '  '//prStrByVal(inds(3), '__.000000')//&
-                                   '  '//prStrByVal(inds(4), '__.000000')//&
-                                   '  '//prStrByVal(inds(5), '__.000000'))
+                if (throughbd%enabled(1) .AND. (throughbd%property%get().EQ.'no_index')) then
+                    call singleSession('  '//&
+                                       '  '//prStrByVal(inds(1), '__.000000')//&
+                                       '  '//prStrByVal(inds(2), '__.000000')//&
+                                       '  '//prStrByVal(inds(3), '__.000000')//&
+                                       '  '//prStrByVal(inds(4), '__.000000')//&
+                                       '  '//prStrByVal(inds(5), '__.000000'))
+                endif
             endif
         enddo
 
@@ -1705,13 +1728,16 @@
                     enddo
                     write (ou,*)
             end select
-            do c = 1,UBnd(1)
-                do b = 1,UBnd(2)
-                    if (through(c,b).EQ.1) then
-                        call singleSession('  '//prStrByVal(coPolariz(c,b), '____.000000'))
-                    endif
+
+            if (throughbd%enabled(1) .AND. (throughbd%property%get().EQ.'coulson')) then
+                do c = 1,UBnd(1)
+                    do b = 1,UBnd(2)
+                        if (through(c,b).EQ.1) then
+                            call singleSession('  '//prStrByVal(coPolariz(c,b), '____.000000'))
+                        endif
+                    enddo
                 enddo
-            enddo
+            endif
         else
             call prMatrix(coPolariz,ou,'Coulson '//coulsonbd%ctype%get()//' polarizabilities ('//cmethod//')',&
                           '^.'//tpFill(paccur, '0'),maxwidth=ouWidth)

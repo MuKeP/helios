@@ -4,7 +4,7 @@
     use glob,      only: rglu,iglu,lglu,true,false,mid,void,i8kind,glControlMemory
     use glob,      only: uch,mid
     use hdb,       only: mol,geometrybd,polarizbd,generalbd,fieldbd,ou,ouWidth
-    use hdb,       only: gEnergyHolder,GlEt,Et,MEt,MMEt,MethodListLen
+    use hdb,       only: gEnergyHolder,GlEt,Et,MEt,MMEt,MethodListLen,cuebd,ierror
     use hdb,       only: pointAccordance,pointSet,pointToPut,pointToCalc,atomEqu,bondEqu
     use txtParser, only: tpAdjustc,tpGetSplit,operator(.in.)
     use printmod,  only: prMatrix
@@ -165,6 +165,10 @@
     endif
 
     dcue = ['cue-ccs', 'cue-ccsd', 'cue-ccsdt'] .in. tpGetSplit(generalbd%methods%get(), '+')
+    if (dcue .AND. cuebd%nonset) then
+        ierror='If some cue calculation is required, all bonds kind must be "single" or "double", not "nonset".'
+        call primaryInformation('error')
+    endif
 
     ! Symmetry non-demanding cases
     if (generalbd%task%get() .in. ['energy','wf-analysis']) then
